@@ -1,5 +1,6 @@
 database dbname=test
 sql mg.sql
 library ..
+rewrite url Mg/*
 
 mg
