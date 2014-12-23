@@ -13,6 +13,7 @@ functor Make(M : sig
                  val homeInj : $(map sql_injectable_prim homeKey)
                  val homeKeyFl : folder homeKey
                  val homeKeyShow : show $homeKey
+                 val homeKeyEq : eq $homeKey
 
                  con awayKey1 :: Name
                  con awayKeyT
@@ -28,6 +29,8 @@ functor Make(M : sig
                  val awayInj : $(map sql_injectable_prim awayKey)
                  val awayKeyFl : folder awayKey
                  val awayKeyShow : show $awayKey
+                 val awayKeyRead : read $awayKey
+                 val awayKeyEq : eq $awayKey
 
                  con timeKey1 :: Name
                  con timeKeyT
@@ -64,6 +67,14 @@ functor Make(M : sig
          (@Sql.some_fields [tab] [timeKey] ! ! timeKeyFl)
          sql_desc
 
+    val combinedFl = @Folder.concat ! homeKeyFl (@Folder.concat ! timeKeyFl awayKeyFl)
+
+    val addMeeting = @@Sql.easy_insert [homeKey ++ awayKey ++ timeKey] [_]
+                       (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim combinedFl (homeInj ++ awayInj ++ timeInj))
+                       combinedFl
+                       meeting
+
+
     structure FullGrid = struct
         type awaySet = list $awayKey
         type timeMap = list ($timeKey * awaySet)
@@ -73,7 +84,9 @@ functor Make(M : sig
         val create =
             allTimes <- queryL1 (SELECT time.{{timeKey}}
                                  FROM time
-                                 ORDER BY {{{timeOb}}});
+                                 ORDER BY {{{@Sql.order_by timeKeyFl
+                                   (@Sql.some_fields [#Time] [timeKey] ! ! timeKeyFl)
+                                   sql_desc}}});
 
             let
                 (* A bit of a little dance to initialize the meeting states,
@@ -111,7 +124,7 @@ functor Make(M : sig
                                         []
                                         ((time, awaysDone) :: timesDone)
                               | row :: rows' =>
-                                if row --- homeKey --- awayKey = time then
+                                if row --- awayKey --- timeKey = home && @eq timeKeyEq (row --- homeKey --- awayKey) time then
                                     (* Aha, a match!  Record this meeting. *)
                                     initMap acc
                                             rows'
@@ -133,9 +146,16 @@ functor Make(M : sig
                                   ORDER BY {{{@Sql.order_by homeKeyFl
                                     (@Sql.some_fields [#Home] [homeKey] ! ! homeKeyFl)
                                     sql_desc}}});
+                aways <- queryL1 (SELECT away.{{awayKey}}
+                                  FROM away
+                                  ORDER BY {{{@Sql.order_by awayKeyFl
+                                    (@Sql.some_fields [#Away] [awayKey] ! ! awayKeyFl)
+                                    sql_desc}}});
                 meetings <- queryL1 (SELECT meeting.{{homeKey}}, meeting.{{timeKey}}, meeting.{{awayKey}}
                                      FROM meeting
-                                     ORDER BY {{{timeOb}}});
+                                     ORDER BY {{{@Sql.order_by combinedFl
+                                       (@Sql.some_fields [#Meeting] [homeKey ++ timeKey ++ awayKey] ! ! combinedFl)
+                                       sql_desc}}});
                 meetings <- List.mapM (fn (ho, tms) =>
                                           tms' <- List.mapM (fn (tm, aws) =>
                                                                 aws <- source aws;
@@ -147,9 +167,11 @@ functor Make(M : sig
                                                allTimes
                                                []
                                                []);
-                return {Times = allTimes, Meetings = meetings}
+                return {Aways = aways, Times = allTimes, Meetings = meetings}
             end
-            
+
+        val schedule = addMeeting
+
         fun render t = <xml>
           <table>
             <tr>
@@ -161,16 +183,48 @@ functor Make(M : sig
             (* One row per home *)
             {List.mapX (fn (ho, tms) => <xml>
               <tr>
-                <td>{[ho]}</td>
+                <th>{[ho]}</th>
 
                 (* One column per time *)
-                {List.mapX (fn (_, aws) => <xml>
+                {List.mapX (fn (tm, aws) => <xml>
                   <td>
-                    <dyn signal={aws <- signal aws;
-                                 (* One button per meeting *)
-                                 return (List.mapX (fn aw => <xml>
-                                   <div>{[aw]}</div>
-                                 </xml>) aws)}/>
+                    <active code={expanded <- source False;
+                                  selected <- source "";
+                                  return <xml>
+                                    <dyn signal={awsv <- signal aws;
+                                                 (* One button per meeting *)
+                                                 return <xml>
+                                                   {List.mapX (fn aw => <xml>
+                                                     <div>{[aw]}</div>
+                                                   </xml>) awsv}
+                                                   <dyn signal={exp <- signal expanded;
+                                                                return <xml>
+                                                                  <button value={if exp then "-" else "+"}
+                                                                          onclick={fn _ => set expanded (not exp)}/>
+                                                                </xml>}/>
+                                                   <dyn signal={exp <- signal expanded;
+                                                                if not exp then
+                                                                    return <xml/>
+                                                                else
+                                                                    return <xml>
+                                                                      <cselect source={selected}>
+                                                                        {List.mapX (fn aw =>
+                                                                                       if List.mem aw awsv then
+                                                                                           <xml/>
+                                                                                       else
+                                                                                           <xml><coption>{[aw]}</coption></xml>) t.Aways}
+                                                                      </cselect>
+
+                                                                      <button value="Add"
+                                                                              onclick={fn _ =>
+                                                                                          set expanded False;
+                                                                                          sel <- get selected;
+                                                                                          aw <- return (readError sel);
+                                                                                          rpc (schedule (aw ++ ho ++ tm));
+                                                                                          set aws (List.sort (fn x y => show x > show y) (aw :: awsv))}/>
+                                                                    </xml>}/>
+                                                 </xml>}/>
+                                  </xml>}/>
                   </td>
                 </xml>) tms}
               </tr>
@@ -178,12 +232,5 @@ functor Make(M : sig
           </table>
         </xml>
     end
-
-    val combinedFl = @Folder.concat ! homeKeyFl (@Folder.concat ! awayKeyFl timeKeyFl)
-
-    val addMeeting = @@Sql.easy_insert [homeKey ++ awayKey ++ timeKey] [_]
-                       (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim combinedFl (homeInj ++ awayInj ++ timeInj))
-                       combinedFl
-                       meeting
 
 end

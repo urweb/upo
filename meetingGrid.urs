@@ -16,6 +16,7 @@ functor Make(M : sig
                  val homeInj : $(map sql_injectable_prim homeKey)
                  val homeKeyFl : folder homeKey
                  val homeKeyShow : show $homeKey
+                 val homeKeyEq : eq $homeKey
 
                  con awayKey1 :: Name
                  con awayKeyT
@@ -31,6 +32,8 @@ functor Make(M : sig
                  val awayInj : $(map sql_injectable_prim awayKey)
                  val awayKeyFl : folder awayKey
                  val awayKeyShow : show $awayKey
+                 val awayKeyRead : read $awayKey
+                 val awayKeyEq : eq $awayKey
 
                  con timeKey1 :: Name
                  con timeKeyT

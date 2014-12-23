@@ -2,12 +2,24 @@ table h : { Title : string, Bogosity : int }
   PRIMARY KEY Title
 
 val show_h : show {Title : string} = mkShow (fn r => r.Title)
+val eq_h : eq {Title : string} = Record.equal
 
 table a : { Company : string, EmployeeId : int, Awesome : bool }
   PRIMARY KEY (Company, EmployeeId)
 
 val show_a : show {Company : string, EmployeeId : int} =
     mkShow (fn r => r.Company ^ " #" ^ show r.EmployeeId)
+val read_a : read {Company : string, EmployeeId : int} =
+    mkRead' (fn s =>
+                case String.split s #"#" of
+                    None => None
+                  | Some (s1, s2) => case read s2 of
+                                         None => None
+                                       | Some n =>
+                                         Some {Company = String.substring s1 {Start = 0, Len = String.length s1 - 1},
+                                               EmployeeId = n})
+    "a"
+val eq_a : eq {Company : string, EmployeeId : int} = Record.equal
 
 table time : { When : time, Description : string }
   PRIMARY KEY When
