@@ -11,3 +11,21 @@ val order_by : tables ::: {{Type}} -> exps ::: {Type} -> dummy ::: {Type}
 val some_fields : tab :: Name -> keep :: {Type} -> drop ::: {Type} -> others ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                   -> [keep ~ drop] => [[tab] ~ others] => folder keep
                   -> $(map (sql_exp ([tab = keep ++ drop] ++ others) agg exps) keep)
+
+(* Construct a trivial matching, for foreign-key purposes *)
+val easy_matching : fs ::: {Type} -> folder fs -> matching fs fs
+
+(* Trivial foreign-key match-up *)
+val easy_foreign : nm ::: Name -> fnm ::: Name -> ft ::: Type -> fs ::: {Type} -> munused ::: {Type} -> funused ::: {Type} -> uniques ::: {{Unit}}
+                   -> [[fnm] ~ fs] => [[fnm] ~ munused] => [fs ~ munused] => [[fnm] ~ funused] => [fs ~ funused] => [[nm] ~ uniques] => folder ([fnm = ft] ++ fs)
+                   -> sql_table ([fnm = ft] ++ fs ++ funused) ([nm = map (fn _ => ()) ([fnm = ft] ++ fs)] ++ uniques)
+                   -> sql_constraint ([fnm = ft] ++ fs ++ munused) []
+
+(* Easy table insert with constants *)
+val easy_insert : fields ::: {Type} -> uniques ::: {{Unit}}
+                  -> $(map sql_injectable fields)
+                  -> folder fields
+                  -> sql_table fields uniques
+                  -> $fields
+                  -> transaction unit
+

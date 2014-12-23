@@ -13,3 +13,20 @@ fun some_fields [tab :: Name] [keep :: {Type}] [drop] [others] [agg] [exps] [kee
                  [rest ::_] [drop ~ rest] [drop ~ ([nm = t] ++ r)] [rest ~ ([nm = t] ++ r)] =>
         {nm = (SQL {{tab}}.{nm})} ++ acc [[nm = t] ++ rest])
     (fn [rest ::_] [drop ~ rest] [drop ~ []] [rest ~ []] => {}) fl [[]] ! ! !
+
+fun easy_matching [fs] (fl : folder fs) =
+    @fold [fn r => matching r r]
+     (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] => mat_cons [nm] [nm])
+    mat_nil fl
+
+fun easy_foreign [nm] [fnm] [ft] [fs] [munused] [funused] [uniques]
+                 [[fnm] ~ fs] [[fnm] ~ munused] [fs ~ munused] [[fnm] ~ funused] [fs ~ funused] [[nm] ~ uniques]
+                 (fl : folder ([fnm = ft] ++ fs))
+                 (tab : sql_table ([fnm = ft] ++ fs ++ funused) ([nm = map (fn _ => ()) ([fnm = ft] ++ fs)] ++ uniques)) =
+    foreign_key (@easy_matching fl) tab {OnDelete = restrict, OnUpdate = restrict}
+
+fun easy_insert [fields] [uniques] (injs : $(map sql_injectable fields)) (fl : folder fields)
+    (tab : sql_table fields uniques) (fs : $fields) =
+    dml (insert tab (@Top.map2 [sql_injectable] [ident] [sql_exp [] [] []]
+                     (fn [t] => @sql_inject)
+                     fl injs fs))
