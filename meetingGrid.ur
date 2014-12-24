@@ -1,3 +1,5 @@
+open Bootstrap3
+
 functor Make(M : sig
                  con homeKey1 :: Name
                  con homeKeyT
@@ -167,13 +169,20 @@ functor Make(M : sig
                                                allTimes
                                                []
                                                []);
-                return {Aways = aways, Times = allTimes, Meetings = meetings}
+                mid <- fresh;
+                modalSpot <- source <xml/>;
+                return {Aways = aways, Times = allTimes, Meetings = meetings,
+                        ModalId = mid, ModalSpot = modalSpot}
             end
 
         val schedule = addMeeting
 
         fun render t = <xml>
-          <table>
+          <div class="modal" id={t.ModalId}>
+            <dyn signal={signal t.ModalSpot}/>
+          </div>
+
+          <table class="bs3-table table-striped">
             <tr>
               <th/>
               (* Header: one column per time *)
@@ -188,8 +197,7 @@ functor Make(M : sig
                 (* One column per time *)
                 {List.mapX (fn (tm, aws) => <xml>
                   <td>
-                    <active code={expanded <- source False;
-                                  selected <- source "";
+                    <active code={selected <- source "";
                                   return <xml>
                                     <dyn signal={awsv <- signal aws;
                                                  (* One button per meeting *)
@@ -197,32 +205,46 @@ functor Make(M : sig
                                                    {List.mapX (fn aw => <xml>
                                                      <div>{[aw]}</div>
                                                    </xml>) awsv}
-                                                   <dyn signal={exp <- signal expanded;
-                                                                return <xml>
-                                                                  <button value={if exp then "-" else "+"}
-                                                                          onclick={fn _ => set expanded (not exp)}/>
-                                                                </xml>}/>
-                                                   <dyn signal={exp <- signal expanded;
-                                                                if not exp then
-                                                                    return <xml/>
-                                                                else
-                                                                    return <xml>
-                                                                      <cselect source={selected}>
-                                                                        {List.mapX (fn aw =>
-                                                                                       if List.mem aw awsv then
-                                                                                           <xml/>
-                                                                                       else
-                                                                                           <xml><coption>{[aw]}</coption></xml>) t.Aways}
-                                                                      </cselect>
 
-                                                                      <button value="Add"
-                                                                              onclick={fn _ =>
-                                                                                          set expanded False;
-                                                                                          sel <- get selected;
-                                                                                          aw <- return (readError sel);
-                                                                                          rpc (schedule (aw ++ ho ++ tm));
-                                                                                          set aws (List.sort (fn x y => show x > show y) (aw :: awsv))}/>
-                                                                    </xml>}/>
+                                                   <button class="btn btn-default"
+                                                           value="+"
+                                                           data-toggle="modal"
+                                                           data-target={"#" ^ show t.ModalId}
+                                                           onclick={fn _ => set t.ModalSpot <xml>
+                                                             <div class="modal-dialog">
+                                                               <div class="modal-content">
+                                                                 <div class="modal-header">
+                                                                   <h4 class="modal-title">Adding meeting for {[ho]} at {[tm]}</h4>
+                                                                 </div>
+
+                                                                 <div class="modal-body">
+                                                                   <cselect class="form-control"
+                                                                            source={selected}>
+                                                                     {List.mapX (fn aw =>
+                                                                                    if List.mem aw awsv then
+                                                                                        <xml/>
+                                                                                    else
+                                                                                        <xml><coption>{[aw]}</coption></xml>) t.Aways}
+                                                                   </cselect>
+                                                                 </div>
+
+                                                                 <div class="modal-footer">
+                                                                   <button class="btn btn-primary"
+                                                                           data-dismiss="modal"
+                                                                           value="Add Meeting"
+                                                                           onclick={fn _ =>
+                                                                                       sel <- get selected;
+                                                                                       aw <- return (readError sel);
+                                                                                       rpc (schedule (aw ++ ho ++ tm));
+                                                                                       set aws (List.sort (fn x y => show x > show y) (aw :: awsv))}/>
+                                                                   <button class="btn btn-default"
+                                                                           data-dismiss="modal"
+                                                                           value="Cancel"/>
+
+                                                                 </div>
+                                                               </div>
+                                                             </div>
+                                                           </xml>}/>
                                                  </xml>}/>
                                   </xml>}/>
                   </td>
