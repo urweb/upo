@@ -206,7 +206,7 @@ functor Make(M : sig
                                                      <div>{[aw]}</div>
                                                    </xml>) awsv}
 
-                                                   <button class="btn btn-default"
+                                                   <button class="btn btn-default btn-xs"
                                                            value="+"
                                                            data-toggle="modal"
                                                            data-target={"#" ^ show t.ModalId}
