@@ -63,7 +63,7 @@ functor Make(M : sig
       {{one_constraint [#Away] (@Sql.easy_foreign ! ! ! ! ! ! awayKeyFl away)}},
       {{one_constraint [#Time] (@Sql.easy_foreign ! ! ! ! ! ! timeKeyFl time)}}
 
-    datatype operation = Add
+    datatype operation = Add | Del
     type action = { Operation : operation, Home : $homeKey, Away : $awayKey, Time : $timeKey }
 
     table globalListeners : { Channel : channel action }
@@ -197,6 +197,23 @@ functor Make(M : sig
                                          Away = r --- homeKey --- timeKey,
                                          Time = r --- awayKey --- homeKey})
 
+        fun unschedule r =
+            alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
+                                          FROM meeting
+                                          WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
+                                            ! ! allInj allFl r});
+            if not alreadyScheduled then
+                return ()
+            else
+                dml (DELETE FROM meeting
+                            WHERE {@@Sql.easy_where [#T] [all] [_] [_] [_] [_]
+                              ! ! allInj allFl r});
+                queryI1 (SELECT * FROM globalListeners)
+                (fn i => send i.Channel {Operation = Del,
+                                         Home = r --- awayKey --- timeKey,
+                                         Away = r --- homeKey --- timeKey,
+                                         Time = r --- awayKey --- homeKey})
+
         fun render t = <xml>
           <div class="modal" id={t.ModalId}>
             <dyn signal={signal t.ModalSpot}/>
@@ -223,7 +240,14 @@ functor Make(M : sig
                                                  (* One button per meeting *)
                                                  return <xml>
                                                    {List.mapX (fn aw => <xml>
-                                                     <div>{[aw]}</div>
+                                                     <div style="border-style: double">
+                                                       {[aw]}
+                                                       <button class="close"
+                                                               onclick={fn _ =>
+                                                                           rpc (unschedule (aw ++ ho ++ tm))}>
+                                                         &times;
+                                                       </button>
+                                                     </div>
                                                    </xml>) awsv}
 
                                                    <button class="btn btn-default btn-xs"
@@ -306,6 +330,9 @@ functor Make(M : sig
                     (case r.Operation of
                          Add => tweakMeeting
                                     (fn ls => List.sort (fn x y => show x > show y) (r.Away :: ls))
+                                    r.Home r.Time t.Meetings
+                       | Del => tweakMeeting
+                                    (List.filter (fn aw => aw <> r.Away))
                                     r.Home r.Time t.Meetings);
                     loop ()
             in
