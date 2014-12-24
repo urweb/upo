@@ -53,7 +53,10 @@ functor Make(M : sig
 
                  constraint homeKey ~ awayKey
                  constraint (homeKey ++ awayKey) ~ timeKey
+                 constraint awayKey ~ [Channel]
              end) : sig
+
+    val addMeeting : $(M.homeKey ++ M.awayKey ++ M.timeKey) -> transaction unit
 
     structure FullGrid : sig
         type t
@@ -62,6 +65,11 @@ functor Make(M : sig
         val render : t -> xbody
     end
 
-    val addMeeting : $(M.homeKey ++ M.awayKey ++ M.timeKey) -> transaction unit
+    structure OneAway : sig
+        type t
+        val create : $M.awayKey -> transaction t
+        val onload : t -> transaction unit
+        val render : t -> xbody
+    end
 
 end

@@ -3,5 +3,6 @@ sql mg.sql
 library ..
 rewrite url Mg/*
 safeGet main
+safeGet away
 
 mg

@@ -52,6 +52,7 @@ functor Make(M : sig
 
                  constraint homeKey ~ awayKey
                  constraint (homeKey ++ awayKey) ~ timeKey
+                 constraint awayKey ~ [Channel]
              end) = struct
 
     open M
@@ -65,8 +66,12 @@ functor Make(M : sig
 
     datatype operation = Add | Del
     type action = { Operation : operation, Home : $homeKey, Away : $awayKey, Time : $timeKey }
-
     table globalListeners : { Channel : channel action }
+
+    type away_action = { Operation : operation, Home : $homeKey, Time : $timeKey }
+    table awayListeners : ([Channel = channel away_action] ++ awayKey)
+      PRIMARY KEY {{@primary_key [awayKey1] [awayKeyR] ! ! awayInj}},
+      {{one_constraint [#Away] (@Sql.easy_foreign ! ! ! ! ! ! awayKeyFl away)}}
 
     val timeOb [tab] [rest] [tables] [exps] [[tab] ~ tables] [timeKey ~ rest]
         : sql_order_by ([tab = timeKey ++ rest] ++ tables) exps =
@@ -78,6 +83,7 @@ functor Make(M : sig
     val allFl = @Folder.concat ! homeKeyFl (@Folder.concat ! timeKeyFl awayKeyFl)
 
     val allInj = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim allFl (homeInj ++ awayInj ++ timeInj)
+    val awayInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim awayKeyFl awayInj
 
     val addMeeting = @@Sql.easy_insert [all] [_] allInj allFl meeting
 
@@ -218,6 +224,12 @@ functor Make(M : sig
                 (fn i => send i.Channel {Operation = Add,
                                          Home = r --- awayKey --- timeKey,
                                          Away = r --- homeKey --- timeKey,
+                                         Time = r --- awayKey --- homeKey});
+                queryI1 (SELECT * FROM awayListeners
+                         WHERE {@@Sql.easy_where [#AwayListeners] [awayKey] [_] [_] [_] [_]
+                           ! ! awayInj' awayKeyFl (r --- homeKey --- timeKey)})
+                (fn i => send i.Channel {Operation = Add,
+                                         Home = r --- awayKey --- timeKey,
                                          Time = r --- awayKey --- homeKey})
 
         fun unschedule r =
@@ -235,6 +247,12 @@ functor Make(M : sig
                 (fn i => send i.Channel {Operation = Del,
                                          Home = r --- awayKey --- timeKey,
                                          Away = r --- homeKey --- timeKey,
+                                         Time = r --- awayKey --- homeKey});
+                queryI1 (SELECT * FROM awayListeners
+                         WHERE {@@Sql.easy_where [#AwayListeners] [awayKey] [_] [_] [_] [_]
+                           ! ! awayInj' awayKeyFl (r --- homeKey --- timeKey)})
+                (fn i => send i.Channel {Operation = Del,
+                                         Home = r --- awayKey --- timeKey,
                                          Time = r --- awayKey --- homeKey})
 
         fun render t = <xml>
@@ -350,6 +368,107 @@ functor Make(M : sig
                 spawn (loop ())
             end
                                                             
+    end
+
+    structure OneAway = struct
+        type homeSet = list $homeKey
+        type timeMap = list ($timeKey * homeSet)
+        type t = _
+
+        fun create aw =
+            let
+                fun doTimes (times : list $timeKey)
+                            (rows : list $(timeKey ++ homeKey))
+                            (thisTime : homeSet)
+                            (acc : timeMap)
+                    : timeMap =
+                    case times of
+                        [] => List.rev acc
+                      | tm :: times' =>
+                        case rows of
+                            [] => doTimes times' [] [] ((tm, List.rev thisTime) :: acc)
+                          | row :: rows' =>
+                            if row --- homeKey = tm then
+                                doTimes times rows' ((row --- timeKey) :: thisTime) acc
+                            else
+                                doTimes times' rows [] ((tm, List.rev thisTime) :: acc)
+            in
+                allTimes <- queryL1 (SELECT time.{{timeKey}}
+                                     FROM time
+                                     ORDER BY {{{@Sql.order_by timeKeyFl
+                                       (@Sql.some_fields [#Time] [timeKey] ! ! timeKeyFl)
+                                       sql_desc}}});
+                meetings <- queryL1 (SELECT meeting.{{timeKey}}, meeting.{{homeKey}}
+                                     FROM meeting
+                                     ORDER BY {{{@Sql.order_by (@Folder.concat ! timeKeyFl homeKeyFl)
+                                       (@Sql.some_fields [#Meeting] [timeKey ++ homeKey] ! !
+                                         (@Folder.concat ! timeKeyFl homeKeyFl))
+                                       sql_desc}}});
+                meetings <- List.mapM (fn (tm, hos) =>
+                                          hos <- source hos;
+                                          return (tm, hos))
+                            (doTimes allTimes meetings [] []);
+                ch <- channel;
+                @@Sql.easy_insert [[Channel = _] ++ awayKey] [_]
+                  ({Channel = _} ++ awayInj')
+                  (@Folder.cons [#Channel] [_] ! awayKeyFl)
+                  awayListeners
+                  ({Channel = ch} ++ aw);
+                return {Away = aw, Meetings = meetings, Channel = ch}
+            end
+
+        fun render t = <xml>
+          <table class="bs3-table table-striped">
+            <tr>
+              <th>Time</th>
+              <th>Meeting</th>
+            </tr>
+
+            {List.mapX (fn (tm, hos) => <xml>
+              <tr>
+                <td>{[tm]}</td>
+                <td>
+                  <dyn signal={hos <- signal hos;
+                               return (case hos of
+                                           [] => <xml>&mdash;</xml>
+                                         | ho :: hos => <xml>{[ho]}{List.mapX (fn ho => <xml>, {[ho]}</xml>) hos}</xml>)}/>
+                                                                                                                                    </td>
+              </tr>
+            </xml>) t.Meetings}
+          </table>
+        </xml>
+
+        fun tweakMeeting (f : homeSet -> homeSet) (tm : $timeKey) =
+            let
+                fun addTimes tms =
+                    case tms of
+                        [] => error <xml>tweakMeeting[2]: unknown time</xml>
+                      | (tm', hos) :: tms' =>
+                        if tm' = tm then
+                            v <- get hos;
+                            set hos (f v)
+                        else
+                            addTimes tms'
+            in
+                addTimes
+            end
+
+        fun onload t =
+            let
+                fun loop () =
+                    r <- recv t.Channel;
+                    (case r.Operation of
+                         Add => tweakMeeting
+                                    (fn ls => List.sort (fn x y => show x > show y) (r.Home :: ls))
+                                    r.Time t.Meetings
+                       | Del => tweakMeeting
+                                    (List.filter (fn ho => ho <> r.Home))
+                                    r.Time t.Meetings);
+                    loop ()
+            in
+                spawn (loop ())
+            end
+
     end
 
 end

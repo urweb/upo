@@ -42,6 +42,19 @@ val main =
           {S.FullGrid.render fg}
         </xml>
 
+fun away s =
+    case read s of
+        None => error <xml>Bad self-description</xml>
+      | Some aw =>
+        oa <- S.OneAway.create aw;
+        Theme.page
+            (S.OneAway.onload oa)
+            ("Your Schedule (" ^ s ^ ")")
+            <xml>
+              {S.OneAway.render oa}
+            </xml>
+        
+
 task initialize = fn () =>
      doNothing <- oneRowE1 (SELECT COUNT( * ) > 0
                             FROM h);
