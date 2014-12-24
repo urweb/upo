@@ -35,9 +35,12 @@ structure S = MeetingGrid.Make(struct
 
 val main =
     fg <- S.FullGrid.create;
-    Theme.page "MG" <xml>
-      {S.FullGrid.render fg}
-    </xml>
+    Theme.page
+        (S.FullGrid.onload fg)
+        "MG"
+        <xml>
+          {S.FullGrid.render fg}
+        </xml>
 
 task initialize = fn () =>
      doNothing <- oneRowE1 (SELECT COUNT( * ) > 0

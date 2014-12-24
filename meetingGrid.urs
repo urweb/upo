@@ -58,6 +58,7 @@ functor Make(M : sig
     structure FullGrid : sig
         type t
         val create : transaction t
+        val onload : t -> transaction unit
         val render : t -> xbody
     end
 

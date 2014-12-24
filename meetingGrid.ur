@@ -63,18 +63,23 @@ functor Make(M : sig
       {{one_constraint [#Away] (@Sql.easy_foreign ! ! ! ! ! ! awayKeyFl away)}},
       {{one_constraint [#Time] (@Sql.easy_foreign ! ! ! ! ! ! timeKeyFl time)}}
 
+    datatype operation = Add
+    type action = { Operation : operation, Home : $homeKey, Away : $awayKey, Time : $timeKey }
+
+    table globalListeners : { Channel : channel action }
+
     val timeOb [tab] [rest] [tables] [exps] [[tab] ~ tables] [timeKey ~ rest]
         : sql_order_by ([tab = timeKey ++ rest] ++ tables) exps =
         @Sql.order_by timeKeyFl
          (@Sql.some_fields [tab] [timeKey] ! ! timeKeyFl)
          sql_desc
 
-    val combinedFl = @Folder.concat ! homeKeyFl (@Folder.concat ! timeKeyFl awayKeyFl)
+    con all = homeKey ++ awayKey ++ timeKey
+    val allFl = @Folder.concat ! homeKeyFl (@Folder.concat ! timeKeyFl awayKeyFl)
 
-    val addMeeting = @@Sql.easy_insert [homeKey ++ awayKey ++ timeKey] [_]
-                       (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim combinedFl (homeInj ++ awayInj ++ timeInj))
-                       combinedFl
-                       meeting
+    val allInj = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim allFl (homeInj ++ awayInj ++ timeInj)
+
+    val addMeeting = @@Sql.easy_insert [all] [_] allInj allFl meeting
 
 
     structure FullGrid = struct
@@ -94,7 +99,7 @@ functor Make(M : sig
                 (* A bit of a little dance to initialize the meeting states,
                  * including blank entries for unused home/time pairs *)
                 fun initMap (acc : homeMap)
-                            (rows : list $(homeKey ++ timeKey ++ awayKey))
+                            (rows : list $all)
                             (homes : list $homeKey)
                             (times : list $timeKey)
                             (awaysDone : awaySet)
@@ -155,8 +160,8 @@ functor Make(M : sig
                                     sql_desc}}});
                 meetings <- queryL1 (SELECT meeting.{{homeKey}}, meeting.{{timeKey}}, meeting.{{awayKey}}
                                      FROM meeting
-                                     ORDER BY {{{@Sql.order_by combinedFl
-                                       (@Sql.some_fields [#Meeting] [homeKey ++ timeKey ++ awayKey] ! ! combinedFl)
+                                     ORDER BY {{{@Sql.order_by allFl
+                                       (@Sql.some_fields [#Meeting] [all] ! ! allFl)
                                        sql_desc}}});
                 meetings <- List.mapM (fn (ho, tms) =>
                                           tms' <- List.mapM (fn (tm, aws) =>
@@ -171,11 +176,26 @@ functor Make(M : sig
                                                []);
                 mid <- fresh;
                 modalSpot <- source <xml/>;
+                chan <- channel;
+                dml (INSERT INTO globalListeners (Channel) VALUES ({[chan]}));
                 return {Aways = aways, Times = allTimes, Meetings = meetings,
-                        ModalId = mid, ModalSpot = modalSpot}
+                        ModalId = mid, ModalSpot = modalSpot, Channel = chan}
             end
 
-        val schedule = addMeeting
+        fun schedule r =
+            alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
+                                          FROM meeting
+                                          WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
+                                            ! ! allInj allFl r});
+            if alreadyScheduled then
+                return ()
+            else
+                addMeeting r;
+                queryI1 (SELECT * FROM globalListeners)
+                (fn i => send i.Channel {Operation = Add,
+                                         Home = r --- awayKey --- timeKey,
+                                         Away = r --- homeKey --- timeKey,
+                                         Time = r --- awayKey --- homeKey})
 
         fun render t = <xml>
           <div class="modal" id={t.ModalId}>
@@ -234,9 +254,8 @@ functor Make(M : sig
                                                                            value="Add Meeting"
                                                                            onclick={fn _ =>
                                                                                        sel <- get selected;
-                                                                                       aw <- return (readError sel);
-                                                                                       rpc (schedule (aw ++ ho ++ tm));
-                                                                                       set aws (List.sort (fn x y => show x > show y) (aw :: awsv))}/>
+                                                                                       aw <- return (readError sel : $awayKey);
+                                                                                       rpc (schedule (aw ++ ho ++ tm))}/>
                                                                    <button class="btn btn-default"
                                                                            data-dismiss="modal"
                                                                            value="Cancel"/>
@@ -253,6 +272,46 @@ functor Make(M : sig
             </xml>) t.Meetings}
           </table>
         </xml>
+
+        fun tweakMeeting (f : awaySet -> awaySet) (ho : $homeKey) (tm : $timeKey) =
+            let
+                fun tweakHomes hos =
+                    case hos of
+                        [] => error <xml>tweakMeeting: unknown home</xml>
+                      | (ho', tms) :: hos' =>
+                        if ho' = ho then
+                            let
+                                fun addTimes tms =
+                                    case tms of
+                                        [] => error <xml>tweakMeeting: unknown time</xml>
+                                      | (tm', aws) :: tms' =>
+                                        if tm' = tm then
+                                            v <- get aws;
+                                            set aws (f v)
+                                        else
+                                            addTimes tms'
+                            in
+                                addTimes tms
+                            end
+                        else
+                            tweakHomes hos'
+            in
+                tweakHomes
+            end
+
+        fun onload t =
+            let
+                fun loop () =
+                    r <- recv t.Channel;
+                    (case r.Operation of
+                         Add => tweakMeeting
+                                    (fn ls => List.sort (fn x y => show x > show y) (r.Away :: ls))
+                                    r.Home r.Time t.Meetings);
+                    loop ()
+            in
+                spawn (loop ())
+            end
+                                                            
     end
 
 end

@@ -29,3 +29,9 @@ val easy_insert : fields ::: {Type} -> uniques ::: {{Unit}}
                   -> $fields
                   -> transaction unit
 
+(* Build a WHERE clause equating fields of a table to constant values *)
+val easy_where : tab :: Name -> using ::: {Type} -> notUsing ::: {Type} -> otherTables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                 -> [using ~ notUsing] => [[tab] ~ otherTables]
+                 => $(map sql_injectable using) -> folder using
+                 -> $using
+                 -> sql_exp ([tab = using ++ notUsing] ++ otherTables) agg exps bool

@@ -30,3 +30,12 @@ fun easy_insert [fields] [uniques] (injs : $(map sql_injectable fields)) (fl : f
     dml (insert tab (@Top.map2 [sql_injectable] [ident] [sql_exp [] [] []]
                      (fn [t] => @sql_inject)
                      fl injs fs))
+
+fun easy_where [tab :: Name] [using] [notUsing] [otherTables] [agg] [exps] [using ~ notUsing] [[tab] ~ otherTables]
+    (injs : $(map sql_injectable using)) (fl : folder using) (r : $using) =
+    @foldR2 [sql_injectable] [ident] [fn r => rest :: {Type} -> [notUsing ~ rest] => [notUsing ~ r] => [rest ~ r] => sql_exp ([tab = r ++ rest ++ notUsing] ++ otherTables) agg exps bool]
+    (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (inj : sql_injectable t) x
+                 (acc : rest :: {Type} -> [notUsing ~ rest] => [notUsing ~ r] => [rest ~ r] => sql_exp ([tab = r ++ rest ++ notUsing] ++ otherTables) agg exps bool)
+                 [rest ::_] [notUsing ~ rest] [notUsing ~ ([nm = t] ++ r)] [rest ~ ([nm = t] ++ r)] =>
+        (WHERE {{tab}}.{nm} = {[x]} AND {acc [[nm = t] ++ rest]}))
+    (fn [rest ::_] [notUsing ~ rest] [notUsing ~ []] [rest ~ []] => (WHERE TRUE)) fl injs r [[]] ! ! !
