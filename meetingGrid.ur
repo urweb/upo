@@ -81,6 +81,29 @@ functor Make(M : sig
 
     val addMeeting = @@Sql.easy_insert [all] [_] allInj allFl meeting
 
+    fun makeModal bcode titl bod blab = <xml>
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">{titl}</h4>
+          </div>
+
+          <div class="modal-body">
+            {bod}
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn btn-primary"
+                    data-dismiss="modal"
+                    value={blab}
+                    onclick={fn _ => bcode}/>
+            <button class="btn btn-default"
+                    data-dismiss="modal"
+                    value="Cancel"/>
+          </div>
+        </div>
+      </div>
+    </xml>
 
     structure FullGrid = struct
         type awaySet = list $awayKey
@@ -243,8 +266,14 @@ functor Make(M : sig
                                                      <div style="border-style: double">
                                                        {[aw]}
                                                        <button class="close"
+                                                               data-toggle="modal"
+                                                               data-target={"#" ^ show t.ModalId}
                                                                onclick={fn _ =>
-                                                                           rpc (unschedule (aw ++ ho ++ tm))}>
+                                                                           set t.ModalSpot (makeModal
+                                                                             (rpc (unschedule (aw ++ ho ++ tm)))
+                                                                             <xml>Are you sure you want to delete the {[tm]} meeting between {[ho]} and {[aw]}?</xml>
+                                                                             <xml/>
+                                                                             "Yes!")}>
                                                          &times;
                                                        </button>
                                                      </div>
@@ -254,40 +283,22 @@ functor Make(M : sig
                                                            value="+"
                                                            data-toggle="modal"
                                                            data-target={"#" ^ show t.ModalId}
-                                                           onclick={fn _ => set t.ModalSpot <xml>
-                                                             <div class="modal-dialog">
-                                                               <div class="modal-content">
-                                                                 <div class="modal-header">
-                                                                   <h4 class="modal-title">Adding meeting for {[ho]} at {[tm]}</h4>
-                                                                 </div>
-
-                                                                 <div class="modal-body">
-                                                                   <cselect class="form-control"
-                                                                            source={selected}>
-                                                                     {List.mapX (fn aw =>
-                                                                                    if List.mem aw awsv then
-                                                                                        <xml/>
-                                                                                    else
-                                                                                        <xml><coption>{[aw]}</coption></xml>) t.Aways}
-                                                                   </cselect>
-                                                                 </div>
-
-                                                                 <div class="modal-footer">
-                                                                   <button class="btn btn-primary"
-                                                                           data-dismiss="modal"
-                                                                           value="Add Meeting"
-                                                                           onclick={fn _ =>
-                                                                                       sel <- get selected;
-                                                                                       aw <- return (readError sel : $awayKey);
-                                                                                       rpc (schedule (aw ++ ho ++ tm))}/>
-                                                                   <button class="btn btn-default"
-                                                                           data-dismiss="modal"
-                                                                           value="Cancel"/>
-
-                                                                 </div>
-                                                               </div>
-                                                             </div>
-                                                           </xml>}/>
+                                                           onclick={fn _ => set t.ModalSpot (makeModal
+                                                                              (sel <- get selected;
+                                                                               aw <- return (readError sel : $awayKey);
+                                                                               rpc (schedule (aw ++ ho ++ tm)))
+                                                                              <xml>Adding meeting for {[ho]} at {[tm]}</xml>
+                                                                              <xml>
+                                                                                <cselect class="form-control"
+                                                                                         source={selected}>
+                                                                                  {List.mapX (fn aw =>
+                                                                                                 if List.mem aw awsv then
+                                                                                                     <xml/>
+                                                                                                 else
+                                                                                                     <xml><coption>{[aw]}</coption></xml>) t.Aways}
+                                                                                </cselect>
+                                                                              </xml>
+                                                                              "Add Meeting")}/>
                                                  </xml>}/>
                                   </xml>}/>
                   </td>
