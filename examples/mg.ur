@@ -55,6 +55,18 @@ fun away s =
               {S.OneAway.render oa}
             </xml>
 
+fun homepref s =
+    case read s of
+        None => error <xml>Bad self-description</xml>
+      | Some ho =>
+        hp <- S.HomePrefs.create ho;
+        Theme.page
+            (return ())
+            ("Your Preferences (" ^ s ^ ")")
+            <xml>
+              {S.HomePrefs.render hp}
+            </xml>
+
 fun awaypref s =
     case read s of
         None => error <xml>Bad self-description</xml>
@@ -66,7 +78,6 @@ fun awaypref s =
             <xml>
               {S.AwayPrefs.render ap}
             </xml>
-        
 
 task initialize = fn () =>
      doNothing <- oneRowE1 (SELECT COUNT( * ) > 0

@@ -480,6 +480,85 @@ functor Make(M : sig
 
     end
 
+    structure HomePrefs = struct
+        type awaySet = list $awayKey
+        type t = _
+
+        fun create ho =
+            aways <- queryL1 (SELECT away.{{awayKey}}
+                              FROM away
+                              ORDER BY {{{@Sql.order_by awayKeyFl
+                                (@Sql.some_fields [#Away] [awayKey] ! ! awayKeyFl)
+                                sql_desc}}});
+            prefs <- queryL1 (SELECT preference.{{awayKey}}
+                              FROM preference
+                              WHERE preference.ByHome
+                                AND {@@Sql.easy_where [#Preference] [homeKey] [_] [_] [_] [_]
+                                  ! ! homeInj' homeKeyFl ho}
+                              ORDER BY {{{@Sql.order_by awayKeyFl
+                                (@Sql.some_fields [#Preference] [awayKey] ! ! awayKeyFl)
+                                sql_desc}}});
+            prefs <- source prefs;
+            toAdd <- source "";
+            return {Home = ho, Aways = aways, Prefs = prefs, ToAdd = toAdd}
+
+        fun addpref aw ho =
+            @@Sql.easy_insert [[ByHome = _] ++ homeKey ++ awayKey] [_] ({ByHome = _} ++ homeInj' ++ awayInj')
+              (@Folder.cons [#ByHome] [_] ! (@Folder.concat ! homeKeyFl awayKeyFl))
+              preference ({ByHome = True} ++ ho ++ aw)
+
+        fun unpref aw ho =
+            dml (DELETE FROM preference
+                 WHERE ByHome
+                   AND {@@Sql.easy_where [#T] [homeKey ++ awayKey] [_] [_] [_] [_]
+                     ! ! (homeInj' ++ awayInj') (@Folder.concat ! homeKeyFl awayKeyFl) (ho ++ aw)})
+
+        fun render t = <xml>
+          <table class="bs3-table table-striped">
+            <dyn signal={aws <- signal t.Prefs;
+                         return <xml>
+                           {List.mapX (fn aw => <xml>
+                             <tr><td>
+                               {[aw]}
+                               <button class="close"
+                                       onclick={fn _ =>
+                                                   rpc (unpref aw t.Home);
+                                                   set t.Prefs (List.filter (fn aw' => aw' <> aw) aws)}>
+                                 &times;
+                               </button>
+                             </td></tr>
+                             </xml>) aws}
+
+                           <tr><td/></tr>
+
+                           <tr>
+                             <td>
+                               <cselect class="form-control" source={t.ToAdd}>
+                                 {List.mapX (fn aw =>
+                                                if List.mem aw aws then
+                                                    <xml/>
+                                                else
+                                                    <xml><coption>{[aw]}</coption></xml>) t.Aways}
+                               </cselect>
+
+                               <button class="btn btn-primary"
+                                       value="Add Preference"
+                                       onclick={fn _ =>
+                                                   ta <- get t.ToAdd;
+                                                   case ta of
+                                                       "" => return ()
+                                                     | _ =>
+                                                       aw <- return (readError ta);
+                                                       rpc (addpref aw t.Home);
+                                                       set t.Prefs (List.sort (fn x y => show x > show y) (aw :: aws))}/>
+                             </td>
+                           </tr>
+                         </xml>}/>
+          </table>
+        </xml>
+
+    end
+
     structure AwayPrefs = struct
         type homeSet = list $homeKey
         type t = _
