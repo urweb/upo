@@ -1,11 +1,9 @@
-fun importTable [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs)
-                (tab : sql_table fs cs) (input : string) =
+fun csvFold [fs] [acc] (f : $fs -> acc -> acc)
+            (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs) =
     let
-        val addOne = @Sql.easy_insert injs fl tab
-
-        fun doLine line =
+        fun doLine line acc =
             let
-                val (commas, total, line, acc) =
+                val (commas, total, line, acc') =
                     @foldR [read] [fn r => string -> int * int * string * $r]
                      (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : read t) acc line =>
                          case String.split line #"," of
@@ -26,18 +24,27 @@ fun importTable [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $(map read 
                 if commas <> total-1 || line <> "" then
                     error <xml>Wrong number of commas in CSV input ({[commas]}, {[total]}, {[line]})</xml>
                 else
-                    addOne acc
+                    f acc' acc
             end
 
-        fun loop input =
+        fun loop input acc =
             case String.split input #"\n" of
                 None =>
                 (case input of
-                     "" => return ()
-                   | _ => doLine input)
+                     "" => acc
+                   | _ => doLine input acc)
               | Some (line, input) =>
-                doLine line;
-                loop input
+                loop input (doLine line acc)
     in
-        loop input
+        loop
     end
+
+
+fun importTable [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs)
+                (tab : sql_table fs cs) (input : string) =
+    @csvFold (fn r acc => acc; @Sql.easy_insert injs fl tab r) injs reads fl input (return ())
+
+fun parse [fs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs)
+          (input : string) =
+    @csvFold (fn r acc => r :: acc) injs reads fl input []
+
