@@ -48,8 +48,14 @@ val read_time : read {Hour : int, Minute : int} = mkRead' (fn s => case String.s
                                                                            Some {Hour = hr, Minute = mn}
                                                                          | _ => None) "time"
 
+cookie homeC : { Title : string }
+cookie awayC : { Company : string, EmployeeId : int }
+
 structure S = MeetingGrid.Make(struct
                                    con homeOffice = [Office = _]
+
+                                   val amHome = getCookie homeC
+                                   val amAway = getCookie awayC
 
                                    val home = h
                                    val away = a
@@ -82,6 +88,9 @@ fun away s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some aw =>
+        setCookie awayC {Value = aw,
+                         Secure = False,
+                         Expires = None};
         oa <- S.Away.One.create aw;
         Theme.page
             (S.Away.One.onload oa)
@@ -94,6 +103,9 @@ fun home s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some aw =>
+        setCookie homeC {Value = aw,
+                         Secure = False,
+                         Expires = None};
         oa <- S.Home.One.create aw;
         Theme.page
             (S.Home.One.onload oa)

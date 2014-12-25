@@ -27,7 +27,11 @@ functor Make(M : sig
                  val chosenRead : read $chosen
                  val chosenEq : eq $chosen
 
+                 val givenEq : eq $given
+
                  val buttonLabel : string
+
+                 val amGiven : transaction (option $given)
              end) = struct
 
     open M
@@ -52,12 +56,24 @@ functor Make(M : sig
         toAdd <- source "";
         return {Given = gv, Options = opts, Prefs = prefs, ToAdd = toAdd}
 
+    fun ensure gv =
+        user <- amGiven;
+        case user of
+            None => error <xml>Must be authenticated to access this page</xml>
+          | Some user =>
+            if user = gv then
+                return ()
+            else
+                error <xml>Wrong user to be accessing this page</xml>
+
     fun choose gv ch =
+        ensure gv;
         @@Sql.easy_insert [const ++ given ++ chosen] [_] (constInj ++ givenInj ++ chosenInj)
           (@Folder.concat ! constFl (@Folder.concat ! givenFl chosenFl))
           choices (const ++ gv ++ ch)
 
     fun unchoose gv ch =
+        ensure gv;
         dml (DELETE FROM choices
              WHERE {@@Sql.easy_where [#T] [const ++ given ++ chosen] [_] [_] [_] [_]
                ! ! (constInj ++ givenInj ++ chosenInj) (@Folder.concat ! constFl (@Folder.concat ! givenFl chosenFl)) (const ++ gv ++ ch)})

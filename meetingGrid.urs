@@ -61,6 +61,10 @@ functor Make(M : sig
                  constraint (homeKey ++ awayKey) ~ timeKey
                  constraint homeOffice ~ timeKey
                  constraint (homeKey ++ awayKey) ~ [ByHome, Channel]
+
+                 (* Authentication hooks *)
+                 val amHome : transaction (option $homeKey)
+                 val amAway : transaction (option $awayKey)
              end) : sig
 
     (* Two nested modules provide views centered on the home and away perspectives, respectively. *)

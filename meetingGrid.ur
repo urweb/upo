@@ -60,6 +60,9 @@ functor Make(M : sig
                  constraint (homeKey ++ awayKey) ~ timeKey
                  constraint homeOffice ~ timeKey
                  constraint (homeKey ++ awayKey) ~ [ByHome, Channel]
+
+                 val amHome : transaction (option $homeKey)
+                 val amAway : transaction (option $awayKey)
              end) = struct
 
     open M
@@ -223,6 +226,8 @@ functor Make(M : sig
                      val themOfficeShow : show $themOffice
 
                      val byHome : bool
+
+                     val amUs : transaction (option $usKey)
                  end) = struct
 
         open N
@@ -383,7 +388,14 @@ functor Make(M : sig
                             MovingFrom = mf, MovingTo = mt}
                 end
 
+            val ensureUser =
+                user <- amUs;
+                case user of
+                    None => error <xml>Must be authenticated to access this page</xml>
+                  | Some us' => return ()
+
             fun schedule r =
+                ensureUser;
                 alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
                                               FROM meeting
                                               WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
@@ -394,6 +406,7 @@ functor Make(M : sig
                     addMeeting r
 
             fun unschedule r =
+                ensureUser;
                 alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
                                               FROM meeting
                                               WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
@@ -404,6 +417,7 @@ functor Make(M : sig
                     delMeeting r
 
             fun reschedule (r : {Them : $themKey, OldUs : $usKey, OldTime : $timeKey, NewUs : $usKey, NewTime : $timeKey}) =
+                ensureUser;
                 alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
                                               FROM meeting
                                               WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
@@ -716,6 +730,8 @@ functor Make(M : sig
 
                                                  val givenFl = usFl
                                                  val chosenFl = themFl
+
+                                                 val amGiven = amUs
                                              end)
 
         structure Unavail = ChooseForeign.Make(struct
@@ -732,6 +748,8 @@ functor Make(M : sig
 
                                                    val givenFl = usFl
                                                    val chosenFl = timeKeyFl
+
+                                                   val amGiven = amUs
                                                end)
 
     end
@@ -765,6 +783,8 @@ functor Make(M : sig
                               val usFl = homeKeyFl
                               val themFl = awayKeyFl
                               val usOfficeFl = officeFl
+
+                              val amUs = amHome
                           end)
 
     structure Away = Side(struct
@@ -793,6 +813,8 @@ functor Make(M : sig
 
                               val usFl = awayKeyFl
                               val themFl = homeKeyFl
+
+                              val amUs = amAway
                           end)
 
     val scheduleSome =

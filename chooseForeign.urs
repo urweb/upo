@@ -32,7 +32,12 @@ functor Make(M : sig
                  val chosenRead : read $chosen
                  val chosenEq : eq $chosen
 
+                 val givenEq : eq $given
+
                  val buttonLabel : string
+
+                 (* Authentication *)
+                 val amGiven : transaction (option $given)
              end) : sig
 
     type t
