@@ -50,6 +50,7 @@ functor Make(M : sig
                  val timeInj : $(map sql_injectable_prim timeKey)
                  val timeKeyFl : folder timeKey
                  val timeKeyShow : show $timeKey
+                 val timeKeyRead : read $timeKey
                  val timeKeyEq : eq $timeKey
 
                  constraint homeKey ~ awayKey
@@ -57,7 +58,10 @@ functor Make(M : sig
                  constraint (homeKey ++ awayKey) ~ [ByHome, Channel]
              end) : sig
 
+    (* Two nested modules provide views centered on the home and away perspectives, respectively. *)
+
     structure Home : sig
+        (* Display a full, editable grid of all meetings (rows: homes, columns: times). *)
         structure FullGrid : sig
             type t
             val create : transaction t
@@ -65,6 +69,7 @@ functor Make(M : sig
             val render : t -> xbody
         end
 
+        (* Display a read-only record of all records for a home. *)
         structure One : sig
             type t
             val create : $M.homeKey -> transaction t
@@ -72,7 +77,15 @@ functor Make(M : sig
             val render : t -> xbody
         end
 
+        (* Inputing meeting preferences for a home *)
         structure Prefs : sig
+            type t
+            val create : $M.homeKey -> transaction t
+            val render : t -> xbody
+        end
+
+        (* Inputing schedule constraints for a home *)
+        structure Unavail : sig
             type t
             val create : $M.homeKey -> transaction t
             val render : t -> xbody
@@ -80,6 +93,7 @@ functor Make(M : sig
     end
 
     structure Away : sig
+        (* Display a full, editable grid of all meetings (rows: aways, columns: times). *)
         structure FullGrid : sig
             type t
             val create : transaction t
@@ -87,6 +101,7 @@ functor Make(M : sig
             val render : t -> xbody
         end
 
+        (* Display a read-only record of all records for an away. *)
         structure One : sig
             type t
             val create : $M.awayKey -> transaction t
@@ -94,7 +109,15 @@ functor Make(M : sig
             val render : t -> xbody
         end
 
+        (* Inputing meeting preferences for an away *)
         structure Prefs : sig
+            type t
+            val create : $M.awayKey -> transaction t
+            val render : t -> xbody
+        end
+
+        (* Inputing schedule constraints for an away *)
+        structure Unavail : sig
             type t
             val create : $M.awayKey -> transaction t
             val render : t -> xbody

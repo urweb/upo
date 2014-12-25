@@ -23,7 +23,7 @@ fun easy_foreign [nm] [fnm] [ft] [fs] [munused] [funused] [uniques]
                  [[fnm] ~ fs] [[fnm] ~ munused] [fs ~ munused] [[fnm] ~ funused] [fs ~ funused] [[nm] ~ uniques]
                  (fl : folder ([fnm = ft] ++ fs))
                  (tab : sql_table ([fnm = ft] ++ fs ++ funused) ([nm = map (fn _ => ()) ([fnm = ft] ++ fs)] ++ uniques)) =
-    foreign_key (@easy_matching fl) tab {OnDelete = restrict, OnUpdate = restrict}
+    foreign_key (@easy_matching fl) tab {OnDelete = cascade, OnUpdate = cascade}
 
 fun easy_insert [fields] [uniques] (injs : $(map sql_injectable fields)) (fl : folder fields)
     (tab : sql_table fields uniques) (fs : $fields) =

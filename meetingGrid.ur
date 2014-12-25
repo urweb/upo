@@ -49,6 +49,7 @@ functor Make(M : sig
                  val timeInj : $(map sql_injectable_prim timeKey)
                  val timeKeyFl : folder timeKey
                  val timeKeyShow : show $timeKey
+                 val timeKeyRead : read $timeKey
                  val timeKeyEq : eq $timeKey
 
                  constraint homeKey ~ awayKey
@@ -85,12 +86,25 @@ functor Make(M : sig
       {{one_constraint [#Home] (@Sql.easy_foreign ! ! ! ! ! ! homeKeyFl home)}},
       {{one_constraint [#Away] (@Sql.easy_foreign ! ! ! ! ! ! awayKeyFl away)}}
 
+    table homeUnavailable : (homeKey ++ timeKey)
+      PRIMARY KEY {{@primary_key [homeKey1] [homeKeyR ++ timeKey] ! !
+                    (homeInj ++ timeInj)}},
+      {{one_constraint [#Home] (@Sql.easy_foreign ! ! ! ! ! ! homeKeyFl home)}},
+      {{one_constraint [#Time] (@Sql.easy_foreign ! ! ! ! ! ! timeKeyFl time)}}
+
+    table awayUnavailable : (awayKey ++ timeKey)
+      PRIMARY KEY {{@primary_key [awayKey1] [awayKeyR ++ timeKey] ! !
+                    (awayInj ++ timeInj)}},
+      {{one_constraint [#Away] (@Sql.easy_foreign ! ! ! ! ! ! awayKeyFl away)}},
+      {{one_constraint [#Time] (@Sql.easy_foreign ! ! ! ! ! ! timeKeyFl time)}}
+
     con all = homeKey ++ awayKey ++ timeKey
     val allFl = @Folder.concat ! homeKeyFl (@Folder.concat ! timeKeyFl awayKeyFl)
 
     val allInj = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim allFl (homeInj ++ awayInj ++ timeInj)
     val homeInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim homeKeyFl homeInj
     val awayInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim awayKeyFl awayInj
+    val timeInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim timeKeyFl timeInj
 
     fun addMeeting r =
         @@Sql.easy_insert [all] [_] allInj allFl meeting r;
@@ -157,6 +171,7 @@ functor Make(M : sig
                      table them : (themKey ++ themOther)
 
                      table preference : ([ByHome = bool] ++ usKey ++ themKey)
+                     table unavailable : (usKey ++ timeKey)
 
                      table meeting : (usKey ++ themKey ++ timeKey)
 
@@ -634,6 +649,22 @@ functor Make(M : sig
                                                  val chosenFl = themFl
                                              end)
 
+        structure Unavail = ChooseForeign.Make(struct
+                                                   val const = {}
+                                                   con given = usKey
+                                                   con chosen = timeKey
+
+                                                   val choices = unavailable
+                                                   val options = time
+                                                   val buttonLabel = "Add Constraint"
+
+                                                   val givenInj = usInj'
+                                                   val chosenInj = timeInj'
+
+                                                   val givenFl = usFl
+                                                   val chosenFl = timeKeyFl
+                                               end)
+
     end
 
     structure Home = Side(struct
@@ -653,6 +684,7 @@ functor Make(M : sig
 
                               fun usChannel r = r -- #Away ++ {Them = r.Away}
                               val usListeners = homeListeners
+                              val unavailable = homeUnavailable
 
                               val usInj = homeInj
                               val themInj = awayInj
@@ -678,6 +710,7 @@ functor Make(M : sig
 
                               fun usChannel r = r -- #Home ++ {Them = r.Home}
                               val usListeners = awayListeners
+                              val unavailable = awayUnavailable
 
                               val usInj = awayInj
                               val themInj = homeInj

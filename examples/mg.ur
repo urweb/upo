@@ -22,11 +22,28 @@ val read_a : read {Company : string, EmployeeId : int} =
     "a"
 val eq_a : eq {Company : string, EmployeeId : int} = Record.equal
 
-table time : { When : time, Description : string }
-  PRIMARY KEY When
+table time : { Hour : int, Minute : int, Description : string }
+  PRIMARY KEY (Hour, Minute)
 
-val show_time : show {When : time} = mkShow (fn r => timef "%H:%M" r.When)
-val eq_time : eq {When : time} = Record.equal
+fun pad s =
+    let
+        val s' = show s
+    in
+        if String.length s' = 1 then
+            "0" ^ s'
+        else
+            s'
+    end
+
+val show_time : show {Hour : int, Minute : int} = mkShow (fn r => show r.Hour ^ ":" ^ pad r.Minute)
+val eq_time : eq {Hour : int, Minute : int} = Record.equal
+val read_time : read {Hour : int, Minute : int} = mkRead' (fn s => case String.split s #":" of
+                                                                       None => None
+                                                                     | Some (hr, mn) =>
+                                                                       case (read hr, read mn) of
+                                                                           (Some hr, Some mn) =>
+                                                                           Some {Hour = hr, Minute = mn}
+                                                                         | _ => None) "time"
 
 structure S = MeetingGrid.Make(struct
                                    val home = h
@@ -100,6 +117,31 @@ fun awaypref s =
               {S.Away.Prefs.render ap}
             </xml>
 
+fun homeavail s =
+    case read s of
+        None => error <xml>Bad self-description</xml>
+      | Some ho =>
+        hp <- S.Home.Unavail.create ho;
+        Theme.page
+            (return ())
+            ("Your Time Conflicts (" ^ s ^ ")")
+            <xml>
+              {S.Home.Unavail.render hp}
+            </xml>
+
+fun awayavail s =
+    case read s of
+        None => error <xml>Bad self-description</xml>
+      | Some aw =>
+        ap <- S.Away.Unavail.create aw;
+        Theme.page
+            (return ())
+            ("Your Time Conflicts (" ^ s ^ ")")
+            <xml>
+              {S.Away.Unavail.render ap}
+            </xml>
+
+
 task initialize = fn () =>
      doNothing <- oneRowE1 (SELECT COUNT( * ) > 0
                             FROM h);
@@ -114,6 +156,6 @@ task initialize = fn () =>
          dml (INSERT INTO a (Company, EmployeeId, Awesome) VALUES ('Weyland-Yutani', 2, FALSE));
          dml (INSERT INTO a (Company, EmployeeId, Awesome) VALUES ('Massive Dynamic', 1, FALSE));
 
-         dml (INSERT INTO time (When, Description) VALUES ({[readError '2014-12-25 11:00:00']}, 'eleven'));
-         dml (INSERT INTO time (When, Description) VALUES ({[readError '2014-12-25 11:30:00']}, 'eleven-thirty'));
-         dml (INSERT INTO time (When, Description) VALUES ({[readError '2014-12-25 12:00:00']}, 'noon'))
+         dml (INSERT INTO time (Hour, Minute, Description) VALUES (11, 00, 'eleven'));
+         dml (INSERT INTO time (Hour, Minute, Description) VALUES (11, 30, 'eleven-thirty'));
+         dml (INSERT INTO time (Hour, Minute, Description) VALUES (12, 00, 'noon'))
