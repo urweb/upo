@@ -8,7 +8,7 @@ val eq_h : eq {Title : string} = Record.equal
 val show_office : show {Office : string} = mkShow (fn r => " (" ^ r.Office ^ ")")
 val eq_office : eq {Office : string} = Record.equal
 
-table a : { Company : string, EmployeeId : int, Awesome : bool }
+table a : { Company : string, EmployeeId : int, Something : string, SomethingElse : string }
   PRIMARY KEY (Company, EmployeeId)
 
 val show_a : show {Company : string, EmployeeId : int} =
@@ -162,6 +162,28 @@ fun awayavail s =
               {S.Away.Unavail.render ap}
             </xml>
 
+structure AP = InputStrings.Make(struct
+                                     val const = {}
+                                     val tab = a
+                                     val chosenLabels = {Something = "Something",
+                                                         SomethingElse = "Something Else"}
+                                     val givenEq = Record.equal
+                                     val textLabel = "Your Data"
+                                     val amGiven = getCookie awayC
+                                end)
+
+fun awayprof s =
+    case read s of
+        None => error <xml>Bad self-description</xml>
+      | Some aw =>
+        ap <- AP.create aw;
+        Theme.page
+            (return ())
+            ("Your Profile (" ^ s ^ ")")
+            <xml>
+              {AP.render ap}
+            </xml>
+
 
 task initialize = fn () =>
      doNothing <- oneRowE1 (SELECT COUNT( * ) > 0
@@ -173,9 +195,12 @@ task initialize = fn () =>
          dml (INSERT INTO h (Title, Bogosity, Office) VALUES ('B', 2, '456'));
          dml (INSERT INTO h (Title, Bogosity, Office) VALUES ('C', 3, 'B07'));
 
-         dml (INSERT INTO a (Company, EmployeeId, Awesome) VALUES ('Weyland-Yutani', 1, TRUE));
-         dml (INSERT INTO a (Company, EmployeeId, Awesome) VALUES ('Weyland-Yutani', 2, FALSE));
-         dml (INSERT INTO a (Company, EmployeeId, Awesome) VALUES ('Massive Dynamic', 1, FALSE));
+         dml (INSERT INTO a (Company, EmployeeId, Something, SomethingElse)
+              VALUES ('Weyland-Yutani', 1, 'qq', 'zz'));
+         dml (INSERT INTO a (Company, EmployeeId, Something, SomethingElse)
+              VALUES ('Weyland-Yutani', 2, 'abo', 'oba'));
+         dml (INSERT INTO a (Company, EmployeeId, Something, SomethingElse)
+              VALUES ('Massive Dynamic', 1, 'xxx', 'yyy'));
 
          dml (INSERT INTO time (Hour, Minute, Description) VALUES (11, 00, 'eleven'));
          dml (INSERT INTO time (Hour, Minute, Description) VALUES (11, 30, 'eleven-thirty'));

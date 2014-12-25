@@ -29,6 +29,18 @@ val easy_insert : fields ::: {Type} -> uniques ::: {{Unit}}
                   -> $fields
                   -> transaction unit
 
+(* Easy table insert update with constants *)
+val easy_update : key ::: {Type} -> fields ::: {Type} -> uniques ::: {{Unit}}
+                  -> [key ~ fields]
+                  => $(map sql_injectable key)
+                  -> $(map sql_injectable fields)
+                  -> folder key
+                  -> folder fields
+                  -> sql_table (key ++ fields) uniques
+                  -> $key
+                  -> $fields
+                  -> transaction unit
+
 (* Build a WHERE clause equating fields of a table to constant values. *)
 val easy_where : tab :: Name -> using ::: {Type} -> notUsing ::: {Type} -> otherTables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                  -> [using ~ notUsing] => [[tab] ~ otherTables]

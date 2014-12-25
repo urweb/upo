@@ -11,6 +11,7 @@ record
 sql
 csv
 theme
+inputStrings
 chooseForeign
 meetingGrid
 rsvp2

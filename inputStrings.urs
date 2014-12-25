@@ -1,0 +1,34 @@
+(* Widget to display some textual fields to a user, with the option to edit *)
+
+functor Make(M : sig
+                 con const :: {Type}
+                 con given :: {Type}
+                 con chosen :: {Unit}
+                 constraint const ~ given
+                 constraint (const ++ given) ~ chosen
+
+                 val const : $const
+
+                 table tab : (const ++ given ++ mapU string chosen)
+
+                 val chosenLabels : $(mapU string chosen)
+
+                 val constFl : folder const
+                 val givenFl : folder given
+                 val chosenFl : folder chosen
+
+                 val constInj : $(map sql_injectable const)
+                 val givenInj : $(map sql_injectable given)
+                 val givenEq : eq $given
+
+                 val textLabel : string
+
+                 (* Authentication *)
+                 val amGiven : transaction (option $given)
+             end) : sig
+
+    type t
+    val create : $M.given -> transaction t
+    val render : t -> xbody
+
+end
