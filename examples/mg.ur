@@ -2,6 +2,7 @@ table h : { Title : string, Bogosity : int }
   PRIMARY KEY Title
 
 val show_h : show {Title : string} = mkShow (fn r => r.Title)
+val read_h : read {Title : string} = mkRead' (fn s => Some {Title = s}) "h"
 val eq_h : eq {Title : string} = Record.equal
 
 table a : { Company : string, EmployeeId : int, Awesome : bool }
@@ -52,6 +53,18 @@ fun away s =
             ("Your Schedule (" ^ s ^ ")")
             <xml>
               {S.OneAway.render oa}
+            </xml>
+
+fun awaypref s =
+    case read s of
+        None => error <xml>Bad self-description</xml>
+      | Some aw =>
+        ap <- S.AwayPrefs.create aw;
+        Theme.page
+            (return ())
+            ("Your Preferences (" ^ s ^ ")")
+            <xml>
+              {S.AwayPrefs.render ap}
             </xml>
         
 

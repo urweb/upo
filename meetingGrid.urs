@@ -16,6 +16,7 @@ functor Make(M : sig
                  val homeInj : $(map sql_injectable_prim homeKey)
                  val homeKeyFl : folder homeKey
                  val homeKeyShow : show $homeKey
+                 val homeKeyRead : read $homeKey
                  val homeKeyEq : eq $homeKey
 
                  con awayKey1 :: Name
@@ -54,6 +55,7 @@ functor Make(M : sig
                  constraint homeKey ~ awayKey
                  constraint (homeKey ++ awayKey) ~ timeKey
                  constraint awayKey ~ [Channel]
+                 constraint (homeKey ++ awayKey) ~ [ByHome]
              end) : sig
 
     val addMeeting : $(M.homeKey ++ M.awayKey ++ M.timeKey) -> transaction unit
@@ -69,6 +71,12 @@ functor Make(M : sig
         type t
         val create : $M.awayKey -> transaction t
         val onload : t -> transaction unit
+        val render : t -> xbody
+    end
+
+    structure AwayPrefs : sig
+        type t
+        val create : $M.awayKey -> transaction t
         val render : t -> xbody
     end
 
