@@ -562,162 +562,36 @@ functor Make(M : sig
 
     end
 
-    structure HomePrefs = struct
-        type awaySet = list $awayKey
-        type t = _
+    structure HomePrefs = ChooseForeign.Make(struct
+                                                 val const = {ByHome = True}
+                                                 con given = homeKey
+                                                 con chosen = awayKey
 
-        fun create ho =
-            aways <- queryL1 (SELECT away.{{awayKey}}
-                              FROM away
-                              ORDER BY {{{@Sql.order_by awayKeyFl
-                                (@Sql.some_fields [#Away] [awayKey] ! ! awayKeyFl)
-                                sql_desc}}});
-            prefs <- queryL1 (SELECT preference.{{awayKey}}
-                              FROM preference
-                              WHERE preference.ByHome
-                                AND {@@Sql.easy_where [#Preference] [homeKey] [_] [_] [_] [_]
-                                  ! ! homeInj' homeKeyFl ho}
-                              ORDER BY {{{@Sql.order_by awayKeyFl
-                                (@Sql.some_fields [#Preference] [awayKey] ! ! awayKeyFl)
-                                sql_desc}}});
-            prefs <- source prefs;
-            toAdd <- source "";
-            return {Home = ho, Aways = aways, Prefs = prefs, ToAdd = toAdd}
+                                                 val choices = preference
+                                                 val options = away
+                                                 val buttonLabel = "Add Preference"
 
-        fun addpref aw ho =
-            @@Sql.easy_insert [[ByHome = _] ++ homeKey ++ awayKey] [_] ({ByHome = _} ++ homeInj' ++ awayInj')
-              (@Folder.cons [#ByHome] [_] ! (@Folder.concat ! homeKeyFl awayKeyFl))
-              preference ({ByHome = True} ++ ho ++ aw)
+                                                 val givenInj = homeInj'
+                                                 val chosenInj = awayInj'
 
-        fun unpref aw ho =
-            dml (DELETE FROM preference
-                 WHERE ByHome
-                   AND {@@Sql.easy_where [#T] [homeKey ++ awayKey] [_] [_] [_] [_]
-                     ! ! (homeInj' ++ awayInj') (@Folder.concat ! homeKeyFl awayKeyFl) (ho ++ aw)})
+                                                 val givenFl = homeKeyFl
+                                                 val chosenFl = awayKeyFl
+                                             end)
 
-        fun render t = <xml>
-          <table class="bs3-table table-striped">
-            <dyn signal={aws <- signal t.Prefs;
-                         return <xml>
-                           {List.mapX (fn aw => <xml>
-                             <tr><td>
-                               {[aw]}
-                               <button class="close"
-                                       onclick={fn _ =>
-                                                   rpc (unpref aw t.Home);
-                                                   set t.Prefs (List.filter (fn aw' => aw' <> aw) aws)}>
-                                 &times;
-                               </button>
-                             </td></tr>
-                             </xml>) aws}
+    structure AwayPrefs = ChooseForeign.Make(struct
+                                                 val const = {ByHome = False}
+                                                 con given = awayKey
+                                                 con chosen = homeKey
 
-                           <tr><td/></tr>
+                                                 val choices = preference
+                                                 val options = home
+                                                 val buttonLabel = "Add Preference"
 
-                           <tr>
-                             <td>
-                               <cselect class="form-control" source={t.ToAdd}>
-                                 {List.mapX (fn aw =>
-                                                if List.mem aw aws then
-                                                    <xml/>
-                                                else
-                                                    <xml><coption>{[aw]}</coption></xml>) t.Aways}
-                               </cselect>
+                                                 val givenInj = awayInj'
+                                                 val chosenInj = homeInj'
 
-                               <button class="btn btn-primary"
-                                       value="Add Preference"
-                                       onclick={fn _ =>
-                                                   ta <- get t.ToAdd;
-                                                   case ta of
-                                                       "" => return ()
-                                                     | _ =>
-                                                       aw <- return (readError ta);
-                                                       rpc (addpref aw t.Home);
-                                                       set t.Prefs (List.sort (fn x y => show x > show y) (aw :: aws))}/>
-                             </td>
-                           </tr>
-                         </xml>}/>
-          </table>
-        </xml>
-
-    end
-
-    structure AwayPrefs = struct
-        type homeSet = list $homeKey
-        type t = _
-
-        fun create aw =
-            homes <- queryL1 (SELECT home.{{homeKey}}
-                              FROM home
-                              ORDER BY {{{@Sql.order_by homeKeyFl
-                                (@Sql.some_fields [#Home] [homeKey] ! ! homeKeyFl)
-                                sql_desc}}});
-            prefs <- queryL1 (SELECT preference.{{homeKey}}
-                              FROM preference
-                              WHERE NOT preference.ByHome
-                                AND {@@Sql.easy_where [#Preference] [awayKey] [_] [_] [_] [_]
-                                  ! ! awayInj' awayKeyFl aw}
-                              ORDER BY {{{@Sql.order_by homeKeyFl
-                                (@Sql.some_fields [#Preference] [homeKey] ! ! homeKeyFl)
-                                sql_desc}}});
-            prefs <- source prefs;
-            toAdd <- source "";
-            return {Away = aw, Homes = homes, Prefs = prefs, ToAdd = toAdd}
-
-        fun addpref aw ho =
-            @@Sql.easy_insert [[ByHome = _] ++ homeKey ++ awayKey] [_] ({ByHome = _} ++ homeInj' ++ awayInj')
-              (@Folder.cons [#ByHome] [_] ! (@Folder.concat ! homeKeyFl awayKeyFl))
-              preference ({ByHome = False} ++ ho ++ aw)
-
-        fun unpref aw ho =
-            dml (DELETE FROM preference
-                 WHERE NOT ByHome
-                   AND {@@Sql.easy_where [#T] [homeKey ++ awayKey] [_] [_] [_] [_]
-                     ! ! (homeInj' ++ awayInj') (@Folder.concat ! homeKeyFl awayKeyFl) (ho ++ aw)})
-
-        fun render t = <xml>
-          <table class="bs3-table table-striped">
-            <dyn signal={hos <- signal t.Prefs;
-                         return <xml>
-                           {List.mapX (fn ho => <xml>
-                             <tr><td>
-                               {[ho]}
-                               <button class="close"
-                                       onclick={fn _ =>
-                                                   rpc (unpref t.Away ho);
-                                                   set t.Prefs (List.filter (fn ho' => ho' <> ho) hos)}>
-                                 &times;
-                               </button>
-                             </td></tr>
-                             </xml>) hos}
-
-                           <tr><td/></tr>
-
-                           <tr>
-                             <td>
-                               <cselect class="form-control" source={t.ToAdd}>
-                                 {List.mapX (fn ho =>
-                                                if List.mem ho hos then
-                                                    <xml/>
-                                                else
-                                                    <xml><coption>{[ho]}</coption></xml>) t.Homes}
-                               </cselect>
-
-                               <button class="btn btn-primary"
-                                       value="Add Preference"
-                                       onclick={fn _ =>
-                                                   ta <- get t.ToAdd;
-                                                   case ta of
-                                                       "" => return ()
-                                                     | _ =>
-                                                       ho <- return (readError ta);
-                                                       rpc (addpref t.Away ho);
-                                                       set t.Prefs (List.sort (fn x y => show x > show y) (ho :: hos))}/>
-                             </td>
-                           </tr>
-                         </xml>}/>
-          </table>
-        </xml>
-
-    end
+                                                 val givenFl = awayKeyFl
+                                                 val chosenFl = homeKeyFl
+                                             end)
 
 end

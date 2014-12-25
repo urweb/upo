@@ -10,4 +10,5 @@ $/string
 record
 sql
 theme
+chooseForeign
 meetingGrid
