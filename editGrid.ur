@@ -55,24 +55,17 @@ functor Make(M : sig
                                               return ({nm = v} ++ vs))
                                           (return {}) restFl restShow (r --- key);
                                  return {OldKey = r --- rest,
-                                         CurKey = curKey,
-                                         Rest = rest});
+                                         Cur = curKey ++ rest});
         vs <- source vs;
-        newKey <- @fold [fn r => transaction $(map (fn _ => source string) r)]
-                   (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] acc =>
-                       v <- source "";
-                       vs <- acc;
-                       return ({nm = v} ++ vs))
-                   (return {}) keyFl;
-        newRest <- @fold [fn r => transaction $(map (fn _ => source string) r)]
-                    (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] acc =>
-                        v <- source "";
-                        vs <- acc;
-                        return ({nm = v} ++ vs))
-                    (return {}) restFl;
+        new <- @fold [fn r => transaction $(map (fn _ => source string) r)]
+                (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] acc =>
+                    v <- source "";
+                    vs <- acc;
+                    return ({nm = v} ++ vs))
+                (return {}) allFl;
         mid <- fresh;
         modalSpot <- source <xml/>;
-        return {Rows = vs, NewKey = newKey, NewRest = newRest,
+        return {Rows = vs, New = new,
                 ModalId = mid, ModalSpot = modalSpot}
 
     val ensure =
@@ -88,10 +81,32 @@ functor Make(M : sig
              WHERE {@@Sql.easy_where [#T] [key] [_] [_] [_] [_]
                ! ! keyInj keyFl key})
 
+    fun save rows =
+        ensure;
+        List.app (fn r =>
+                     @@Sql.easy_update' [key] [rest] [_] ! keyInj restInj
+                       keyFl restFl
+                       tab r.OldKey r.New) rows
+
     fun render t = <xml>
       <div class="modal" id={t.ModalId}>
         <dyn signal={signal t.ModalSpot}/>
       </div>
+
+      <button class="btn btn-primary"
+              value="Save"
+              onclick={fn _ =>
+                          vs <- get t.Rows;
+                          vs <- List.mapM (fn r =>
+                                              new <- @foldR2 [read] [fn _ => source string] [fn r => transaction $r]
+                                                      (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : read t) src acc =>
+                                                          v <- get src;
+                                                          vs <- acc;
+                                                          return ({nm = readError v} ++ vs))
+                                                      (return {}) allFl (keyRead ++ restRead) r.Cur;
+                                              return {OldKey = r.OldKey,
+                                                      New = new}) vs;
+                          rpc (save vs)}/>
 
       <table class="bs3-table table-striped">
         <tr>
@@ -121,7 +136,7 @@ functor Make(M : sig
                          {@mapX [fn _ => source string] [tr]
                            (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] src =>
                                <xml><td><ctextbox class="form-control" source={src}/></td></xml>)
-                           allFl (r.CurKey ++ r.Rest)}
+                           allFl r.Cur}
                          </tr>
                      </xml>) vs)}/>
 
@@ -136,7 +151,7 @@ functor Make(M : sig
           {@mapX [fn _ => source string] [tr]
             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] src =>
                 <xml><td><ctextbox class="form-control" source={src}/></td></xml>)
-            allFl (t.NewKey ++ t.NewRest)}
+            allFl t.New}
         </tr>
       </table>
     </xml>
