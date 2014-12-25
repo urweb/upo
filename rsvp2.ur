@@ -66,6 +66,9 @@ functor Make(M : sig
 
                  constraint homeKey ~ eventKey
                  constraint awayKey ~ eventKey
+
+                 val amHome : transaction (option $homeKey)
+                 val amAway : transaction (option $awayKey)
              end) = struct
 
     open M
@@ -100,7 +103,18 @@ functor Make(M : sig
         type events = list event
         type t = _
 
+        fun ensure ho =
+            user <- amHome;
+            case user of
+                None => error <xml>Must be authenticated to access this page</xml>
+              | Some user =>
+                if user = ho then
+                    return ()
+                else
+                    error <xml>Wrong user to be accessing this page</xml>
+
         fun add ev ho =
+            ensure ho;
             da <- oneRow1 (SELECT home.{{homeData}}
                            FROM home
                            WHERE {@@Sql.easy_where [#Home] [homeKey] [_] [_] [_] [_]
@@ -114,6 +128,7 @@ functor Make(M : sig
                                      Operation = Add})
 
         fun del ev ho =
+            ensure ho;
             dml (DELETE FROM homeRsvp
                  WHERE {@@Sql.easy_where [#T] [eventKey ++ homeKey] [_] [_] [_] [_]
                    ! ! (eventInj' ++ homeInj') (@Folder.concat ! eventKeyFl homeKeyFl) (ev ++ ho)});
@@ -382,7 +397,19 @@ functor Make(M : sig
         type events = list event
         type t = _
 
+
+        fun ensure aw =
+            user <- amAway;
+            case user of
+                None => error <xml>Must be authenticated to access this page</xml>
+              | Some user =>
+                if user = aw then
+                    return ()
+                else
+                    error <xml>Wrong user to be accessing this page</xml>
+
         fun add ev aw =
+            ensure aw;
             da <- oneRow1 (SELECT away.{{awayData}}
                            FROM away
                            WHERE {@@Sql.easy_where [#Away] [awayKey] [_] [_] [_] [_]
@@ -396,6 +423,7 @@ functor Make(M : sig
                                      Operation = Add})
 
         fun del ev aw =
+            ensure aw;
             dml (DELETE FROM awayRsvp
                  WHERE {@@Sql.easy_where [#T] [eventKey ++ awayKey] [_] [_] [_] [_]
                    ! ! (eventInj' ++ awayInj') (@Folder.concat ! eventKeyFl awayKeyFl) (ev ++ aw)});

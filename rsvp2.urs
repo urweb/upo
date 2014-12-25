@@ -69,6 +69,10 @@ functor Make(M : sig
 
                  constraint homeKey ~ eventKey
                  constraint awayKey ~ eventKey
+
+                 (* Authentication hooks *)
+                 val amHome : transaction (option $homeKey)
+                 val amAway : transaction (option $awayKey)
              end) : sig
 
     (* Home's view: a list of all events, with attendee lists and buttons to change your own RSVP's *)

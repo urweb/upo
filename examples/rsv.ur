@@ -29,6 +29,9 @@ val read_a : read {Company : string, EmployeeId : int} =
     "a"
 val eq_event : eq {Event : string} = Record.equal
 
+cookie homeC : { Title : string }
+cookie awayC : { Company : string, EmployeeId : int }
+
 structure S = Rsvp2.Make(struct
                              con homeRest = []
                              con awayRest = []
@@ -44,12 +47,18 @@ structure S = Rsvp2.Make(struct
 
                              val homeLabel = "Home"
                              val awayLabel = "Away"
+
+                             val amHome = getCookie homeC
+                             val amAway = getCookie awayC
                          end)
 
 fun home s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some ho =>
+        setCookie homeC {Value = ho,
+                         Secure = False,
+                         Expires = None};
         oa <- S.Home.create ho;
         Theme.page
             (S.Home.onload oa)
@@ -61,8 +70,11 @@ fun home s =
 fun away s =
     case read s of
         None => error <xml>Bad self-description</xml>
-      | Some ho =>
-        oa <- S.Away.create ho;
+      | Some aw =>
+        setCookie awayC {Value = aw,
+                         Secure = False,
+                         Expires = None};
+        oa <- S.Away.create aw;
         Theme.page
             (return ())
             ("Your Options (" ^ s ^ ")")
