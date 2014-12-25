@@ -1,0 +1,7 @@
+database dbname=upotest
+sql rsv.sql
+library ..
+rewrite url Rsv/*
+safeGet home
+
+rsv
