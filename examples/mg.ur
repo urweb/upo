@@ -180,3 +180,21 @@ task initialize = fn () =>
          dml (INSERT INTO time (Hour, Minute, Description) VALUES (11, 00, 'eleven'));
          dml (INSERT INTO time (Hour, Minute, Description) VALUES (11, 30, 'eleven-thirty'));
          dml (INSERT INTO time (Hour, Minute, Description) VALUES (12, 00, 'noon'))
+
+
+val importHomes = Csv.importTable h
+
+open Bootstrap3
+
+val admin =
+    input <- source "";
+    Theme.page (return ())
+               "Admin"
+               <xml>
+                 <ctextarea class="form-control" source={input}/>
+                 <button class="btn btn-primary"
+                         value="Import Homes"
+                         onclick={fn _ =>
+                                     input <- get input;
+                                     rpc (importHomes input)}/>
+                 </xml>

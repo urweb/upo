@@ -6,3 +6,4 @@ val homepref : string -> transaction page
 val awaypref : string -> transaction page
 val homeavail : string -> transaction page
 val awayavail : string -> transaction page
+val admin : transaction page
