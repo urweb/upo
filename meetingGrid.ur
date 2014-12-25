@@ -754,4 +754,67 @@ functor Make(M : sig
                               val themFl = homeKeyFl
                           end)
 
+    val scheduleSome =
+        debug "HERE";
+
+        (* Loop randomly over all preferences, disregarding sidedness. *)
+        queryI1 (SELECT preference.{{homeKey}}, preference.{{awayKey}}
+                 FROM preference
+                 ORDER BY RANDOM())
+        (fn r =>
+            debug ("Try to schedule " ^ @show homeKeyShow (r --- awayKey) ^ " / " ^ @show awayKeyShow (r --- homeKey));
+
+            (* First, check if this pair already have a scheduled meeting. *)
+            areMeeting <- oneRowE1 (SELECT COUNT( * ) > 0
+                                    FROM meeting
+                                    WHERE {@@Sql.easy_where [#Meeting] [homeKey ++ awayKey] [_] [_] [_] [_]
+                                      ! ! (homeInj' ++ awayInj')
+                                      (@Folder.concat ! homeKeyFl awayKeyFl) r});
+
+            if areMeeting then
+                (* Already covered! *)
+                return ()
+            else
+                (* Try to find a compatible open slot. *)
+                slot <- oneOrNoRows1 (SELECT time.{{timeKey}}
+                                      FROM time
+                                      WHERE (SELECT TRUE
+                                             FROM meeting
+                                             WHERE {@@Sql.easy_where [#Meeting] [homeKey] [_] [_] [_] [_]
+                                                 ! ! homeInj' homeKeyFl (r --- awayKey)}
+                                               AND {@@Sql.easy_join [#Meeting] [#Time] [timeKey]
+                                                 [homeKey ++ awayKey] [timeRest] [_] [_] [_]
+                                                 ! ! ! ! timeKeyFl}) IS NULL
+                                        AND (SELECT TRUE
+                                             FROM meeting
+                                             WHERE {@@Sql.easy_where [#Meeting] [awayKey] [_] [_] [_] [_]
+                                                 ! ! awayInj' awayKeyFl (r --- homeKey)}
+                                               AND {@@Sql.easy_join [#Meeting] [#Time] [timeKey]
+                                                 [homeKey ++ awayKey] [timeRest] [_] [_] [_]
+                                                 ! ! ! ! timeKeyFl}) IS NULL
+                                        AND (SELECT TRUE
+                                             FROM homeUnavailable
+                                             WHERE {@@Sql.easy_where [#HomeUnavailable] [homeKey] [_] [_] [_] [_]
+                                                 ! ! homeInj' homeKeyFl (r --- awayKey)}
+                                               AND {@@Sql.easy_join [#HomeUnavailable] [#Time] [timeKey]
+                                                 [homeKey] [timeRest] [_] [_] [_]
+                                                 ! ! ! ! timeKeyFl}) IS NULL
+                                        AND (SELECT TRUE
+                                             FROM awayUnavailable
+                                             WHERE {@@Sql.easy_where [#AwayUnavailable] [awayKey] [_] [_] [_] [_]
+                                                 ! ! awayInj' awayKeyFl (r --- homeKey)}
+                                               AND {@@Sql.easy_join [#AwayUnavailable] [#Time] [timeKey]
+                                                 [awayKey] [timeRest] [_] [_] [_]
+                                                 ! ! ! ! timeKeyFl}) IS NULL
+                                      LIMIT 1);
+                case slot of
+                    None =>
+                    (* No suitable openings.  Better luck next time! *)
+                    debug "No";
+                    return ()
+                  | Some slot =>
+                    (* Found one!  Schedule it. *)
+                    debug "Yes";
+                    addMeeting (r ++ slot))
+
 end

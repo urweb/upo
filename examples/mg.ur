@@ -58,6 +58,10 @@ val main =
         "MG"
         <xml>
           {S.Home.FullGrid.render fg}
+
+          <hr/>
+
+          <button value="Schedule" onclick={fn _ => rpc S.scheduleSome}/>
         </xml>
 
 val mainRev =

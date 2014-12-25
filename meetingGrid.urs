@@ -124,4 +124,7 @@ functor Make(M : sig
         end
     end
 
+    (* Using preferences from both sides, try to schedule more meetings heuristically. *)
+    val scheduleSome : transaction unit
+
 end

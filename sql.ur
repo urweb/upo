@@ -39,3 +39,21 @@ fun easy_where [tab :: Name] [using] [notUsing] [otherTables] [agg] [exps] [usin
                  [rest ::_] [notUsing ~ rest] [notUsing ~ ([nm = t] ++ r)] [rest ~ ([nm = t] ++ r)] =>
         (WHERE {{tab}}.{nm} = {[x]} AND {acc [[nm = t] ++ rest]}))
     (fn [rest ::_] [notUsing ~ rest] [notUsing ~ []] [rest ~ []] => (WHERE TRUE)) fl injs r [[]] ! ! !
+
+fun easy_join [tab1 :: Name] [tab2 :: Name] [using] [notUsing1] [notUsing2] [otherTables] [agg] [exps]
+              [[tab1] ~ [tab2]] [using ~ notUsing1] [using ~ notUsing2] [[tab1, tab2] ~ otherTables]
+              (fl : folder using) =
+    @fold [fn r => rest :: {Type} -> [notUsing1 ~ rest] => [notUsing2 ~ rest] =>
+              [notUsing1 ~ r] => [notUsing2 ~ r] =>
+              [rest ~ r] => sql_exp ([tab1 = r ++ rest ++ notUsing1, tab2 = r ++ rest ++ notUsing2]
+                                         ++ otherTables) agg exps bool]
+    (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r]
+                 (acc : rest :: {Type} -> [notUsing1 ~ rest] => [notUsing2 ~ rest] =>
+                  [notUsing1 ~ r] => [notUsing2 ~ r] =>
+                  [rest ~ r] => sql_exp ([tab1 = r ++ rest ++ notUsing1, tab2 = r ++ rest ++ notUsing2]
+                                             ++ otherTables) agg exps bool)
+                 [rest ::_] [notUsing1 ~ rest] [notUsing2 ~ rest]
+                 [notUsing1 ~ ([nm = t] ++ r)] [notUsing2 ~ ([nm = t] ++ r)]  [rest ~ ([nm = t] ++ r)] =>
+        (WHERE {{tab1}}.{nm} = {{tab2}}.{nm} AND {acc [[nm = t] ++ rest]}))
+    (fn [rest ::_] [notUsing1 ~ rest] [notUsing2 ~ rest] [notUsing1 ~ []] [notUsing2 ~ []] [rest ~ []] =>
+        (WHERE TRUE)) fl [[]] ! ! ! ! !

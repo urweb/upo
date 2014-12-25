@@ -29,9 +29,18 @@ val easy_insert : fields ::: {Type} -> uniques ::: {{Unit}}
                   -> $fields
                   -> transaction unit
 
-(* Build a WHERE clause equating fields of a table to constant values *)
+(* Build a WHERE clause equating fields of a table to constant values. *)
 val easy_where : tab :: Name -> using ::: {Type} -> notUsing ::: {Type} -> otherTables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                  -> [using ~ notUsing] => [[tab] ~ otherTables]
                  => $(map sql_injectable using) -> folder using
                  -> $using
                  -> sql_exp ([tab = using ++ notUsing] ++ otherTables) agg exps bool
+
+(* Build a WHERE clause joining identical columns between two tables. *)
+val easy_join : tab1 :: Name -> tab2 :: Name -> using ::: {Type}
+                -> notUsing1 ::: {Type} -> notUsing2 ::: {Type}
+                -> otherTables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                -> [[tab1] ~ [tab2]] => [using ~ notUsing1] => [using ~ notUsing2]
+                => [[tab1, tab2] ~ otherTables]
+                => folder using
+                -> sql_exp ([tab1 = using ++ notUsing1, tab2 = using ++ notUsing2] ++ otherTables) agg exps bool
