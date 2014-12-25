@@ -222,7 +222,7 @@ functor Make(M : sig
 
         structure FullGrid = struct
             type themSet = list $themKey
-            type timeMap = list ($timeKey * themSet)
+            type timeMap = list ($timeKey * bool (* available? *) * themSet)
             type usMap = list ($usKey * timeMap)
             type t = _
 
@@ -240,6 +240,7 @@ functor Make(M : sig
                                 (rows : list $all)
                                 (uses : list $usKey)
                                 (times : list $timeKey)
+                                (unavails : list $(usKey ++ timeKey))
                                 (themsDone : themSet)
                                 (timesDone : timeMap)
                         : usMap =
@@ -255,6 +256,7 @@ functor Make(M : sig
                                         rows
                                         uses'
                                         allTimes
+                                        unavails
                                         []
                                         []
                               | time :: times' =>
@@ -262,12 +264,24 @@ functor Make(M : sig
                                 case rows of
                                     [] =>
                                     (* Nope. *)
-                                    initMap acc
-                                            []
-                                            uses
-                                            times'
-                                            []
-                                            ((time, List.rev themsDone) :: timesDone)
+                                    let
+                                        val (available, unavails') =
+                                            case unavails of
+                                                [] => (True, [])
+                                              | r :: unavails' =>
+                                                if r --- timeKey = us && @eq timeKeyEq (r --- usKey) time then
+                                                    (False, unavails')
+                                                else
+                                                    (True, unavails)
+                                    in
+                                        initMap acc
+                                                []
+                                                uses
+                                                times'
+                                                unavails'
+                                                []
+                                                ((time, available, List.rev themsDone) :: timesDone)
+                                    end
                                   | row :: rows' =>
                                     if row --- themKey --- timeKey = us && @eq timeKeyEq (row --- usKey --- themKey) time then
                                         (* Aha, a match!  Record this meeting. *)
@@ -275,16 +289,29 @@ functor Make(M : sig
                                                 rows'
                                                 uses
                                                 times
+                                                unavails
                                                 ((row --- usKey --- timeKey) :: themsDone)
                                                 timesDone
                                     else
                                         (* No match.  On to next time. *)
-                                        initMap acc
-                                                rows
-                                                uses
-                                                times'
-                                                []
-                                                ((time, List.rev themsDone) :: timesDone)
+                                        let
+                                            val (available, unavails') =
+                                                case unavails of
+                                                    [] => (True, [])
+                                                  | r :: unavails' =>
+                                                    if r --- timeKey = us && @eq timeKeyEq (r --- usKey) time then
+                                                        (False, unavails')
+                                                    else
+                                                        (True, unavails)
+                                        in
+                                            initMap acc
+                                                    rows
+                                                    uses
+                                                    times'
+                                                    unavails'
+                                                    []
+                                                    ((time, available, List.rev themsDone) :: timesDone)
+                                        end
                 in
                     uses <- queryL1 (SELECT us.{{usKey}}
                                      FROM us
@@ -296,20 +323,27 @@ functor Make(M : sig
                                       ORDER BY {{{@Sql.order_by themFl
                                         (@Sql.some_fields [#Them] [themKey] ! ! themFl)
                                         sql_desc}}});
+                    unavails <- queryL1 (SELECT unavailable.{{usKey}}, unavailable.{{timeKey}}
+                                         FROM unavailable
+                                         ORDER BY {{{@Sql.order_by (@Folder.concat ! usFl timeKeyFl)
+                                           (@Sql.some_fields [#Unavailable] [usKey ++ timeKey] ! !
+                                             (@Folder.concat ! usFl timeKeyFl))
+                                           sql_desc}}});
                     meetings <- queryL1 (SELECT meeting.{{usKey}}, meeting.{{timeKey}}, meeting.{{themKey}}
                                          FROM meeting
                                          ORDER BY {{{@Sql.order_by allFl
                                            (@Sql.some_fields [#Meeting] [all] ! ! allFl)
                                            sql_desc}}});
                     meetings <- List.mapM (fn (us, tms) =>
-                                              tms' <- List.mapM (fn (tm, ths) =>
+                                              tms' <- List.mapM (fn (tm, avail, ths) =>
                                                                     ths <- source ths;
-                                                                    return (tm, ths)) tms;
+                                                                    return (tm, avail, ths)) tms;
                                               return (us, tms'))
                                           (initMap []
                                                    meetings
                                                    uses
                                                    allTimes
+                                                   unavails
                                                    []
                                                    []);
                     mid <- fresh;
@@ -376,19 +410,20 @@ functor Make(M : sig
                     <th>{[us]}</th>
 
                     (* One column per time *)
-                    {List.mapX (fn (tm, ths) => <xml>
+                    {List.mapX (fn (tm, avail, ths) => <xml>
                       <td dynClass={mf <- signal t.MovingFrom;
-                                    case mf of
-                                        None => return (CLASS "")
-                                      | Some _ =>
-                                        mt <- signal t.MovingTo;
-                                        return (case mt of
-                                                    None => CLASS ""
-                                                  | Some mt =>
-                                                    if mt.Us = us && mt.Time = tm then
-                                                        CLASS "bs3-active"
-                                                    else
-                                                        CLASS "")}
+                                    cls <- (case mf of
+                                                None => return (CLASS "")
+                                              | Some _ =>
+                                                mt <- signal t.MovingTo;
+                                                return (case mt of
+                                                            None => CLASS ""
+                                                          | Some mt =>
+                                                            if mt.Us = us && mt.Time = tm then
+                                                                CLASS "bs3-active"
+                                                            else
+                                                                CLASS ""));
+                                   return (if avail then cls else classes cls danger)}
                           onmouseover={fn _ =>
                                           set t.MovingTo (Some {Us = us, Time = tm})}
                           onclick={fn _ =>
@@ -489,7 +524,7 @@ functor Make(M : sig
                                     fun addTimes tms =
                                         case tms of
                                             [] => error <xml>FullGrid.tweakMeeting: unknown time</xml>
-                                          | (tm', ths) :: tms' =>
+                                          | (tm', _, ths) :: tms' =>
                                             if tm' = tm then
                                                 v <- get ths;
                                                 set ths (f v)
