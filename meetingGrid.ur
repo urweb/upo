@@ -216,8 +216,11 @@ functor Make(M : sig
                 modalSpot <- source <xml/>;
                 chan <- channel;
                 dml (INSERT INTO globalListeners (Channel) VALUES ({[chan]}));
+                mf <- source None;
+                mt <- source None;
                 return {Aways = aways, Times = allTimes, Meetings = meetings,
-                        ModalId = mid, ModalSpot = modalSpot, Channel = chan}
+                        ModalId = mid, ModalSpot = modalSpot, Channel = chan,
+                        MovingFrom = mf, MovingTo = mt}
             end
 
         fun schedule r =
@@ -264,6 +267,43 @@ functor Make(M : sig
                                          Home = r --- awayKey --- timeKey,
                                          Time = r --- awayKey --- homeKey})
 
+        fun reschedule r =
+            alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
+                                          FROM meeting
+                                          WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
+                                            ! ! allInj allFl (r.Away ++ r.OldHome ++ r.OldTime)});
+            spotUsed <- oneRowE1 (SELECT COUNT( * ) > 0
+                                  FROM meeting
+                                  WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
+                                    ! ! allInj allFl (r.Away ++ r.NewHome ++ r.NewTime)});
+            if not alreadyScheduled || spotUsed then
+                return ()
+            else
+                dml (DELETE FROM meeting
+                     WHERE {@@Sql.easy_where [#T] [all] [_] [_] [_] [_]
+                       ! ! allInj allFl (r.Away ++ r.OldHome ++ r.OldTime)});
+                addMeeting (r.Away ++ r.NewHome ++ r.NewTime);
+                queryI1 (SELECT * FROM globalListeners)
+                (fn i =>
+                    send i.Channel {Operation = Del,
+                                    Home = r.OldHome,
+                                    Away = r.Away,
+                                    Time = r.OldTime};
+                    send i.Channel {Operation = Add,
+                                    Home = r.NewHome,
+                                    Away = r.Away,
+                                    Time = r.NewTime});
+                queryI1 (SELECT * FROM awayListeners
+                         WHERE {@@Sql.easy_where [#AwayListeners] [awayKey] [_] [_] [_] [_]
+                           ! ! awayInj' awayKeyFl r.Away})
+                (fn i =>
+                    send i.Channel {Operation = Del,
+                                    Home = r.OldHome,
+                                    Time = r.OldTime};
+                    send i.Channel {Operation = Add,
+                                    Home = r.NewHome,
+                                    Time = r.NewTime})
+
         fun render t = <xml>
           <div class="modal" id={t.ModalId}>
             <dyn signal={signal t.ModalSpot}/>
@@ -283,14 +323,56 @@ functor Make(M : sig
 
                 (* One column per time *)
                 {List.mapX (fn (tm, aws) => <xml>
-                  <td>
+                  <td dynClass={mf <- signal t.MovingFrom;
+                                case mf of
+                                    None => return (CLASS "")
+                                  | Some _ =>
+                                    mt <- signal t.MovingTo;
+                                    return (case mt of
+                                                None => CLASS ""
+                                              | Some mt =>
+                                                if mt.Home = ho && mt.Time = tm then
+                                                    CLASS "bs3-active"
+                                                else
+                                                    CLASS "")}
+                      onmouseover={fn _ =>
+                                      set t.MovingTo (Some {Home = ho, Time = tm})}
+                      onclick={fn _ =>
+                                  mf <- get t.MovingFrom;
+                                  case mf of
+                                      None => return ()
+                                    | Some mf =>
+                                      mt <- get t.MovingTo;
+                                      case mt of
+                                          None => return ()
+                                        | Some mt =>
+                                          set t.MovingFrom None;
+                                          rpc (reschedule {Away = mf.Away,
+                                                           OldHome = mf.Home,
+                                                           OldTime = mf.Time,
+                                                           NewHome = mt.Home,
+                                                           NewTime = mt.Time})}>
                     <active code={selected <- source "";
                                   return <xml>
                                     <dyn signal={awsv <- signal aws;
                                                  (* One button per meeting *)
                                                  return <xml>
                                                    {List.mapX (fn aw => <xml>
-                                                     <div style="border-style: double">
+                                                     <div dynStyle={mf <- signal t.MovingFrom;
+                                                                    return (case mf of
+                                                                                None => STYLE "border-style: double; cursor: move"
+                                                                              | Some mf =>
+                                                                                if mf.Home = ho
+                                                                                   && mf.Away = aw
+                                                                                   && mf.Time = tm then
+                                                                                    STYLE "border-style: double; cursor: move; background-color: green"
+                                                                                else
+                                                                                    STYLE "border-style: double; cursor: move")}
+                                                          onclick={fn _ => stopPropagation;
+                                                                      set t.MovingFrom
+                                                                          (Some {Home = ho,
+                                                                                 Away = aw,
+                                                                                 Time = tm})}>
                                                        {[aw]}
                                                        <button class="close"
                                                                data-toggle="modal"
