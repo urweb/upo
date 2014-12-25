@@ -184,6 +184,23 @@ fun awayprof s =
               {AP.render ap}
             </xml>
 
+structure AG = EditGrid.Make(struct
+                                 con key = [Company = _, EmployeeId = _]
+                                 val tab = a
+                                 val labels = {Company = "Company",
+                                               EmployeeId = "Employee ID",
+                                               Something = "Something",
+                                               SomethingElse = "Something Else"}
+                                 val authorized = return True
+                             end)
+
+val awaygrid =
+    ap <- AG.create;
+    Theme.page
+        (return ())
+        ("All Aways")
+        (AG.render ap)
+
 
 task initialize = fn () =>
      doNothing <- oneRowE1 (SELECT COUNT( * ) > 0
