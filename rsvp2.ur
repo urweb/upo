@@ -266,30 +266,6 @@ functor Make(M : sig
                                                                             rpc (add ev.Event t.Self)}/>
                                                       </xml>}
 
-                                                 {case hos of
-                                                      [] => <xml/>
-                                                    | _ => <xml>
-                                                      <h3>{[homeLabel]} ({[List.length hos]})</h3>
-
-                                                      <table class="bs3-table table-striped">
-                                                        <tr>
-                                                          <th/>
-                                                          {@mapX [fn _ => string] [tr]
-                                                            (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] label =>
-                                                                <xml><th>{[label]}</th></xml>)
-                                                            homeDataFl homeDataLabels}
-                                                        </tr>
-                                                                               
-                                                        {List.mapX (fn ho => <xml><tr>
-                                                          <td>{[ho.Home]}</td>
-                                                          {@mapX2 [show] [ident] [tr]
-                                                            (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) =>
-                                                                <xml><td>{[x]}</td></xml>)
-                                                            homeDataFl homeDataShow ho.Data}
-                                                        </tr></xml>) hos}
-                                                      </table>
-                                                    </xml>}
-
                                                  {case aws of
                                                       [] => <xml/>
                                                     | _ => <xml>
@@ -311,6 +287,30 @@ functor Make(M : sig
                                                                 <xml><td>{[x]}</td></xml>)
                                                             awayDataFl awayDataShow aw.Data}
                                                         </tr></xml>) aws}
+                                                      </table>
+                                                    </xml>}
+
+                                                 {case hos of
+                                                      [] => <xml/>
+                                                    | _ => <xml>
+                                                      <h3>{[homeLabel]} ({[List.length hos]})</h3>
+
+                                                      <table class="bs3-table table-striped">
+                                                        <tr>
+                                                          <th/>
+                                                          {@mapX [fn _ => string] [tr]
+                                                            (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] label =>
+                                                                <xml><th>{[label]}</th></xml>)
+                                                            homeDataFl homeDataLabels}
+                                                        </tr>
+                                                                               
+                                                        {List.mapX (fn ho => <xml><tr>
+                                                          <td>{[ho.Home]}</td>
+                                                          {@mapX2 [show] [ident] [tr]
+                                                            (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) =>
+                                                                <xml><td>{[x]}</td></xml>)
+                                                            homeDataFl homeDataShow ho.Data}
+                                                        </tr></xml>) hos}
                                                       </table>
                                                     </xml>}
                                                </xml>}/>
@@ -378,10 +378,98 @@ functor Make(M : sig
     end
 
     structure Away = struct
+        type event = {Event : $eventKey, Data : $eventData, Registered : source bool}
+        type events = list event
         type t = _
-        fun create _ = return ()
-        fun render _ = <xml/>
-        fun onload _ = return ()
+
+        fun add ev aw =
+            da <- oneRow1 (SELECT away.{{awayData}}
+                           FROM away
+                           WHERE {@@Sql.easy_where [#Away] [awayKey] [_] [_] [_] [_]
+                             ! ! awayInj' awayKeyFl aw});
+
+            @@Sql.easy_insert [eventKey ++ awayKey] [_] (eventInj' ++ awayInj')
+              (@Folder.concat ! eventKeyFl awayKeyFl) awayRsvp (ev ++ aw);
+            queryI1 (SELECT * FROM listeners)
+            (fn r => send r.Channel {Event = ev,
+                                     User = Away (aw, Some da),
+                                     Operation = Add})
+
+        fun del ev aw =
+            dml (DELETE FROM awayRsvp
+                 WHERE {@@Sql.easy_where [#T] [eventKey ++ awayKey] [_] [_] [_] [_]
+                   ! ! (eventInj' ++ awayInj') (@Folder.concat ! eventKeyFl awayKeyFl) (ev ++ aw)});
+            queryI1 (SELECT * FROM listeners)
+            (fn r => send r.Channel {Event = ev,
+                                     User = Away (aw, None),
+                                     Operation = Del})
+
+        fun create aw =
+            events <- List.mapQueryM (SELECT event.{{eventKey}}, event.{{eventData}},
+                                        NOT ((SELECT TRUE
+                                              FROM awayRsvp
+                                              WHERE {@@Sql.easy_where [#AwayRsvp] [awayKey] [_] [_] [_] [_]
+                                                  ! ! awayInj' awayKeyFl aw}
+                                                AND {@@Sql.easy_join [#Event] [#AwayRsvp] [eventKey]
+                                                  [eventData ++ eventRest] [awayKey] [_] [_] [_]
+                                                  ! ! ! ! eventKeyFl}) IS NULL) AS Regd
+                                      FROM event
+                                      ORDER BY {{{@Sql.order_by eventKeyFl
+                                                   (@Sql.some_fields [#Event] [eventKey] ! ! eventKeyFl)
+                                                   sql_asc}}})
+                      (fn r =>
+                          regd <- source r.Regd;
+                          return {Event = r.Event --- eventData,
+                                  Data = r.Event --- eventKey,
+                                  Registered = regd});
+            return {Self = aw, Events = events}
+
+        fun render t =
+            List.mapX (fn ev => <xml>
+              <active code={expanded <- source False;
+                            return <xml><div>
+                              <h2>
+                                <button dynClass={exp <- signal expanded;
+                                                  return (if exp then
+                                                              CLASS "btn btn-xs glyphicon glyphicon-chevron-up"
+                                                          else
+                                                              CLASS "btn btn-xs glyphicon glyphicon-chevron-down")}
+                                        onclick={fn _ =>
+                                                    exp <- get expanded;
+                                                    set expanded (not exp)}/>
+                                {[@show eventKeyShow ev.Event]}
+                              </h2>
+
+                              <dyn signal={exp <- signal expanded;
+                                           if not exp then
+                                               return <xml/>
+                                           else
+                                               regd <- signal ev.Registered;
+                                               return <xml>
+                                                 <div>{[ev.Data]}</div>
+                                                 {if regd then
+                                                      <xml>
+                                                        <span class="glyphicon glyphicon-ok"/>
+                                                        <span>Attending</span>
+                                                        <button class="btn btn-primary"
+                                                                value="Un-RSVP"
+                                                                onclick={fn _ =>
+                                                                            rpc (del ev.Event t.Self);
+                                                                            set ev.Registered False}/>
+                                                      </xml>
+                                                  else
+                                                      <xml>
+                                                        <span>Not attending</span>
+                                                        <button class="btn btn-primary"
+                                                                value="RSVP"
+                                                                onclick={fn _ =>
+                                                                            rpc (add ev.Event t.Self);
+                                                                            set ev.Registered True}/>
+                                                      </xml>}
+                                               </xml>}/>
+                            </div></xml>}/>
+            </xml>) t.Events
+
     end
 
 end

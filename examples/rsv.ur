@@ -17,6 +17,16 @@ table event : { Event : string, Description : string }
 
 val show_event : show {Event : string} = mkShow (fn r => show r.Event)
 val show_event' : show {Description : string} = mkShow (fn r => show r.Description)
+val read_a : read {Company : string, EmployeeId : int} =
+    mkRead' (fn s =>
+                case String.split s #"#" of
+                    None => None
+                  | Some (s1, s2) => case read s2 of
+                                         None => None
+                                       | Some n =>
+                                         Some {Company = String.substring s1 {Start = 0, Len = String.length s1 - 1},
+                                               EmployeeId = n})
+    "a"
 val eq_event : eq {Event : string} = Record.equal
 
 structure S = Rsvp2.Make(struct
@@ -46,6 +56,18 @@ fun home s =
             ("Your Options (" ^ s ^ ")")
             <xml>
               {S.Home.render oa}
+            </xml>
+
+fun away s =
+    case read s of
+        None => error <xml>Bad self-description</xml>
+      | Some ho =>
+        oa <- S.Away.create ho;
+        Theme.page
+            (return ())
+            ("Your Options (" ^ s ^ ")")
+            <xml>
+              {S.Away.render oa}
             </xml>
 
 

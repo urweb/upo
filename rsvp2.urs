@@ -84,7 +84,6 @@ functor Make(M : sig
         type t
         val create : $M.awayKey -> transaction t
         val render : t -> xbody
-        val onload : t -> transaction unit
     end
 
 end
