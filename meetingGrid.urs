@@ -58,8 +58,6 @@ functor Make(M : sig
                  constraint (homeKey ++ awayKey) ~ [ByHome]
              end) : sig
 
-    val addMeeting : $(M.homeKey ++ M.awayKey ++ M.timeKey) -> transaction unit
-
     structure FullGrid : sig
         type t
         val create : transaction t

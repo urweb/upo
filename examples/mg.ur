@@ -95,6 +95,4 @@ task initialize = fn () =>
 
          dml (INSERT INTO time (When, Description) VALUES ({[readError '2014-12-25 11:00:00']}, 'eleven'));
          dml (INSERT INTO time (When, Description) VALUES ({[readError '2014-12-25 11:30:00']}, 'eleven-thirty'));
-         dml (INSERT INTO time (When, Description) VALUES ({[readError '2014-12-25 12:00:00']}, 'noon'));
-
-         S.addMeeting {Title = 'A', Company = 'Weyland-Yutani', EmployeeId = 1, When = readError '2014-12-25 11:00:00'}
+         dml (INSERT INTO time (When, Description) VALUES ({[readError '2014-12-25 12:00:00']}, 'noon'))

@@ -81,12 +81,6 @@ functor Make(M : sig
       {{one_constraint [#Home] (@Sql.easy_foreign ! ! ! ! ! ! homeKeyFl home)}},
       {{one_constraint [#Away] (@Sql.easy_foreign ! ! ! ! ! ! awayKeyFl away)}}
 
-    val timeOb [tab] [rest] [tables] [exps] [[tab] ~ tables] [timeKey ~ rest]
-        : sql_order_by ([tab = timeKey ++ rest] ++ tables) exps =
-        @Sql.order_by timeKeyFl
-         (@Sql.some_fields [tab] [timeKey] ! ! timeKeyFl)
-         sql_desc
-
     con all = homeKey ++ awayKey ++ timeKey
     val allFl = @Folder.concat ! homeKeyFl (@Folder.concat ! timeKeyFl awayKeyFl)
 
@@ -94,31 +88,35 @@ functor Make(M : sig
     val homeInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim homeKeyFl homeInj
     val awayInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim awayKeyFl awayInj
 
-    val addMeeting = @@Sql.easy_insert [all] [_] allInj allFl meeting
+    fun addMeeting r =
+        @@Sql.easy_insert [all] [_] allInj allFl meeting r;
+        queryI1 (SELECT * FROM globalListeners)
+                (fn i => send i.Channel {Operation = Add,
+                                         Home = r --- awayKey --- timeKey,
+                                         Away = r --- homeKey --- timeKey,
+                                         Time = r --- awayKey --- homeKey});
+        queryI1 (SELECT * FROM awayListeners
+                 WHERE {@@Sql.easy_where [#AwayListeners] [awayKey] [_] [_] [_] [_]
+                   ! ! awayInj' awayKeyFl (r --- homeKey --- timeKey)})
+                (fn i => send i.Channel {Operation = Add,
+                                         Home = r --- awayKey --- timeKey,
+                                         Time = r --- awayKey --- homeKey})
 
-    fun makeModal bcode titl bod blab = <xml>
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h4 class="modal-title">{titl}</h4>
-          </div>
-
-          <div class="modal-body">
-            {bod}
-          </div>
-
-          <div class="modal-footer">
-            <button class="btn btn-primary"
-                    data-dismiss="modal"
-                    value={blab}
-                    onclick={fn _ => bcode}/>
-            <button class="btn btn-default"
-                    data-dismiss="modal"
-                    value="Cancel"/>
-          </div>
-        </div>
-      </div>
-    </xml>
+    fun delMeeting r =
+        dml (DELETE FROM meeting
+             WHERE {@@Sql.easy_where [#T] [all] [_] [_] [_] [_]
+               ! ! allInj allFl r});
+        queryI1 (SELECT * FROM globalListeners)
+                (fn i => send i.Channel {Operation = Del,
+                                         Home = r --- awayKey --- timeKey,
+                                         Away = r --- homeKey --- timeKey,
+                                         Time = r --- awayKey --- homeKey});
+        queryI1 (SELECT * FROM awayListeners
+                          WHERE {@@Sql.easy_where [#AwayListeners] [awayKey] [_] [_] [_] [_]
+                            ! ! awayInj' awayKeyFl (r --- homeKey --- timeKey)})
+                (fn i => send i.Channel {Operation = Del,
+                                         Home = r --- awayKey --- timeKey,
+                                         Time = r --- awayKey --- homeKey})
 
     structure FullGrid = struct
         type awaySet = list $awayKey
@@ -231,18 +229,7 @@ functor Make(M : sig
             if alreadyScheduled then
                 return ()
             else
-                addMeeting r;
-                queryI1 (SELECT * FROM globalListeners)
-                (fn i => send i.Channel {Operation = Add,
-                                         Home = r --- awayKey --- timeKey,
-                                         Away = r --- homeKey --- timeKey,
-                                         Time = r --- awayKey --- homeKey});
-                queryI1 (SELECT * FROM awayListeners
-                         WHERE {@@Sql.easy_where [#AwayListeners] [awayKey] [_] [_] [_] [_]
-                           ! ! awayInj' awayKeyFl (r --- homeKey --- timeKey)})
-                (fn i => send i.Channel {Operation = Add,
-                                         Home = r --- awayKey --- timeKey,
-                                         Time = r --- awayKey --- homeKey})
+                addMeeting r
 
         fun unschedule r =
             alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
@@ -252,20 +239,7 @@ functor Make(M : sig
             if not alreadyScheduled then
                 return ()
             else
-                dml (DELETE FROM meeting
-                            WHERE {@@Sql.easy_where [#T] [all] [_] [_] [_] [_]
-                              ! ! allInj allFl r});
-                queryI1 (SELECT * FROM globalListeners)
-                (fn i => send i.Channel {Operation = Del,
-                                         Home = r --- awayKey --- timeKey,
-                                         Away = r --- homeKey --- timeKey,
-                                         Time = r --- awayKey --- homeKey});
-                queryI1 (SELECT * FROM awayListeners
-                         WHERE {@@Sql.easy_where [#AwayListeners] [awayKey] [_] [_] [_] [_]
-                           ! ! awayInj' awayKeyFl (r --- homeKey --- timeKey)})
-                (fn i => send i.Channel {Operation = Del,
-                                         Home = r --- awayKey --- timeKey,
-                                         Time = r --- awayKey --- homeKey})
+                delMeeting r
 
         fun reschedule r =
             alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
@@ -279,30 +253,8 @@ functor Make(M : sig
             if not alreadyScheduled || spotUsed then
                 return ()
             else
-                dml (DELETE FROM meeting
-                     WHERE {@@Sql.easy_where [#T] [all] [_] [_] [_] [_]
-                       ! ! allInj allFl (r.Away ++ r.OldHome ++ r.OldTime)});
-                addMeeting (r.Away ++ r.NewHome ++ r.NewTime);
-                queryI1 (SELECT * FROM globalListeners)
-                (fn i =>
-                    send i.Channel {Operation = Del,
-                                    Home = r.OldHome,
-                                    Away = r.Away,
-                                    Time = r.OldTime};
-                    send i.Channel {Operation = Add,
-                                    Home = r.NewHome,
-                                    Away = r.Away,
-                                    Time = r.NewTime});
-                queryI1 (SELECT * FROM awayListeners
-                         WHERE {@@Sql.easy_where [#AwayListeners] [awayKey] [_] [_] [_] [_]
-                           ! ! awayInj' awayKeyFl r.Away})
-                (fn i =>
-                    send i.Channel {Operation = Del,
-                                    Home = r.OldHome,
-                                    Time = r.OldTime};
-                    send i.Channel {Operation = Add,
-                                    Home = r.NewHome,
-                                    Time = r.NewTime})
+                delMeeting (r.Away ++ r.OldHome ++ r.OldTime);
+                addMeeting (r.Away ++ r.NewHome ++ r.NewTime)
 
         fun render t = <xml>
           <div class="modal" id={t.ModalId}>
@@ -378,7 +330,7 @@ functor Make(M : sig
                                                                data-toggle="modal"
                                                                data-target={"#" ^ show t.ModalId}
                                                                onclick={fn _ =>
-                                                                           set t.ModalSpot (makeModal
+                                                                           set t.ModalSpot (Theme.makeModal
                                                                              (rpc (unschedule (aw ++ ho ++ tm)))
                                                                              <xml>Are you sure you want to delete the {[tm]} meeting between {[ho]} and {[aw]}?</xml>
                                                                              <xml/>
@@ -392,7 +344,7 @@ functor Make(M : sig
                                                            value="+"
                                                            data-toggle="modal"
                                                            data-target={"#" ^ show t.ModalId}
-                                                           onclick={fn _ => set t.ModalSpot (makeModal
+                                                           onclick={fn _ => set t.ModalSpot (Theme.makeModal
                                                                               (sel <- get selected;
                                                                                aw <- return (readError sel : $awayKey);
                                                                                rpc (schedule (aw ++ ho ++ tm)))
