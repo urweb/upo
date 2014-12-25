@@ -1,4 +1,6 @@
 val page : transaction unit (* onload *)
+           -> string (* brand name *)
+           -> xbody (* menu options for top of page *)
            -> string (* title *)
            -> xbody (* body *)
            -> transaction page

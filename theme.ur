@@ -1,17 +1,41 @@
 open Bootstrap3
 
-fun page onload titl bod = return <xml>
-  <head>
-    <title>{[titl]}</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css"/>
-  </head>
+fun page onload brand menuOptions titl bod =
+    nid <- fresh;
+    return <xml>
+      <head>
+        <title>{[titl]}</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css"/>
+        <link rel="stylesheet" href="/style.css"/>
+      </head>
 
-  <body onload={onload}><div class="container-fluid">
-    <h1>{[titl]}</h1>
+      <body style="padding-top: 50px" onload={onload}>
+        <nav class="navbar navbar-inverse navbar-fixed-top">
+          <div class="container">
+            <div class="navbar-header">
+              <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false" aria-controls="navbar">
+<span class="sr-only">Toggle navigation</span>
+<span class="icon-bar"></span>
+<span class="icon-bar"></span>
+<span class="icon-bar"></span>
+              </button>
+              <a class="navbar-brand">{[brand]}</a>
+            </div>
+            <div id={nid} class="collapse navbar-collapse">
+              <ul class="bs3-nav navbar-nav">
+                {menuOptions}
+              </ul>
+            </div>
+          </div>
+        </nav>
 
-    {bod}
-  </div></body>
-</xml>
+        <div class="container-fluid">
+          <h1>{[titl]}</h1>
+
+          {bod}
+        </div>
+      </body>
+    </xml>
 
 fun makeModal bcode titl bod blab = <xml>
   <div class="modal-dialog">

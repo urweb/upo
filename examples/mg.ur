@@ -62,9 +62,11 @@ structure S = MeetingGrid.Make(struct
                                    val time = time
                                end)
 
+fun page f = Theme.page f "MG" <xml/>
+
 val main =
     fg <- S.Home.FullGrid.create;
-    Theme.page
+    page
         (S.Home.FullGrid.onload fg)
         "MG"
         <xml>
@@ -77,7 +79,7 @@ val main =
 
 val mainRev =
     fg <- S.Away.FullGrid.create;
-    Theme.page
+    page
         (S.Away.FullGrid.onload fg)
         "MG"
         <xml>
@@ -92,7 +94,7 @@ fun away s =
                          Secure = False,
                          Expires = None};
         oa <- S.Away.One.create aw;
-        Theme.page
+        page
             (S.Away.One.onload oa)
             ("Your Schedule (" ^ s ^ ")")
             <xml>
@@ -107,7 +109,7 @@ fun home s =
                          Secure = False,
                          Expires = None};
         oa <- S.Home.One.create aw;
-        Theme.page
+        page
             (S.Home.One.onload oa)
             ("Your Schedule (" ^ s ^ ")")
             <xml>
@@ -119,7 +121,7 @@ fun homepref s =
         None => error <xml>Bad self-description</xml>
       | Some ho =>
         hp <- S.Home.Prefs.create ho;
-        Theme.page
+        page
             (return ())
             ("Your Preferences (" ^ s ^ ")")
             <xml>
@@ -131,7 +133,7 @@ fun awaypref s =
         None => error <xml>Bad self-description</xml>
       | Some aw =>
         ap <- S.Away.Prefs.create aw;
-        Theme.page
+        page
             (return ())
             ("Your Preferences (" ^ s ^ ")")
             <xml>
@@ -143,7 +145,7 @@ fun homeavail s =
         None => error <xml>Bad self-description</xml>
       | Some ho =>
         hp <- S.Home.Unavail.create ho;
-        Theme.page
+        page
             (return ())
             ("Your Time Conflicts (" ^ s ^ ")")
             <xml>
@@ -155,7 +157,7 @@ fun awayavail s =
         None => error <xml>Bad self-description</xml>
       | Some aw =>
         ap <- S.Away.Unavail.create aw;
-        Theme.page
+        page
             (return ())
             ("Your Time Conflicts (" ^ s ^ ")")
             <xml>
@@ -177,7 +179,7 @@ fun awayprof s =
         None => error <xml>Bad self-description</xml>
       | Some aw =>
         ap <- AP.create aw;
-        Theme.page
+        page
             (return ())
             ("Your Profile (" ^ s ^ ")")
             <xml>
@@ -196,7 +198,7 @@ structure AG = EditGrid.Make(struct
 
 val awaygrid =
     ap <- AG.create;
-    Theme.page
+    page
         (return ())
         ("All Aways")
         (AG.render ap)
@@ -230,7 +232,7 @@ open Bootstrap3
 
 val admin =
     input <- source "";
-    Theme.page (return ())
+    page (return ())
                "Admin"
                <xml>
                  <ctextarea class="form-control" source={input}/>

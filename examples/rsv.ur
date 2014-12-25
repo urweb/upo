@@ -52,6 +52,8 @@ structure S = Rsvp2.Make(struct
                              val amAway = getCookie awayC
                          end)
 
+fun page f = Theme.page f "RSV" <xml/>
+
 fun home s =
     case read s of
         None => error <xml>Bad self-description</xml>
@@ -60,7 +62,7 @@ fun home s =
                          Secure = False,
                          Expires = None};
         oa <- S.Home.create ho;
-        Theme.page
+        page
             (S.Home.onload oa)
             ("Your Options (" ^ s ^ ")")
             <xml>
@@ -75,7 +77,7 @@ fun away s =
                          Secure = False,
                          Expires = None};
         oa <- S.Away.create aw;
-        Theme.page
+        page
             (return ())
             ("Your Options (" ^ s ^ ")")
             <xml>
