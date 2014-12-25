@@ -3,6 +3,8 @@ sql mg.sql
 library ..
 rewrite url Mg/*
 safeGet main
+safeGet mainRev
 safeGet away
+safeGet home
 
 mg

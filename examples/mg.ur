@@ -35,24 +35,45 @@ structure S = MeetingGrid.Make(struct
                                end)
 
 val main =
-    fg <- S.FullGrid.create;
+    fg <- S.Home.FullGrid.create;
     Theme.page
-        (S.FullGrid.onload fg)
+        (S.Home.FullGrid.onload fg)
         "MG"
         <xml>
-          {S.FullGrid.render fg}
+          {S.Home.FullGrid.render fg}
+        </xml>
+
+val mainRev =
+    fg <- S.Away.FullGrid.create;
+    Theme.page
+        (S.Away.FullGrid.onload fg)
+        "MG"
+        <xml>
+          {S.Away.FullGrid.render fg}
         </xml>
 
 fun away s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some aw =>
-        oa <- S.OneAway.create aw;
+        oa <- S.Away.One.create aw;
         Theme.page
-            (S.OneAway.onload oa)
+            (S.Away.One.onload oa)
             ("Your Schedule (" ^ s ^ ")")
             <xml>
-              {S.OneAway.render oa}
+              {S.Away.One.render oa}
+            </xml>
+
+fun home s =
+    case read s of
+        None => error <xml>Bad self-description</xml>
+      | Some aw =>
+        oa <- S.Home.One.create aw;
+        Theme.page
+            (S.Home.One.onload oa)
+            ("Your Schedule (" ^ s ^ ")")
+            <xml>
+              {S.Home.One.render oa}
             </xml>
 
 fun homepref s =

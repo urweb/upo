@@ -54,22 +54,39 @@ functor Make(M : sig
 
                  constraint homeKey ~ awayKey
                  constraint (homeKey ++ awayKey) ~ timeKey
-                 constraint awayKey ~ [Channel]
-                 constraint (homeKey ++ awayKey) ~ [ByHome]
+                 constraint (homeKey ++ awayKey) ~ [ByHome, Channel]
              end) : sig
 
-    structure FullGrid : sig
-        type t
-        val create : transaction t
-        val onload : t -> transaction unit
-        val render : t -> xbody
+    structure Home : sig
+        structure FullGrid : sig
+            type t
+            val create : transaction t
+            val onload : t -> transaction unit
+            val render : t -> xbody
+        end
+
+        structure One : sig
+            type t
+            val create : $M.homeKey -> transaction t
+            val onload : t -> transaction unit
+            val render : t -> xbody
+        end
     end
 
-    structure OneAway : sig
-        type t
-        val create : $M.awayKey -> transaction t
-        val onload : t -> transaction unit
-        val render : t -> xbody
+    structure Away : sig
+        structure FullGrid : sig
+            type t
+            val create : transaction t
+            val onload : t -> transaction unit
+            val render : t -> xbody
+        end
+
+        structure One : sig
+            type t
+            val create : $M.awayKey -> transaction t
+            val onload : t -> transaction unit
+            val render : t -> xbody
+        end
     end
 
     structure HomePrefs : sig

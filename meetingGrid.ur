@@ -53,8 +53,7 @@ functor Make(M : sig
 
                  constraint homeKey ~ awayKey
                  constraint (homeKey ++ awayKey) ~ timeKey
-                 constraint awayKey ~ [Channel]
-                 constraint (homeKey ++ awayKey) ~ [ByHome]
+                 constraint (homeKey ++ awayKey) ~ [ByHome, Channel]
              end) = struct
 
     open M
@@ -69,6 +68,11 @@ functor Make(M : sig
     datatype operation = Add | Del
     type action = { Operation : operation, Home : $homeKey, Away : $awayKey, Time : $timeKey }
     table globalListeners : { Channel : channel action }
+
+    type home_action = { Operation : operation, Away : $awayKey, Time : $timeKey }
+    table homeListeners : ([Channel = channel home_action] ++ homeKey)
+      PRIMARY KEY {{@primary_key [homeKey1] [homeKeyR] ! ! homeInj}},
+      {{one_constraint [#Home] (@Sql.easy_foreign ! ! ! ! ! ! homeKeyFl home)}}
 
     type away_action = { Operation : operation, Home : $homeKey, Time : $timeKey }
     table awayListeners : ([Channel = channel away_action] ++ awayKey)
@@ -95,6 +99,12 @@ functor Make(M : sig
                                          Home = r --- awayKey --- timeKey,
                                          Away = r --- homeKey --- timeKey,
                                          Time = r --- awayKey --- homeKey});
+        queryI1 (SELECT * FROM homeListeners
+                 WHERE {@@Sql.easy_where [#HomeListeners] [homeKey] [_] [_] [_] [_]
+                   ! ! homeInj' homeKeyFl (r --- awayKey --- timeKey)})
+                (fn i => send i.Channel {Operation = Add,
+                                         Away = r --- homeKey --- timeKey,
+                                         Time = r --- awayKey --- homeKey});
         queryI1 (SELECT * FROM awayListeners
                  WHERE {@@Sql.easy_where [#AwayListeners] [awayKey] [_] [_] [_] [_]
                    ! ! awayInj' awayKeyFl (r --- homeKey --- timeKey)})
@@ -111,6 +121,12 @@ functor Make(M : sig
                                          Home = r --- awayKey --- timeKey,
                                          Away = r --- homeKey --- timeKey,
                                          Time = r --- awayKey --- homeKey});
+        queryI1 (SELECT * FROM homeListeners
+                 WHERE {@@Sql.easy_where [#HomeListeners] [homeKey] [_] [_] [_] [_]
+                   ! ! homeInj' homeKeyFl (r --- awayKey --- timeKey)})
+                (fn i => send i.Channel {Operation = Del,
+                                         Away = r --- homeKey --- timeKey,
+                                         Time = r --- awayKey --- homeKey});
         queryI1 (SELECT * FROM awayListeners
                           WHERE {@@Sql.easy_where [#AwayListeners] [awayKey] [_] [_] [_] [_]
                             ! ! awayInj' awayKeyFl (r --- homeKey --- timeKey)})
@@ -118,401 +134,536 @@ functor Make(M : sig
                                          Home = r --- awayKey --- timeKey,
                                          Time = r --- awayKey --- homeKey})
 
-    structure FullGrid = struct
-        type awaySet = list $awayKey
-        type timeMap = list ($timeKey * awaySet)
-        type homeMap = list ($homeKey * timeMap)
-        type t = _
+    (* This functor helps us abstract over the two directions.
+     * We want symmetric functionality for each. *)
+    functor Side(N : sig
+                     con usKey :: {Type}
+                     con usOther :: {Type}
+                     con themKey :: {Type}
+                     con themOther :: {Type}
 
-        val create =
-            allTimes <- queryL1 (SELECT time.{{timeKey}}
-                                 FROM time
-                                 ORDER BY {{{@Sql.order_by timeKeyFl
-                                   (@Sql.some_fields [#Time] [timeKey] ! ! timeKeyFl)
-                                   sql_desc}}});
+                     constraint usKey ~ usOther
+                     constraint themKey ~ themOther
+                     constraint usKey ~ themKey
+                     constraint (usKey ++ themKey) ~ timeKey
 
+                     val localized : { Home : $homeKey, Away : $awayKey }
+                                     -> { Us : $usKey, Them : $themKey }
+                     val canonical : { Us : $usKey, Them : $themKey }
+                                     -> { Home : $homeKey, Away : $awayKey }
+
+                     table us : (usKey ++ usOther)
+                     table them : (themKey ++ themOther)
+
+                     table preference : ([ByHome = bool] ++ usKey ++ themKey)
+
+                     table meeting : (usKey ++ themKey ++ timeKey)
+
+                     constraint usKey ~ [Channel]
+                     type usChannel
+                     val usChannel : usChannel
+                                     -> { Operation : operation,
+                                          Them : $themKey,
+                                          Time : $timeKey }
+                     table usListeners : ([Channel = channel usChannel] ++ usKey)
+
+
+                     val usFl : folder usKey
+                     val themFl : folder themKey
+
+                     val usInj : $(map sql_injectable_prim usKey)
+                     val themInj : $(map sql_injectable_prim themKey)
+
+                     val usShow : show $usKey
+                     val themShow : show $themKey
+
+                     val themRead : read $themKey
+
+                     val usEq : eq $usKey
+                     val themEq : eq $themKey
+                 end) = struct
+
+        open N
+
+        con all = usKey ++ themKey ++ timeKey
+        val allFl = @Folder.concat ! usFl (@Folder.concat ! timeKeyFl themFl)
+        val allInj = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim allFl (usInj ++ themInj ++ timeInj)
+        val usInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim usFl usInj
+        val themInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim themFl themInj
+
+        fun canonicalized r =
             let
-                (* A bit of a little dance to initialize the meeting states,
-                 * including blank entries for unused home/time pairs *)
-                fun initMap (acc : homeMap)
-                            (rows : list $all)
-                            (homes : list $homeKey)
-                            (times : list $timeKey)
-                            (awaysDone : awaySet)
-                            (timesDone : timeMap)
-                    : homeMap =
-                    case homes of
-                        [] =>
-                        (* Finished with all homes.  Done! *)
-                        List.rev acc
-                      | home :: homes' =>
-                        case times of
-                            [] =>
-                            (* Finished with one home.  Move to next. *)
-                            initMap ((home, List.rev timesDone) :: acc)
-                                    rows
-                                    homes'
-                                    allTimes
-                                    []
-                                    []
-                          | time :: times' =>
-                            (* Check if the next row is about this time. *)
-                            case rows of
-                                [] =>
-                                (* Nope. *)
-                                initMap acc
-                                        []
-                                        homes
-                                        times'
-                                        []
-                                        ((time, awaysDone) :: timesDone)
-                              | row :: rows' =>
-                                if row --- awayKey --- timeKey = home && @eq timeKeyEq (row --- homeKey --- awayKey) time then
-                                    (* Aha, a match!  Record this meeting. *)
-                                    initMap acc
-                                            rows'
-                                            homes
-                                            times
-                                            ((row --- homeKey --- timeKey) :: awaysDone)
-                                            timesDone
-                                else
-                                    (* No match.  On to next time. *)
-                                    initMap acc
-                                            rows
-                                            homes
-                                            times'
-                                            []
-                                            ((time, awaysDone) :: timesDone)
+                val r' = canonical {Us = r --- timeKey --- themKey,
+                                    Them = r --- timeKey --- usKey}
             in
-                homes <- queryL1 (SELECT home.{{homeKey}}
-                                  FROM home
-                                  ORDER BY {{{@Sql.order_by homeKeyFl
-                                    (@Sql.some_fields [#Home] [homeKey] ! ! homeKeyFl)
-                                    sql_desc}}});
-                aways <- queryL1 (SELECT away.{{awayKey}}
-                                  FROM away
-                                  ORDER BY {{{@Sql.order_by awayKeyFl
-                                    (@Sql.some_fields [#Away] [awayKey] ! ! awayKeyFl)
-                                    sql_desc}}});
-                meetings <- queryL1 (SELECT meeting.{{homeKey}}, meeting.{{timeKey}}, meeting.{{awayKey}}
-                                     FROM meeting
-                                     ORDER BY {{{@Sql.order_by allFl
-                                       (@Sql.some_fields [#Meeting] [all] ! ! allFl)
-                                       sql_desc}}});
-                meetings <- List.mapM (fn (ho, tms) =>
-                                          tms' <- List.mapM (fn (tm, aws) =>
-                                                                aws <- source aws;
-                                                                return (tm, aws)) tms;
-                                          return (ho, tms'))
-                                      (initMap []
-                                               meetings
-                                               homes
-                                               allTimes
-                                               []
-                                               []);
-                mid <- fresh;
-                modalSpot <- source <xml/>;
-                chan <- channel;
-                dml (INSERT INTO globalListeners (Channel) VALUES ({[chan]}));
-                mf <- source None;
-                mt <- source None;
-                return {Aways = aways, Times = allTimes, Meetings = meetings,
-                        ModalId = mid, ModalSpot = modalSpot, Channel = chan,
-                        MovingFrom = mf, MovingTo = mt}
+                r --- usKey --- themKey ++ r'.Home ++ r'.Away
             end
 
-        fun schedule r =
-            alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
-                                          FROM meeting
-                                          WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
-                                            ! ! allInj allFl r});
-            if alreadyScheduled then
-                return ()
-            else
-                addMeeting r
+        val addMeeting r = addMeeting (canonicalized r)
+        val delMeeting r = delMeeting (canonicalized r)
 
-        fun unschedule r =
-            alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
-                                          FROM meeting
-                                          WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
-                                            ! ! allInj allFl r});
-            if not alreadyScheduled then
-                return ()
-            else
-                delMeeting r
+        structure FullGrid = struct
+            type themSet = list $themKey
+            type timeMap = list ($timeKey * themSet)
+            type usMap = list ($usKey * timeMap)
+            type t = _
 
-        fun reschedule r =
-            alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
-                                          FROM meeting
-                                          WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
-                                            ! ! allInj allFl (r.Away ++ r.OldHome ++ r.OldTime)});
-            spotUsed <- oneRowE1 (SELECT COUNT( * ) > 0
-                                  FROM meeting
-                                  WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
-                                    ! ! allInj allFl (r.Away ++ r.NewHome ++ r.NewTime)});
-            if not alreadyScheduled || spotUsed then
-                return ()
-            else
-                delMeeting (r.Away ++ r.OldHome ++ r.OldTime);
-                addMeeting (r.Away ++ r.NewHome ++ r.NewTime)
-
-        fun render t = <xml>
-          <div class="modal" id={t.ModalId}>
-            <dyn signal={signal t.ModalSpot}/>
-          </div>
-
-          <table class="bs3-table table-striped">
-            <tr>
-              <th/>
-              (* Header: one column per time *)
-              {List.mapX (fn tm => <xml><th>{[tm]}</th></xml>) t.Times}
-            </tr>
-
-            (* One row per home *)
-            {List.mapX (fn (ho, tms) => <xml>
-              <tr>
-                <th>{[ho]}</th>
-
-                (* One column per time *)
-                {List.mapX (fn (tm, aws) => <xml>
-                  <td dynClass={mf <- signal t.MovingFrom;
-                                case mf of
-                                    None => return (CLASS "")
-                                  | Some _ =>
-                                    mt <- signal t.MovingTo;
-                                    return (case mt of
-                                                None => CLASS ""
-                                              | Some mt =>
-                                                if mt.Home = ho && mt.Time = tm then
-                                                    CLASS "bs3-active"
-                                                else
-                                                    CLASS "")}
-                      onmouseover={fn _ =>
-                                      set t.MovingTo (Some {Home = ho, Time = tm})}
-                      onclick={fn _ =>
-                                  mf <- get t.MovingFrom;
-                                  case mf of
-                                      None => return ()
-                                    | Some mf =>
-                                      mt <- get t.MovingTo;
-                                      case mt of
-                                          None => return ()
-                                        | Some mt =>
-                                          set t.MovingFrom None;
-                                          rpc (reschedule {Away = mf.Away,
-                                                           OldHome = mf.Home,
-                                                           OldTime = mf.Time,
-                                                           NewHome = mt.Home,
-                                                           NewTime = mt.Time})}>
-                    <active code={selected <- source "";
-                                  return <xml>
-                                    <dyn signal={awsv <- signal aws;
-                                                 (* One button per meeting *)
-                                                 return <xml>
-                                                   {List.mapX (fn aw => <xml>
-                                                     <div dynStyle={mf <- signal t.MovingFrom;
-                                                                    return (case mf of
-                                                                                None => STYLE "border-style: double; cursor: move"
-                                                                              | Some mf =>
-                                                                                if mf.Home = ho
-                                                                                   && mf.Away = aw
-                                                                                   && mf.Time = tm then
-                                                                                    STYLE "border-style: double; cursor: move; background-color: green"
-                                                                                else
-                                                                                    STYLE "border-style: double; cursor: move")}
-                                                          onclick={fn _ => stopPropagation;
-                                                                      set t.MovingFrom
-                                                                          (Some {Home = ho,
-                                                                                 Away = aw,
-                                                                                 Time = tm})}>
-                                                       {[aw]}
-                                                       <button class="close"
-                                                               data-toggle="modal"
-                                                               data-target={"#" ^ show t.ModalId}
-                                                               onclick={fn _ =>
-                                                                           set t.ModalSpot (Theme.makeModal
-                                                                             (rpc (unschedule (aw ++ ho ++ tm)))
-                                                                             <xml>Are you sure you want to delete the {[tm]} meeting between {[ho]} and {[aw]}?</xml>
-                                                                             <xml/>
-                                                                             "Yes!")}>
-                                                         &times;
-                                                       </button>
-                                                     </div>
-                                                   </xml>) awsv}
-
-                                                   <button class="btn btn-default btn-xs"
-                                                           value="+"
-                                                           data-toggle="modal"
-                                                           data-target={"#" ^ show t.ModalId}
-                                                           onclick={fn _ => set t.ModalSpot (Theme.makeModal
-                                                                              (sel <- get selected;
-                                                                               aw <- return (readError sel : $awayKey);
-                                                                               rpc (schedule (aw ++ ho ++ tm)))
-                                                                              <xml>Adding meeting for {[ho]} at {[tm]}</xml>
-                                                                              <xml>
-                                                                                <cselect class="form-control"
-                                                                                         source={selected}>
-                                                                                  {List.mapX (fn aw =>
-                                                                                                 if List.mem aw awsv then
-                                                                                                     <xml/>
-                                                                                                 else
-                                                                                                     <xml><coption>{[aw]}</coption></xml>) t.Aways}
-                                                                                </cselect>
-                                                                              </xml>
-                                                                              "Add Meeting")}/>
-                                                 </xml>}/>
-                                  </xml>}/>
-                  </td>
-                </xml>) tms}
-              </tr>
-            </xml>) t.Meetings}
-          </table>
-        </xml>
-
-        fun tweakMeeting (f : awaySet -> awaySet) (ho : $homeKey) (tm : $timeKey) =
-            let
-                fun tweakHomes hos =
-                    case hos of
-                        [] => error <xml>tweakMeeting: unknown home</xml>
-                      | (ho', tms) :: hos' =>
-                        if ho' = ho then
-                            let
-                                fun addTimes tms =
-                                    case tms of
-                                        [] => error <xml>tweakMeeting: unknown time</xml>
-                                      | (tm', aws) :: tms' =>
-                                        if tm' = tm then
-                                            v <- get aws;
-                                            set aws (f v)
-                                        else
-                                            addTimes tms'
-                            in
-                                addTimes tms
-                            end
-                        else
-                            tweakHomes hos'
-            in
-                tweakHomes
-            end
-
-        fun onload t =
-            let
-                fun loop () =
-                    r <- recv t.Channel;
-                    (case r.Operation of
-                         Add => tweakMeeting
-                                    (fn ls => List.sort (fn x y => show x > show y) (r.Away :: ls))
-                                    r.Home r.Time t.Meetings
-                       | Del => tweakMeeting
-                                    (List.filter (fn aw => aw <> r.Away))
-                                    r.Home r.Time t.Meetings);
-                    loop ()
-            in
-                spawn (loop ())
-            end
-                                                            
-    end
-
-    structure OneAway = struct
-        type homeSet = list $homeKey
-        type timeMap = list ($timeKey * homeSet)
-        type t = _
-
-        fun create aw =
-            let
-                fun doTimes (times : list $timeKey)
-                            (rows : list $(timeKey ++ homeKey))
-                            (thisTime : homeSet)
-                            (acc : timeMap)
-                    : timeMap =
-                    case times of
-                        [] => List.rev acc
-                      | tm :: times' =>
-                        case rows of
-                            [] => doTimes times' [] [] ((tm, List.rev thisTime) :: acc)
-                          | row :: rows' =>
-                            if row --- homeKey = tm then
-                                doTimes times rows' ((row --- timeKey) :: thisTime) acc
-                            else
-                                doTimes times' rows [] ((tm, List.rev thisTime) :: acc)
-            in
+            val create =
                 allTimes <- queryL1 (SELECT time.{{timeKey}}
                                      FROM time
                                      ORDER BY {{{@Sql.order_by timeKeyFl
                                        (@Sql.some_fields [#Time] [timeKey] ! ! timeKeyFl)
                                        sql_desc}}});
-                meetings <- queryL1 (SELECT meeting.{{timeKey}}, meeting.{{homeKey}}
-                                     FROM meeting
-                                     ORDER BY {{{@Sql.order_by (@Folder.concat ! timeKeyFl homeKeyFl)
-                                       (@Sql.some_fields [#Meeting] [timeKey ++ homeKey] ! !
-                                         (@Folder.concat ! timeKeyFl homeKeyFl))
-                                       sql_desc}}});
-                meetings <- List.mapM (fn (tm, hos) =>
-                                          hos <- source hos;
-                                          return (tm, hos))
-                            (doTimes allTimes meetings [] []);
-                ch <- channel;
-                @@Sql.easy_insert [[Channel = _] ++ awayKey] [_]
-                  ({Channel = _} ++ awayInj')
-                  (@Folder.cons [#Channel] [_] ! awayKeyFl)
-                  awayListeners
-                  ({Channel = ch} ++ aw);
-                return {Away = aw, Meetings = meetings, Channel = ch}
-            end
 
-        fun render t = <xml>
-          <table class="bs3-table table-striped">
-            <tr>
-              <th>Time</th>
-              <th>Meeting</th>
-            </tr>
+                let
+                    (* A bit of a little dance to initialize the meeting states,
+                     * including blank entries for unused us/time pairs *)
+                    fun initMap (acc : usMap)
+                                (rows : list $all)
+                                (uses : list $usKey)
+                                (times : list $timeKey)
+                                (themsDone : themSet)
+                                (timesDone : timeMap)
+                        : usMap =
+                        case uses of
+                            [] =>
+                            (* Finished with all uses.  Done! *)
+                            List.rev acc
+                          | us :: uses' =>
+                            case times of
+                                [] =>
+                                (* Finished with one us.  Move to next. *)
+                                initMap ((us, List.rev timesDone) :: acc)
+                                        rows
+                                        uses'
+                                        allTimes
+                                        []
+                                        []
+                              | time :: times' =>
+                                (* Check if the next row is about this time. *)
+                                case rows of
+                                    [] =>
+                                    (* Nope. *)
+                                    initMap acc
+                                            []
+                                            uses
+                                            times'
+                                            []
+                                            ((time, List.rev themsDone) :: timesDone)
+                                  | row :: rows' =>
+                                    if row --- themKey --- timeKey = us && @eq timeKeyEq (row --- usKey --- themKey) time then
+                                        (* Aha, a match!  Record this meeting. *)
+                                        initMap acc
+                                                rows'
+                                                uses
+                                                times
+                                                ((row --- usKey --- timeKey) :: themsDone)
+                                                timesDone
+                                    else
+                                        (* No match.  On to next time. *)
+                                        initMap acc
+                                                rows
+                                                uses
+                                                times'
+                                                []
+                                                ((time, List.rev themsDone) :: timesDone)
+                in
+                    uses <- queryL1 (SELECT us.{{usKey}}
+                                     FROM us
+                                     ORDER BY {{{@Sql.order_by usFl
+                                        (@Sql.some_fields [#Us] [usKey] ! ! usFl)
+                                        sql_desc}}});
+                    thems <- queryL1 (SELECT them.{{themKey}}
+                                      FROM them
+                                      ORDER BY {{{@Sql.order_by themFl
+                                        (@Sql.some_fields [#Them] [themKey] ! ! themFl)
+                                        sql_desc}}});
+                    meetings <- queryL1 (SELECT meeting.{{usKey}}, meeting.{{timeKey}}, meeting.{{themKey}}
+                                         FROM meeting
+                                         ORDER BY {{{@Sql.order_by allFl
+                                           (@Sql.some_fields [#Meeting] [all] ! ! allFl)
+                                           sql_desc}}});
+                    meetings <- List.mapM (fn (us, tms) =>
+                                              tms' <- List.mapM (fn (tm, ths) =>
+                                                                    ths <- source ths;
+                                                                    return (tm, ths)) tms;
+                                              return (us, tms'))
+                                          (initMap []
+                                                   meetings
+                                                   uses
+                                                   allTimes
+                                                   []
+                                                   []);
+                    mid <- fresh;
+                    modalSpot <- source <xml/>;
+                    chan <- channel;
+                    dml (INSERT INTO globalListeners (Channel) VALUES ({[chan]}));
+                    mf <- source None;
+                    mt <- source None;
+                    return {Thems = thems, Times = allTimes, Meetings = meetings,
+                            ModalId = mid, ModalSpot = modalSpot, Channel = chan,
+                            MovingFrom = mf, MovingTo = mt}
+                end
 
-            {List.mapX (fn (tm, hos) => <xml>
-              <tr>
-                <td>{[tm]}</td>
-                <td>
-                  <dyn signal={hos <- signal hos;
-                               return (case hos of
-                                           [] => <xml>&mdash;</xml>
-                                         | ho :: hos => <xml>{[ho]}{List.mapX (fn ho => <xml>, {[ho]}</xml>) hos}</xml>)}/>
-                                                                                                                                    </td>
-              </tr>
-            </xml>) t.Meetings}
-          </table>
-        </xml>
+            fun schedule r =
+                alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
+                                              FROM meeting
+                                              WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
+                                                ! ! allInj allFl r});
+                if alreadyScheduled then
+                    return ()
+                else
+                    addMeeting r
 
-        fun tweakMeeting (f : homeSet -> homeSet) (tm : $timeKey) =
-            let
-                fun addTimes tms =
-                    case tms of
-                        [] => error <xml>tweakMeeting[2]: unknown time</xml>
-                      | (tm', hos) :: tms' =>
-                        if tm' = tm then
-                            v <- get hos;
-                            set hos (f v)
-                        else
-                            addTimes tms'
-            in
-                addTimes
-            end
+            fun unschedule r =
+                alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
+                                              FROM meeting
+                                              WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
+                                                ! ! allInj allFl r});
+                if not alreadyScheduled then
+                    return ()
+                else
+                    delMeeting r
 
-        fun onload t =
-            let
-                fun loop () =
-                    r <- recv t.Channel;
-                    (case r.Operation of
-                         Add => tweakMeeting
-                                    (fn ls => List.sort (fn x y => show x > show y) (r.Home :: ls))
-                                    r.Time t.Meetings
-                       | Del => tweakMeeting
-                                    (List.filter (fn ho => ho <> r.Home))
-                                    r.Time t.Meetings);
-                    loop ()
-            in
-                spawn (loop ())
-            end
+            fun reschedule (r : {Them : $themKey, OldUs : $usKey, OldTime : $timeKey, NewUs : $usKey, NewTime : $timeKey}) =
+                alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
+                                              FROM meeting
+                                              WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
+                                                ! ! allInj allFl (r.Them ++ r.OldUs ++ r.OldTime)});
+                spotUsed <- oneRowE1 (SELECT COUNT( * ) > 0
+                                      FROM meeting
+                                      WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
+                                        ! ! allInj allFl (r.Them ++ r.NewUs ++ r.NewTime)});
+                if not alreadyScheduled || spotUsed then
+                    return ()
+                else
+                    delMeeting (r.Them ++ r.OldUs ++ r.OldTime);
+                    addMeeting (r.Them ++ r.NewUs ++ r.NewTime)
 
+            fun render t = <xml>
+              <div class="modal" id={t.ModalId}>
+                <dyn signal={signal t.ModalSpot}/>
+              </div>
+
+              <table class="bs3-table table-striped">
+                <tr>
+                  <th/>
+                  (* Header: one column per time *)
+                  {List.mapX (fn tm => <xml><th>{[tm]}</th></xml>) t.Times}
+                </tr>
+
+                (* One row per us *)
+                {List.mapX (fn (us, tms) => <xml>
+                  <tr>
+                    <th>{[us]}</th>
+
+                    (* One column per time *)
+                    {List.mapX (fn (tm, ths) => <xml>
+                      <td dynClass={mf <- signal t.MovingFrom;
+                                    case mf of
+                                        None => return (CLASS "")
+                                      | Some _ =>
+                                        mt <- signal t.MovingTo;
+                                        return (case mt of
+                                                    None => CLASS ""
+                                                  | Some mt =>
+                                                    if mt.Us = us && mt.Time = tm then
+                                                        CLASS "bs3-active"
+                                                    else
+                                                        CLASS "")}
+                          onmouseover={fn _ =>
+                                          set t.MovingTo (Some {Us = us, Time = tm})}
+                          onclick={fn _ =>
+                                      mf <- get t.MovingFrom;
+                                      case mf of
+                                          None => return ()
+                                        | Some mf =>
+                                          mt <- get t.MovingTo;
+                                          case mt of
+                                              None => return ()
+                                            | Some mt =>
+                                              set t.MovingFrom None;
+                                              rpc (reschedule {Them = mf.Them,
+                                                               OldUs = mf.Us,
+                                                               OldTime = mf.Time,
+                                                               NewUs = mt.Us,
+                                                               NewTime = mt.Time})}>
+                        <active code={selected <- source "";
+                                      deleting <- source False;
+                                      return <xml>
+                                        <dyn signal={thsv <- signal ths;
+                                                     (* One button per meeting *)
+                                                     return <xml>
+                                                       {List.mapX (fn th => <xml>
+                                                         <div dynStyle={mf <- signal t.MovingFrom;
+                                                                        return (case mf of
+                                                                                    None => STYLE "border-style: double; cursor: move"
+                                                                                  | Some mf =>
+                                                                                    if mf.Us = us
+                                                                                       && mf.Them = th
+                                                                                       && mf.Time = tm then
+                                                                                        STYLE "border-style: double; cursor: move; background-color: green"
+                                                                                    else
+                                                                                        STYLE "border-style: double; cursor: move")}
+                                                              onclick={fn _ =>
+                                                                          del <- get deleting;
+                                                                          if del then
+                                                                              set deleting False
+                                                                          else
+                                                                              stopPropagation;
+                                                                              set t.MovingFrom
+                                                                                  (Some {Us = us,
+                                                                                         Them = th,
+                                                                                         Time = tm})}>
+                                                           {[th]}
+                                                           <button class="close"
+                                                                   data-toggle="modal"
+                                                                   data-target={"#" ^ show t.ModalId}
+                                                                   onclick={fn _ =>
+                                                                               set deleting True;
+                                                                               set t.ModalSpot (Theme.makeModal
+                                                                                 (rpc (unschedule (th ++ us ++ tm)))
+                                                                                 <xml>Are you sure you want to delete the {[tm]} meeting between {[us]} and {[th]}?</xml>
+                                                                                 <xml/>
+                                                                                 "Yes!")}>
+                                                             &times;
+                                                           </button>
+                                                         </div>
+                                                       </xml>) thsv}
+
+                                                       <button class="btn btn-default btn-xs"
+                                                               value="+"
+                                                               data-toggle="modal"
+                                                               data-target={"#" ^ show t.ModalId}
+                                                               onclick={fn _ => set t.ModalSpot (Theme.makeModal
+                                                                                  (sel <- get selected;
+                                                                                   th <- return (readError sel : $themKey);
+                                                                                   rpc (schedule (th ++ us ++ tm)))
+                                                                                  <xml>Adding meeting for {[us]} at {[tm]}</xml>
+                                                                                  <xml>
+                                                                                    <cselect class="form-control"
+                                                                                             source={selected}>
+                                                                                      {List.mapX (fn th =>
+                                                                                                     if List.mem th thsv then
+                                                                                                         <xml/>
+                                                                                                     else
+                                                                                                         <xml><coption>{[th]}</coption></xml>) t.Thems}
+                                                                                    </cselect>
+                                                                                  </xml>
+                                                                                  "Add Meeting")}/>
+                                                     </xml>}/>
+                                      </xml>}/>
+                      </td>
+                    </xml>) tms}
+                  </tr>
+                </xml>) t.Meetings}
+              </table>
+            </xml>
+
+            fun tweakMeeting (f : themSet -> themSet) (us : $usKey) (tm : $timeKey) =
+                let
+                    fun tweakUses uses =
+                        case uses of
+                            [] => error <xml>FullGrid.tweakMeeting: unknown us</xml>
+                          | (us', tms) :: uses' =>
+                            if us' = us then
+                                let
+                                    fun addTimes tms =
+                                        case tms of
+                                            [] => error <xml>FullGrid.tweakMeeting: unknown time</xml>
+                                          | (tm', ths) :: tms' =>
+                                            if tm' = tm then
+                                                v <- get ths;
+                                                set ths (f v)
+                                            else
+                                                addTimes tms'
+                                in
+                                    addTimes tms
+                                end
+                            else
+                                tweakUses uses'
+                in
+                    tweakUses
+                end
+
+            fun onload t =
+                let
+                    fun loop () =
+                        r <- recv t.Channel;
+                        let
+                            val r' = localized (r -- #Operation -- #Time)
+                        in
+                            case r.Operation of
+                                Add => tweakMeeting
+                                           (fn ls => List.sort (fn x y => show x > show y) (r'.Them :: ls))
+                                           r'.Us r.Time t.Meetings
+                              | Del => tweakMeeting
+                                           (List.filter (fn th => th <> r'.Them))
+                                           r'.Us r.Time t.Meetings
+                        end;
+                        loop ()
+                in
+                    spawn (loop ())
+                end
+
+        end
+
+        structure One = struct
+            type themSet = list $themKey
+            type timeMap = list ($timeKey * themSet)
+            type t = _
+
+            fun create us =
+                let
+                    fun doTimes (times : list $timeKey)
+                                (rows : list $(timeKey ++ themKey))
+                                (thisTime : themSet)
+                                (acc : timeMap)
+                        : timeMap =
+                        case times of
+                            [] => List.rev acc
+                          | tm :: times' =>
+                            case rows of
+                                [] => doTimes times' [] [] ((tm, List.rev thisTime) :: acc)
+                              | row :: rows' =>
+                                if row --- themKey = tm then
+                                    doTimes times rows' ((row --- timeKey) :: thisTime) acc
+                                else
+                                    doTimes times' rows [] ((tm, List.rev thisTime) :: acc)
+                in
+                    allTimes <- queryL1 (SELECT time.{{timeKey}}
+                                         FROM time
+                                         ORDER BY {{{@Sql.order_by timeKeyFl
+                                           (@Sql.some_fields [#Time] [timeKey] ! ! timeKeyFl)
+                                           sql_desc}}});
+                    meetings <- queryL1 (SELECT meeting.{{timeKey}}, meeting.{{themKey}}
+                                         FROM meeting
+                                         WHERE {@@Sql.easy_where [#Meeting] [usKey] [_] [_] [_] [_]
+                                           ! ! usInj' usFl us}
+                                         ORDER BY {{{@Sql.order_by (@Folder.concat ! timeKeyFl themFl)
+                                           (@Sql.some_fields [#Meeting] [timeKey ++ themKey] ! !
+                                             (@Folder.concat ! timeKeyFl themFl))
+                                           sql_desc}}});
+                    meetings <- List.mapM (fn (tm, ths) =>
+                                              ths <- source ths;
+                                              return (tm, ths))
+                                (doTimes allTimes meetings [] []);
+                    ch <- channel;
+                    @@Sql.easy_insert [[Channel = _] ++ usKey] [_]
+                      ({Channel = _} ++ usInj')
+                      (@Folder.cons [#Channel] [_] ! usFl)
+                      usListeners
+                      ({Channel = ch} ++ us);
+                    return {Us = us, Meetings = meetings, Channel = ch}
+                end
+
+            fun render t = <xml>
+              <table class="bs3-table table-striped">
+                <tr>
+                  <th>Time</th>
+                  <th>Meeting</th>
+                </tr>
+
+                {List.mapX (fn (tm, ths) => <xml>
+                  <tr>
+                    <td>{[tm]}</td>
+                    <td>
+                      <dyn signal={ths <- signal ths;
+                                   return (case ths of
+                                               [] => <xml>&mdash;</xml>
+                                             | th :: ths => <xml>{[th]}{List.mapX (fn th => <xml>, {[th]}</xml>) ths}</xml>)}/>
+                                                                                                                                        </td>
+                  </tr>
+                </xml>) t.Meetings}
+              </table>
+            </xml>
+
+            fun tweakMeeting (f : themSet -> themSet) (tm : $timeKey) =
+                let
+                    fun addTimes tms =
+                        case tms of
+                            [] => error <xml>One.tweakMeeting: unknown time</xml>
+                          | (tm', ths) :: tms' =>
+                            if tm' = tm then
+                                v <- get ths;
+                                set ths (f v)
+                            else
+                                addTimes tms'
+                in
+                    addTimes
+                end
+
+            fun onload t =
+                let
+                    fun loop () =
+                        r <- recv t.Channel;
+                        let
+                            val r = usChannel r
+                        in
+                            case r.Operation of
+                                Add => tweakMeeting
+                                           (fn ls => List.sort (fn x y => show x > show y) (r.Them :: ls))
+                                           r.Time t.Meetings
+                              | Del => tweakMeeting
+                                           (List.filter (fn th => th <> r.Them))
+                                           r.Time t.Meetings
+                        end;
+                        loop ()
+                in
+                    spawn (loop ())
+                end
+
+        end
     end
+
+    structure Home = Side(struct
+                              con usKey = homeKey
+                              con themKey = awayKey
+
+                              fun localized r = {Us = r.Home, Them = r.Away}
+                              fun canonical r = {Home = r.Us, Away = r.Them}
+
+                              val us = home
+                              val them = away
+
+                              val preference = preference
+
+                              val meeting = meeting
+
+                              fun usChannel r = r -- #Away ++ {Them = r.Away}
+                              val usListeners = homeListeners
+
+                              val usInj = homeInj
+                              val themInj = awayInj
+
+                              val usFl = homeKeyFl
+                              val themFl = awayKeyFl
+                          end)
+
+    structure Away = Side(struct
+                              con usKey = awayKey
+                              con themKey = homeKey
+
+                              fun localized r = {Us = r.Away, Them = r.Home}
+                              fun canonical r = {Away = r.Us, Home = r.Them}
+
+                              val us = away
+                              val them = home
+
+                              val preference = preference
+
+                              val meeting = meeting
+
+                              fun usChannel r = r -- #Home ++ {Them = r.Home}
+                              val usListeners = awayListeners
+
+                              val usInj = awayInj
+                              val themInj = homeInj
+
+                              val usFl = awayKeyFl
+                              val themFl = homeKeyFl
+                          end)
+
 
     structure HomePrefs = ChooseForeign.Make(struct
                                                  val const = {ByHome = True}
