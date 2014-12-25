@@ -146,6 +146,7 @@ functor Make(M : sig
                      constraint themKey ~ themOther
                      constraint usKey ~ themKey
                      constraint (usKey ++ themKey) ~ timeKey
+                     constraint (usKey ++ themKey) ~ [ByHome]
 
                      val localized : { Home : $homeKey, Away : $awayKey }
                                      -> { Us : $usKey, Them : $themKey }
@@ -181,6 +182,8 @@ functor Make(M : sig
 
                      val usEq : eq $usKey
                      val themEq : eq $themKey
+
+                     val byHome : bool
                  end) = struct
 
         open N
@@ -614,6 +617,23 @@ functor Make(M : sig
                 end
 
         end
+
+        structure Prefs = ChooseForeign.Make(struct
+                                                 val const = {ByHome = byHome}
+                                                 con given = usKey
+                                                 con chosen = themKey
+
+                                                 val choices = preference
+                                                 val options = them
+                                                 val buttonLabel = "Add Preference"
+
+                                                 val givenInj = usInj'
+                                                 val chosenInj = themInj'
+
+                                                 val givenFl = usFl
+                                                 val chosenFl = themFl
+                                             end)
+
     end
 
     structure Home = Side(struct
@@ -627,6 +647,7 @@ functor Make(M : sig
                               val them = away
 
                               val preference = preference
+                              val byHome = True
 
                               val meeting = meeting
 
@@ -651,6 +672,7 @@ functor Make(M : sig
                               val them = home
 
                               val preference = preference
+                              val byHome = False
 
                               val meeting = meeting
 
@@ -663,38 +685,5 @@ functor Make(M : sig
                               val usFl = awayKeyFl
                               val themFl = homeKeyFl
                           end)
-
-
-    structure HomePrefs = ChooseForeign.Make(struct
-                                                 val const = {ByHome = True}
-                                                 con given = homeKey
-                                                 con chosen = awayKey
-
-                                                 val choices = preference
-                                                 val options = away
-                                                 val buttonLabel = "Add Preference"
-
-                                                 val givenInj = homeInj'
-                                                 val chosenInj = awayInj'
-
-                                                 val givenFl = homeKeyFl
-                                                 val chosenFl = awayKeyFl
-                                             end)
-
-    structure AwayPrefs = ChooseForeign.Make(struct
-                                                 val const = {ByHome = False}
-                                                 con given = awayKey
-                                                 con chosen = homeKey
-
-                                                 val choices = preference
-                                                 val options = home
-                                                 val buttonLabel = "Add Preference"
-
-                                                 val givenInj = awayInj'
-                                                 val chosenInj = homeInj'
-
-                                                 val givenFl = awayKeyFl
-                                                 val chosenFl = homeKeyFl
-                                             end)
 
 end

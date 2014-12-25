@@ -71,6 +71,12 @@ functor Make(M : sig
             val onload : t -> transaction unit
             val render : t -> xbody
         end
+
+        structure Prefs : sig
+            type t
+            val create : $M.homeKey -> transaction t
+            val render : t -> xbody
+        end
     end
 
     structure Away : sig
@@ -87,18 +93,12 @@ functor Make(M : sig
             val onload : t -> transaction unit
             val render : t -> xbody
         end
-    end
 
-    structure HomePrefs : sig
-        type t
-        val create : $M.homeKey -> transaction t
-        val render : t -> xbody
-    end
-
-    structure AwayPrefs : sig
-        type t
-        val create : $M.awayKey -> transaction t
-        val render : t -> xbody
+        structure Prefs : sig
+            type t
+            val create : $M.awayKey -> transaction t
+            val render : t -> xbody
+        end
     end
 
 end

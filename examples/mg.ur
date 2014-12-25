@@ -80,24 +80,24 @@ fun homepref s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some ho =>
-        hp <- S.HomePrefs.create ho;
+        hp <- S.Home.Prefs.create ho;
         Theme.page
             (return ())
             ("Your Preferences (" ^ s ^ ")")
             <xml>
-              {S.HomePrefs.render hp}
+              {S.Home.Prefs.render hp}
             </xml>
 
 fun awaypref s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some aw =>
-        ap <- S.AwayPrefs.create aw;
+        ap <- S.Away.Prefs.create aw;
         Theme.page
             (return ())
             ("Your Preferences (" ^ s ^ ")")
             <xml>
-              {S.AwayPrefs.render ap}
+              {S.Away.Prefs.render ap}
             </xml>
 
 task initialize = fn () =>
