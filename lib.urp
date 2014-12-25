@@ -4,6 +4,7 @@ allow url https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css
 script https://code.jquery.com/jquery-2.1.3.min.js
 script https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js
 alwaysInline Theme/page
+allow env SSL_CLIENT_S_DN
 
 $/list
 $/string
@@ -16,3 +17,4 @@ editGrid
 chooseForeign
 meetingGrid
 rsvp2
+clientCert
