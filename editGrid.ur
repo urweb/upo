@@ -30,6 +30,7 @@ functor Make(M : sig
 
     con all = key ++ rest
     val allFl = @Folder.concat ! keyFl restFl
+    val allInj = keyInj ++ restInj
 
     val keyEq' : eq $key = @Record.equal keyEq keyFl
 
@@ -88,6 +89,10 @@ functor Make(M : sig
                        keyFl restFl
                        tab r.OldKey r.New) rows
 
+    fun add row =
+        ensure;
+        @@Sql.easy_insert [all] [_] allInj allFl tab row
+
     fun render t = <xml>
       <div class="modal" id={t.ModalId}>
         <dyn signal={signal t.ModalSpot}/>
@@ -145,7 +150,21 @@ functor Make(M : sig
         <tr>
           <td>
             <button class="btn btn-primary"
-                    value="Add Row"/>
+                    value="Add Row"
+                    onclick={fn _ =>
+                                (dups, new) <- @foldR2 [read] [fn _ => source string]
+                                                [fn r => transaction ($(map (fn _ => source string) r) * $r)]
+                                                (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : read t) src acc =>
+                                                    v <- get src;
+                                                    dup <- source v;
+                                                    set src "";
+                                                    (dups, vs) <- acc;
+                                                    return ({nm = dup} ++ dups,
+                                                            {nm = readError v} ++ vs))
+                                                (return ({}, {})) allFl (keyRead ++ restRead) t.New;
+                                rpc (add new);
+                                vs <- get t.Rows;
+                                set t.Rows (List.append vs ({OldKey = new --- rest, Cur = dups} :: []))}/>
           </td>
 
           {@mapX [fn _ => source string] [tr]
