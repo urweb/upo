@@ -1,9 +1,12 @@
-table h : { Title : string, Bogosity : int }
+table h : { Title : string, Bogosity : int, Office : string }
   PRIMARY KEY Title
 
 val show_h : show {Title : string} = mkShow (fn r => r.Title)
 val read_h : read {Title : string} = mkRead' (fn s => Some {Title = s}) "h"
 val eq_h : eq {Title : string} = Record.equal
+
+val show_office : show {Office : string} = mkShow (fn r => " (" ^ r.Office ^ ")")
+val eq_office : eq {Office : string} = Record.equal
 
 table a : { Company : string, EmployeeId : int, Awesome : bool }
   PRIMARY KEY (Company, EmployeeId)
@@ -46,6 +49,8 @@ val read_time : read {Hour : int, Minute : int} = mkRead' (fn s => case String.s
                                                                          | _ => None) "time"
 
 structure S = MeetingGrid.Make(struct
+                                   con homeOffice = [Office = _]
+
                                    val home = h
                                    val away = a
                                    val time = time
@@ -152,9 +157,9 @@ task initialize = fn () =>
      if doNothing then
          return ()
      else
-         dml (INSERT INTO h (Title, Bogosity) VALUES ('A', 1));
-         dml (INSERT INTO h (Title, Bogosity) VALUES ('B', 2));
-         dml (INSERT INTO h (Title, Bogosity) VALUES ('C', 3));
+         dml (INSERT INTO h (Title, Bogosity, Office) VALUES ('A', 1, '123'));
+         dml (INSERT INTO h (Title, Bogosity, Office) VALUES ('B', 2, '456'));
+         dml (INSERT INTO h (Title, Bogosity, Office) VALUES ('C', 3, 'B07'));
 
          dml (INSERT INTO a (Company, EmployeeId, Awesome) VALUES ('Weyland-Yutani', 1, TRUE));
          dml (INSERT INTO a (Company, EmployeeId, Awesome) VALUES ('Weyland-Yutani', 2, FALSE));

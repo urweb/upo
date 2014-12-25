@@ -7,17 +7,21 @@ functor Make(M : sig
                  con homeKeyR :: {Type}
                  constraint [homeKey1] ~ homeKeyR
                  con homeKey = [homeKey1 = homeKeyT] ++ homeKeyR
+                 con homeOffice :: {Type}
                  con homeRest :: {Type}
                  constraint homeKey ~ homeRest
+                 constraint (homeKey ++ homeRest) ~ homeOffice
                  con homeKeyName :: Name
                  con homeOtherConstraints :: {{Unit}}
                  constraint [homeKeyName] ~ homeOtherConstraints
-                 val home : sql_table (homeKey ++ homeRest) ([homeKeyName = map (fn _ => ()) homeKey] ++ homeOtherConstraints)
+                 val home : sql_table (homeKey ++ homeOffice ++ homeRest) ([homeKeyName = map (fn _ => ()) homeKey] ++ homeOtherConstraints)
                  val homeInj : $(map sql_injectable_prim homeKey)
                  val homeKeyFl : folder homeKey
                  val homeKeyShow : show $homeKey
                  val homeKeyRead : read $homeKey
                  val homeKeyEq : eq $homeKey
+                 val officeFl : folder homeOffice
+                 val officeShow : show $homeOffice
 
                  con awayKey1 :: Name
                  con awayKeyT
@@ -55,6 +59,7 @@ functor Make(M : sig
 
                  constraint homeKey ~ awayKey
                  constraint (homeKey ++ awayKey) ~ timeKey
+                 constraint homeOffice ~ timeKey
                  constraint (homeKey ++ awayKey) ~ [ByHome, Channel]
              end) : sig
 

@@ -6,17 +6,21 @@ functor Make(M : sig
                  con homeKeyR :: {Type}
                  constraint [homeKey1] ~ homeKeyR
                  con homeKey = [homeKey1 = homeKeyT] ++ homeKeyR
+                 con homeOffice :: {Type}
                  con homeRest :: {Type}
                  constraint homeKey ~ homeRest
+                 constraint (homeKey ++ homeRest) ~ homeOffice
                  con homeKeyName :: Name
                  con homeOtherConstraints :: {{Unit}}
                  constraint [homeKeyName] ~ homeOtherConstraints
-                 val home : sql_table (homeKey ++ homeRest) ([homeKeyName = map (fn _ => ()) homeKey] ++ homeOtherConstraints)
+                 val home : sql_table (homeKey ++ homeOffice ++ homeRest) ([homeKeyName = map (fn _ => ()) homeKey] ++ homeOtherConstraints)
                  val homeInj : $(map sql_injectable_prim homeKey)
                  val homeKeyFl : folder homeKey
                  val homeKeyShow : show $homeKey
                  val homeKeyRead : read $homeKey
                  val homeKeyEq : eq $homeKey
+                 val officeFl : folder homeOffice
+                 val officeShow : show $homeOffice
 
                  con awayKey1 :: Name
                  con awayKeyT
@@ -54,6 +58,7 @@ functor Make(M : sig
 
                  constraint homeKey ~ awayKey
                  constraint (homeKey ++ awayKey) ~ timeKey
+                 constraint homeOffice ~ timeKey
                  constraint (homeKey ++ awayKey) ~ [ByHome, Channel]
              end) = struct
 
@@ -70,12 +75,12 @@ functor Make(M : sig
     type action = { Operation : operation, Home : $homeKey, Away : $awayKey, Time : $timeKey }
     table globalListeners : { Channel : channel action }
 
-    type home_action = { Operation : operation, Away : $awayKey, Time : $timeKey }
+    type home_action = { Operation : operation, Away : $awayKey, Time : $timeKey, Place : option unit }
     table homeListeners : ([Channel = channel home_action] ++ homeKey)
       PRIMARY KEY {{@primary_key [homeKey1] [homeKeyR] ! ! homeInj}},
       {{one_constraint [#Home] (@Sql.easy_foreign ! ! ! ! ! ! homeKeyFl home)}}
 
-    type away_action = { Operation : operation, Home : $homeKey, Time : $timeKey }
+    type away_action = { Operation : operation, Home : $homeKey, Time : $timeKey, Place : option $homeOffice }
     table awayListeners : ([Channel = channel away_action] ++ awayKey)
       PRIMARY KEY {{@primary_key [awayKey1] [awayKeyR] ! ! awayInj}},
       {{one_constraint [#Away] (@Sql.easy_foreign ! ! ! ! ! ! awayKeyFl away)}}
@@ -107,6 +112,11 @@ functor Make(M : sig
     val timeInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim timeKeyFl timeInj
 
     fun addMeeting r =
+        office <- oneRow1 (SELECT home.{{homeOffice}}
+                           FROM home
+                           WHERE {@@Sql.easy_where [#Home] [homeKey] [_] [_] [_] [_]
+                             ! ! homeInj' homeKeyFl (r --- awayKey --- timeKey)});
+
         @@Sql.easy_insert [all] [_] allInj allFl meeting r;
         queryI1 (SELECT * FROM globalListeners)
                 (fn i => send i.Channel {Operation = Add,
@@ -118,13 +128,15 @@ functor Make(M : sig
                    ! ! homeInj' homeKeyFl (r --- awayKey --- timeKey)})
                 (fn i => send i.Channel {Operation = Add,
                                          Away = r --- homeKey --- timeKey,
-                                         Time = r --- awayKey --- homeKey});
+                                         Time = r --- awayKey --- homeKey,
+                                         Place = Some ()});
         queryI1 (SELECT * FROM awayListeners
                  WHERE {@@Sql.easy_where [#AwayListeners] [awayKey] [_] [_] [_] [_]
                    ! ! awayInj' awayKeyFl (r --- homeKey --- timeKey)})
                 (fn i => send i.Channel {Operation = Add,
                                          Home = r --- awayKey --- timeKey,
-                                         Time = r --- awayKey --- homeKey})
+                                         Time = r --- awayKey --- homeKey,
+                                         Place = Some office})
 
     fun delMeeting r =
         dml (DELETE FROM meeting
@@ -140,26 +152,33 @@ functor Make(M : sig
                    ! ! homeInj' homeKeyFl (r --- awayKey --- timeKey)})
                 (fn i => send i.Channel {Operation = Del,
                                          Away = r --- homeKey --- timeKey,
-                                         Time = r --- awayKey --- homeKey});
+                                         Time = r --- awayKey --- homeKey,
+                                         Place = None});
         queryI1 (SELECT * FROM awayListeners
                           WHERE {@@Sql.easy_where [#AwayListeners] [awayKey] [_] [_] [_] [_]
                             ! ! awayInj' awayKeyFl (r --- homeKey --- timeKey)})
                 (fn i => send i.Channel {Operation = Del,
                                          Home = r --- awayKey --- timeKey,
-                                         Time = r --- awayKey --- homeKey})
+                                         Time = r --- awayKey --- homeKey,
+                                         Place = None})
 
     (* This functor helps us abstract over the two directions.
      * We want symmetric functionality for each. *)
     functor Side(N : sig
                      con usKey :: {Type}
+                     con usOffice :: {Type}
                      con usOther :: {Type}
                      con themKey :: {Type}
+                     con themOffice :: {Type}
                      con themOther :: {Type}
 
                      constraint usKey ~ usOther
+                     constraint (usKey ++ usOther) ~ usOffice
                      constraint themKey ~ themOther
+                     constraint (themKey ++ themOther) ~ themOffice
                      constraint usKey ~ themKey
                      constraint (usKey ++ themKey) ~ timeKey
+                     constraint themOffice ~ timeKey
                      constraint (usKey ++ themKey) ~ [ByHome]
 
                      val localized : { Home : $homeKey, Away : $awayKey }
@@ -167,8 +186,8 @@ functor Make(M : sig
                      val canonical : { Us : $usKey, Them : $themKey }
                                      -> { Home : $homeKey, Away : $awayKey }
 
-                     table us : (usKey ++ usOther)
-                     table them : (themKey ++ themOther)
+                     table us : (usKey ++ usOffice ++ usOther)
+                     table them : (themKey ++ themOffice ++ themOther)
 
                      table preference : ([ByHome = bool] ++ usKey ++ themKey)
                      table unavailable : (usKey ++ timeKey)
@@ -180,7 +199,8 @@ functor Make(M : sig
                      val usChannel : usChannel
                                      -> { Operation : operation,
                                           Them : $themKey,
-                                          Time : $timeKey }
+                                          Time : $timeKey,
+                                          Place : option $themOffice }
                      table usListeners : ([Channel = channel usChannel] ++ usKey)
 
 
@@ -197,6 +217,10 @@ functor Make(M : sig
 
                      val usEq : eq $usKey
                      val themEq : eq $themKey
+
+                     val usOfficeFl : folder usOffice
+                     val usOfficeShow : show $usOffice
+                     val themOfficeShow : show $themOffice
 
                      val byHome : bool
                  end) = struct
@@ -223,7 +247,7 @@ functor Make(M : sig
         structure FullGrid = struct
             type themSet = list $themKey
             type timeMap = list ($timeKey * bool (* available? *) * themSet)
-            type usMap = list ($usKey * timeMap)
+            type usMap = list ($usKey * $usOffice * timeMap)
             type t = _
 
             val create =
@@ -238,7 +262,7 @@ functor Make(M : sig
                      * including blank entries for unused us/time pairs *)
                     fun initMap (acc : usMap)
                                 (rows : list $all)
-                                (uses : list $usKey)
+                                (uses : list $(usKey ++ usOffice))
                                 (times : list $timeKey)
                                 (unavails : list $(usKey ++ timeKey))
                                 (themsDone : themSet)
@@ -252,7 +276,7 @@ functor Make(M : sig
                             case times of
                                 [] =>
                                 (* Finished with one us.  Move to next. *)
-                                initMap ((us, List.rev timesDone) :: acc)
+                                initMap ((us --- usOffice, us --- usKey, List.rev timesDone) :: acc)
                                         rows
                                         uses'
                                         allTimes
@@ -269,7 +293,8 @@ functor Make(M : sig
                                             case unavails of
                                                 [] => (True, [])
                                               | r :: unavails' =>
-                                                if r --- timeKey = us && @eq timeKeyEq (r --- usKey) time then
+                                                if r --- timeKey = us --- usOffice
+                                                   && @eq timeKeyEq (r --- usKey) time then
                                                     (False, unavails')
                                                 else
                                                     (True, unavails)
@@ -283,7 +308,8 @@ functor Make(M : sig
                                                 ((time, available, List.rev themsDone) :: timesDone)
                                     end
                                   | row :: rows' =>
-                                    if row --- themKey --- timeKey = us && @eq timeKeyEq (row --- usKey --- themKey) time then
+                                    if row --- themKey --- timeKey = us --- usOffice
+                                       && @eq timeKeyEq (row --- usKey --- themKey) time then
                                         (* Aha, a match!  Record this meeting. *)
                                         initMap acc
                                                 rows'
@@ -299,7 +325,7 @@ functor Make(M : sig
                                                 case unavails of
                                                     [] => (True, [])
                                                   | r :: unavails' =>
-                                                    if r --- timeKey = us && @eq timeKeyEq (r --- usKey) time then
+                                                    if r --- timeKey = us --- usOffice && @eq timeKeyEq (r --- usKey) time then
                                                         (False, unavails')
                                                     else
                                                         (True, unavails)
@@ -313,7 +339,7 @@ functor Make(M : sig
                                                     ((time, available, List.rev themsDone) :: timesDone)
                                         end
                 in
-                    uses <- queryL1 (SELECT us.{{usKey}}
+                    uses <- queryL1 (SELECT us.{{usKey}}, us.{{usOffice}}
                                      FROM us
                                      ORDER BY {{{@Sql.order_by usFl
                                         (@Sql.some_fields [#Us] [usKey] ! ! usFl)
@@ -334,11 +360,11 @@ functor Make(M : sig
                                          ORDER BY {{{@Sql.order_by allFl
                                            (@Sql.some_fields [#Meeting] [all] ! ! allFl)
                                            sql_desc}}});
-                    meetings <- List.mapM (fn (us, tms) =>
+                    meetings <- List.mapM (fn (us, off, tms) =>
                                               tms' <- List.mapM (fn (tm, avail, ths) =>
                                                                     ths <- source ths;
                                                                     return (tm, avail, ths)) tms;
-                                              return (us, tms'))
+                                              return (us, off, tms'))
                                           (initMap []
                                                    meetings
                                                    uses
@@ -405,9 +431,9 @@ functor Make(M : sig
                 </tr>
 
                 (* One row per us *)
-                {List.mapX (fn (us, tms) => <xml>
+                {List.mapX (fn (us, off, tms) => <xml>
                   <tr>
-                    <th>{[us]}</th>
+                    <th>{[us]}{[off]}</th>
 
                     (* One column per time *)
                     {List.mapX (fn (tm, avail, ths) => <xml>
@@ -518,7 +544,7 @@ functor Make(M : sig
                     fun tweakUses uses =
                         case uses of
                             [] => error <xml>FullGrid.tweakMeeting: unknown us</xml>
-                          | (us', tms) :: uses' =>
+                          | (us', _, tms) :: uses' =>
                             if us' = us then
                                 let
                                     fun addTimes tms =
@@ -547,9 +573,10 @@ functor Make(M : sig
                             val r' = localized (r -- #Operation -- #Time)
                         in
                             case r.Operation of
-                                Add => tweakMeeting
-                                           (fn ls => List.sort (fn x y => show x > show y) (r'.Them :: ls))
-                                           r'.Us r.Time t.Meetings
+                                Add =>
+                                tweakMeeting
+                                    (fn ls => List.sort (fn x y => show x > show y) (r'.Them :: ls))
+                                    r'.Us r.Time t.Meetings
                               | Del => tweakMeeting
                                            (List.filter (fn th => th <> r'.Them))
                                            r'.Us r.Time t.Meetings
@@ -562,14 +589,14 @@ functor Make(M : sig
         end
 
         structure One = struct
-            type themSet = list $themKey
+            type themSet = list ($themKey * $themOffice)
             type timeMap = list ($timeKey * themSet)
             type t = _
 
             fun create us =
                 let
                     fun doTimes (times : list $timeKey)
-                                (rows : list $(timeKey ++ themKey))
+                                (rows : list {Meeting : $(timeKey ++ themKey), Them : $themOffice})
                                 (thisTime : themSet)
                                 (acc : timeMap)
                         : timeMap =
@@ -579,8 +606,8 @@ functor Make(M : sig
                             case rows of
                                 [] => doTimes times' [] [] ((tm, List.rev thisTime) :: acc)
                               | row :: rows' =>
-                                if row --- themKey = tm then
-                                    doTimes times rows' ((row --- timeKey) :: thisTime) acc
+                                if row.Meeting --- themKey = tm then
+                                    doTimes times rows' ((row.Meeting --- timeKey, row.Them) :: thisTime) acc
                                 else
                                     doTimes times' rows [] ((tm, List.rev thisTime) :: acc)
                 in
@@ -589,14 +616,17 @@ functor Make(M : sig
                                          ORDER BY {{{@Sql.order_by timeKeyFl
                                            (@Sql.some_fields [#Time] [timeKey] ! ! timeKeyFl)
                                            sql_desc}}});
-                    meetings <- queryL1 (SELECT meeting.{{timeKey}}, meeting.{{themKey}}
-                                         FROM meeting
-                                         WHERE {@@Sql.easy_where [#Meeting] [usKey] [_] [_] [_] [_]
-                                           ! ! usInj' usFl us}
-                                         ORDER BY {{{@Sql.order_by (@Folder.concat ! timeKeyFl themFl)
-                                           (@Sql.some_fields [#Meeting] [timeKey ++ themKey] ! !
-                                             (@Folder.concat ! timeKeyFl themFl))
-                                           sql_desc}}});
+                    meetings <- queryL (SELECT meeting.{{timeKey}}, meeting.{{themKey}}, them.{{themOffice}}
+                                        FROM meeting
+                                          JOIN them ON {@@Sql.easy_join [#Meeting] [#Them] [themKey]
+                                                [usKey ++ timeKey] [themOffice ++ themOther] [_] [_] [_]
+                                                ! ! ! ! themFl}
+                                        WHERE {@@Sql.easy_where [#Meeting] [usKey] [_] [_] [_] [_]
+                                          ! ! usInj' usFl us}
+                                        ORDER BY {{{@Sql.order_by (@Folder.concat ! timeKeyFl themFl)
+                                          (@Sql.some_fields [#Meeting] [timeKey ++ themKey] ! !
+                                            (@Folder.concat ! timeKeyFl themFl))
+                                          sql_desc}}});
                     meetings <- List.mapM (fn (tm, ths) =>
                                               ths <- source ths;
                                               return (tm, ths))
@@ -624,7 +654,7 @@ functor Make(M : sig
                       <dyn signal={ths <- signal ths;
                                    return (case ths of
                                                [] => <xml>&mdash;</xml>
-                                             | th :: ths => <xml>{[th]}{List.mapX (fn th => <xml>, {[th]}</xml>) ths}</xml>)}/>
+                                             | (th, off) :: ths => <xml>{[th]}{[off]}{List.mapX (fn (th, off) => <xml>, {[th]}{[off]}</xml>) ths}</xml>)}/>
                                                                                                                                         </td>
                   </tr>
                 </xml>) t.Meetings}
@@ -654,11 +684,15 @@ functor Make(M : sig
                             val r = usChannel r
                         in
                             case r.Operation of
-                                Add => tweakMeeting
-                                           (fn ls => List.sort (fn x y => show x > show y) (r.Them :: ls))
-                                           r.Time t.Meetings
+                                Add =>
+                                (case r.Place of
+                                     None => error <xml>One.onload: missing place</xml>
+                                   | Some off =>
+                                     tweakMeeting
+                                         (fn ls => List.sort (fn (x, _) (y, _) => show x > show y) ((r.Them, off) :: ls))
+                                         r.Time t.Meetings)
                               | Del => tweakMeeting
-                                           (List.filter (fn th => th <> r.Them))
+                                           (List.filter (fn (th, _) => th <> r.Them))
                                            r.Time t.Meetings
                         end;
                         loop ()
@@ -702,9 +736,13 @@ functor Make(M : sig
 
     end
 
+    val show_unit : show unit = mkShow (fn () => "")
+
     structure Home = Side(struct
                               con usKey = homeKey
+                              con usOffice = homeOffice
                               con themKey = awayKey
+                              con themOffice = []
 
                               fun localized r = {Us = r.Home, Them = r.Away}
                               fun canonical r = {Home = r.Us, Away = r.Them}
@@ -726,11 +764,14 @@ functor Make(M : sig
 
                               val usFl = homeKeyFl
                               val themFl = awayKeyFl
+                              val usOfficeFl = officeFl
                           end)
 
     structure Away = Side(struct
                               con usKey = awayKey
+                              con usOffice = []
                               con themKey = homeKey
+                              con themOffice = homeOffice
 
                               fun localized r = {Us = r.Away, Them = r.Home}
                               fun canonical r = {Away = r.Us, Home = r.Them}
@@ -755,15 +796,11 @@ functor Make(M : sig
                           end)
 
     val scheduleSome =
-        debug "HERE";
-
         (* Loop randomly over all preferences, disregarding sidedness. *)
         queryI1 (SELECT preference.{{homeKey}}, preference.{{awayKey}}
                  FROM preference
                  ORDER BY RANDOM())
         (fn r =>
-            debug ("Try to schedule " ^ @show homeKeyShow (r --- awayKey) ^ " / " ^ @show awayKeyShow (r --- homeKey));
-
             (* First, check if this pair already have a scheduled meeting. *)
             areMeeting <- oneRowE1 (SELECT COUNT( * ) > 0
                                     FROM meeting
@@ -810,11 +847,9 @@ functor Make(M : sig
                 case slot of
                     None =>
                     (* No suitable openings.  Better luck next time! *)
-                    debug "No";
                     return ()
                   | Some slot =>
                     (* Found one!  Schedule it. *)
-                    debug "Yes";
                     addMeeting (r ++ slot))
 
 end
