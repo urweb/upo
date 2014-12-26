@@ -41,8 +41,5 @@ val user =
                             end
                     end
         in
-            if naughtyDebug ("s = " ^ s) = 0 then
-                return (loop s None None)
-            else
-                return (loop s None None)
+            return (loop s None None)
         end
