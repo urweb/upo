@@ -3,13 +3,15 @@ open Bootstrap3
 functor Make(M : sig
                  con const :: {Type}
                  con given :: {Type}
+                 con fixed :: {Type}
                  con chosen :: {Unit}
                  constraint const ~ given
-                 constraint (const ++ given) ~ chosen
+                 constraint (const ++ given) ~ fixed
+                 constraint (const ++ given ++ fixed) ~ chosen
 
                  val const : $const
 
-                 table tab : (const ++ given ++ mapU string chosen)
+                 table tab : (const ++ given ++ fixed ++ mapU string chosen)
 
                  val chosenLabels : $(mapU string chosen)
 
@@ -62,7 +64,8 @@ functor Make(M : sig
 
     fun choose gv ch =
         ensure gv;
-        @@Sql.easy_update [const ++ given] [chosen'] [_] ! (constInj ++ givenInj) chosenInj
+        @@Sql.easy_update'' [const ++ given] [chosen'] [_] [fixed]
+          ! ! (constInj ++ givenInj) chosenInj
           (@Folder.concat ! constFl givenFl) chosenFl'
           tab (const ++ gv) ch
 

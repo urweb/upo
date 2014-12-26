@@ -3,13 +3,15 @@
 functor Make(M : sig
                  con const :: {Type}
                  con given :: {Type}
+                 con fixed :: {Type}
                  con chosen :: {Unit}
                  constraint const ~ given
-                 constraint (const ++ given) ~ chosen
+                 constraint (const ++ given) ~ fixed
+                 constraint (const ++ given ++ fixed) ~ chosen
 
                  val const : $const
 
-                 table tab : (const ++ given ++ mapU string chosen)
+                 table tab : (const ++ given ++ fixed ++ mapU string chosen)
 
                  val chosenLabels : $(mapU string chosen)
 

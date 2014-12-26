@@ -64,6 +64,19 @@ fun easy_update' [key] [fields] [uniques] [key ~ fields]
                 tab
                 (@easy_where [#T] ! ! keyInj keyFl key))
 
+fun easy_update'' [key] [fields] [uniques] [leftAlone]
+    [key ~ fields] [key ++ fields ~ leftAlone]
+    (keyInj : $(map sql_injectable key)) (fieldsInj : $(map sql_injectable fields))
+    (keyFl : folder key) (fieldsFl : folder fields)
+    (tab : sql_table (key ++ fields ++ leftAlone) uniques)
+    (key : $key) (fields : $fields) =
+    dml (update [fields]
+                (@Top.map2 [sql_injectable] [ident] [sql_exp _ _ _]
+                  (fn [t] => @sql_inject)
+                  fieldsFl fieldsInj fields)
+                tab
+                (@easy_where [#T] ! ! keyInj keyFl key))
+
 fun easy_join [tab1 :: Name] [tab2 :: Name] [using] [notUsing1] [notUsing2] [otherTables] [agg] [exps]
               [[tab1] ~ [tab2]] [using ~ notUsing1] [using ~ notUsing2] [[tab1, tab2] ~ otherTables]
               (fl : folder using) =

@@ -40,11 +40,10 @@ fun csvFold [fs] [acc] (f : $fs -> acc -> acc)
     end
 
 
-fun importTable [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs)
-                (tab : sql_table fs cs) (input : string) =
-    @csvFold (fn r acc => acc; @Sql.easy_insert injs fl tab r) injs reads fl input (return ())
-
 fun parse [fs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs)
           (input : string) =
     @csvFold (fn r acc => r :: acc) injs reads fl input []
 
+fun importTable [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs)
+                (tab : sql_table fs cs) (input : string) =
+    List.app (@Sql.easy_insert injs fl tab) (@parse injs reads fl input)
