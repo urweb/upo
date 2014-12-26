@@ -80,12 +80,10 @@ functor Make(M : sig
 
     type home_action = { Operation : operation, Away : $awayKey, Time : $timeKey, Place : option unit }
     table homeListeners : ([Channel = channel home_action] ++ homeKey)
-      PRIMARY KEY {{@primary_key [homeKey1] [homeKeyR] ! ! homeInj}},
       {{one_constraint [#Home] (@Sql.easy_foreign ! ! ! ! ! ! homeKeyFl home)}}
 
     type away_action = { Operation : operation, Home : $homeKey, Time : $timeKey, Place : option $homeOffice }
     table awayListeners : ([Channel = channel away_action] ++ awayKey)
-      PRIMARY KEY {{@primary_key [awayKey1] [awayKeyR] ! ! awayInj}},
       {{one_constraint [#Away] (@Sql.easy_foreign ! ! ! ! ! ! awayKeyFl away)}}
 
     table preference : ([ByHome = bool] ++ homeKey ++ awayKey)
