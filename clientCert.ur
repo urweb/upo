@@ -4,6 +4,13 @@ val user =
         None => error <xml>No client certificate information found</xml>
       | Some s =>
         let
+            val delimiter =
+                case String.sindex {Haystack = s, Needle = ",emailAddress"} of
+                    Some _ => #","
+                  | None => case String.sindex {Haystack = s, Needle = ",CN"} of
+                                Some _ => #","
+                              | None => #"/"
+
             fun loop s email cname =
                 case s of
                     "" =>
@@ -14,7 +21,7 @@ val user =
                   | _ =>
                     let
                         val (this, rest) =
-                            case String.split s #"/" of
+                            case String.split s delimiter of
                                 None => (s, "")
                               | Some p => p
                     in
@@ -34,5 +41,8 @@ val user =
                             end
                     end
         in
-            return (loop s None None)
+            if naughtyDebug ("s = " ^ s) = 0 then
+                return (loop s None None)
+            else
+                return (loop s None None)
         end
