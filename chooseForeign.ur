@@ -11,17 +11,22 @@ functor Make(M : sig
 
                  table choices : (const ++ given ++ chosen)
 
+                 con optionsConst :: {Type}
                  con others :: {Type}
                  constraint others ~ chosen
-                 table options : (chosen ++ others)
+                 constraint (others ++ chosen) ~ optionsConst
+                 table options : (optionsConst ++ chosen ++ others)
+                 val optionsConst : $optionsConst
 
                  val constFl : folder const
                  val givenFl : folder given
                  val chosenFl : folder chosen
+                 val optionsConstFl : folder optionsConst
 
                  val constInj : $(map sql_injectable const)
                  val givenInj : $(map sql_injectable given)
                  val chosenInj : $(map sql_injectable chosen)
+                 val optionsConstInj : $(map sql_injectable optionsConst)
 
                  val chosenShow : show $chosen
                  val chosenRead : read $chosen
@@ -31,6 +36,7 @@ functor Make(M : sig
 
                  val buttonLabel : string
 
+                 (* Authentication *)
                  val amGiven : transaction (option $given)
              end) = struct
 
@@ -42,6 +48,8 @@ functor Make(M : sig
     fun create gv =
         opts <- queryL1 (SELECT options.{{chosen}}
                          FROM options
+                         WHERE {@@Sql.easy_where [#Options] [optionsConst] [_] [_] [_] [_]
+                              ! ! optionsConstInj optionsConstFl optionsConst}
                          ORDER BY {{{@Sql.order_by chosenFl
                             (@Sql.some_fields [#Options] [chosen] ! ! chosenFl)
                            sql_desc}}});

@@ -60,6 +60,8 @@ structure S = MeetingGrid.Make(struct
                                    val home = h
                                    val away = a
                                    val time = time
+
+                                   val const = {}
                                end)
 
 fun page f = Theme.page f "MG" <xml/>

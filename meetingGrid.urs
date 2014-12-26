@@ -3,18 +3,20 @@
 
 functor Make(M : sig
                  con homeKey1 :: Name
-                 con homeKeyT
+                 type homeKeyT
                  con homeKeyR :: {Type}
                  constraint [homeKey1] ~ homeKeyR
                  con homeKey = [homeKey1 = homeKeyT] ++ homeKeyR
                  con homeOffice :: {Type}
+                 con homeConst :: {Type}
                  con homeRest :: {Type}
                  constraint homeKey ~ homeRest
                  constraint (homeKey ++ homeRest) ~ homeOffice
+                 constraint (homeKey ++ homeRest ++ homeOffice) ~ homeConst
                  con homeKeyName :: Name
                  con homeOtherConstraints :: {{Unit}}
                  constraint [homeKeyName] ~ homeOtherConstraints
-                 val home : sql_table (homeKey ++ homeOffice ++ homeRest) ([homeKeyName = map (fn _ => ()) homeKey] ++ homeOtherConstraints)
+                 val home : sql_table (homeKey ++ homeOffice ++ homeConst ++ homeRest) ([homeKeyName = map (fn _ => ()) homeKey] ++ homeOtherConstraints)
                  val homeInj : $(map sql_injectable_prim homeKey)
                  val homeKeyFl : folder homeKey
                  val homeKeyShow : show $homeKey
@@ -22,9 +24,12 @@ functor Make(M : sig
                  val homeKeyEq : eq $homeKey
                  val officeFl : folder homeOffice
                  val officeShow : show $homeOffice
+                 val constFl : folder homeConst
+                 val constInj : $(map sql_injectable homeConst)
+                 val const : $homeConst
 
                  con awayKey1 :: Name
-                 con awayKeyT
+                 type awayKeyT
                  con awayKeyR :: {Type}
                  constraint [awayKey1] ~ awayKeyR
                  con awayKey = [awayKey1 = awayKeyT] ++ awayKeyR
@@ -41,7 +46,7 @@ functor Make(M : sig
                  val awayKeyEq : eq $awayKey
 
                  con timeKey1 :: Name
-                 con timeKeyT
+                 type timeKeyT
                  con timeKeyR :: {Type}
                  constraint [timeKey1] ~ timeKeyR
                  con timeKey = [timeKey1 = timeKeyT] ++ timeKeyR
@@ -62,7 +67,6 @@ functor Make(M : sig
                  constraint homeOffice ~ timeKey
                  constraint (homeKey ++ awayKey) ~ [ByHome, Channel]
 
-                 (* Authentication hooks *)
                  val amHome : transaction (option $homeKey)
                  val amAway : transaction (option $awayKey)
              end) : sig
