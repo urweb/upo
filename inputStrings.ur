@@ -113,7 +113,7 @@ functor Make(M : sig
                                    (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] lab (id, src) => <xml>
                                      <div class="form-group">
                                        <label class="control-label" for={id}>{[lab]}</label>
-                                       <div id={id} class="form-control">
+                                       <div id={id}>
                                          <dyn signal={src <- signal src; return <xml>{[src]}</xml>}/>
                                        </div>
                                      </div>
