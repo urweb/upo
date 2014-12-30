@@ -21,7 +21,7 @@ functor Make(M : sig
 
                  val constInj : $(map sql_injectable const)
                  val givenInj : $(map sql_injectable given)
-                 val givenEq : eq $given
+                 val givenEq : $(map eq given)
 
                  val textLabel : string
 
@@ -30,6 +30,8 @@ functor Make(M : sig
              end) = struct
 
     open M
+
+    val givenEq : eq $given = @Record.equal givenEq givenFl
 
     type input = _
     type a = _

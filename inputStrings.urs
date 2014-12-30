@@ -21,7 +21,7 @@ functor Make(M : sig
 
                  val constInj : $(map sql_injectable const)
                  val givenInj : $(map sql_injectable given)
-                 val givenEq : eq $given
+                 val givenEq : $(map eq given)
 
                  val textLabel : string
 

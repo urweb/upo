@@ -3,14 +3,12 @@ table h : { Title : string, Bogosity : int, Office : string }
 
 val show_h : show {Title : string} = mkShow (fn r => r.Title)
 val read_h : read {Title : string} = mkRead' (fn s => Some {Title = s}) "h"
-val eq_h : eq {Title : string} = Record.equal
 
 table a : { Company : string, EmployeeId : int, Awesome : bool }
   PRIMARY KEY (Company, EmployeeId)
 
 val show_a : show {Company : string, EmployeeId : int} =
     mkShow (fn r => r.Company ^ " #" ^ show r.EmployeeId)
-val eq_a : eq {Company : string, EmployeeId : int} = Record.equal
 
 table event : { Event : string, Description : string }
   PRIMARY KEY Event
@@ -27,7 +25,6 @@ val read_a : read {Company : string, EmployeeId : int} =
                                          Some {Company = String.substring s1 {Start = 0, Len = String.length s1 - 1},
                                                EmployeeId = n})
     "a"
-val eq_event : eq {Event : string} = Record.equal
 
 cookie homeC : { Title : string }
 cookie awayC : { Company : string, EmployeeId : int }
@@ -52,8 +49,6 @@ structure S = Rsvp2.Make(struct
                              val amAway = getCookie awayC
                          end)
 
-fun page f = Theme.page f "RSV" <xml/>
-
 fun home s =
     case read s of
         None => error <xml>Bad self-description</xml>
@@ -61,13 +56,8 @@ fun home s =
         setCookie homeC {Value = ho,
                          Secure = False,
                          Expires = None};
-        oa <- S.Home.create ho;
-        page
-            (S.Home.onload oa)
-            ("Your Options (" ^ s ^ ")")
-            <xml>
-              {S.Home.render oa}
-            </xml>
+        Ui.simple ("Your Options (" ^ s ^ ")")
+                  (S.Home.ui ho)
 
 fun away s =
     case read s of
@@ -76,13 +66,8 @@ fun away s =
         setCookie awayC {Value = aw,
                          Secure = False,
                          Expires = None};
-        oa <- S.Away.create aw;
-        page
-            (return ())
-            ("Your Options (" ^ s ^ ")")
-            <xml>
-              {S.Away.render oa}
-            </xml>
+        Ui.simple ("Your Options (" ^ s ^ ")")
+                  (S.Away.ui aw)
 
 
 task initialize = fn () =>

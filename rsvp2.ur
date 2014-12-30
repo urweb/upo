@@ -18,7 +18,7 @@ functor Make(M : sig
                  val homeInj : $(map sql_injectable_prim homeKey)
                  val homeKeyFl : folder homeKey
                  val homeKeyShow : show $homeKey
-                 val homeKeyEq : eq $homeKey
+                 val homeKeyEq : $(map eq homeKey)
                  val homeDataFl : folder homeData
                  val homeDataShow : $(map show homeData)
                  val homeDataLabels : $(map (fn _ => string) homeData)
@@ -40,7 +40,7 @@ functor Make(M : sig
                  val awayInj : $(map sql_injectable_prim awayKey)
                  val awayKeyFl : folder awayKey
                  val awayKeyShow : show $awayKey
-                 val awayKeyEq : eq $awayKey
+                 val awayKeyEq : $(map eq awayKey)
                  val awayDataFl : folder awayData
                  val awayDataShow : $(map show awayData)
                  val awayDataLabels : $(map (fn _ => string) awayData)
@@ -62,7 +62,7 @@ functor Make(M : sig
                  val eventKeyFl : folder eventKey
                  val eventKeyShow : show $eventKey
                  val eventDataShow : show $eventData
-                 val eventKeyEq : eq $eventKey
+                 val eventKeyEq : $(map eq eventKey)
 
                  constraint homeKey ~ eventKey
                  constraint awayKey ~ eventKey
@@ -72,6 +72,10 @@ functor Make(M : sig
              end) = struct
 
     open M
+
+    val homeKeyEq : eq $homeKey = @@Record.equal [homeKey] homeKeyEq homeKeyFl
+    val awayKeyEq : eq $awayKey = @@Record.equal [awayKey] awayKeyEq awayKeyFl
+    val eventKeyEq : eq $eventKey = @@Record.equal [eventKey] eventKeyEq eventKeyFl
 
     table homeRsvp : (homeKey ++ eventKey)
       PRIMARY KEY {{@primary_key [homeKey1] [homeKeyR ++ eventKey] ! !

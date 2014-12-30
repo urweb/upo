@@ -3,10 +3,8 @@ table h : { Title : string, Bogosity : int, Office : string }
 
 val show_h : show {Title : string} = mkShow (fn r => r.Title)
 val read_h : read {Title : string} = mkRead' (fn s => Some {Title = s}) "h"
-val eq_h : eq {Title : string} = Record.equal
 
 val show_office : show {Office : string} = mkShow (fn r => " (" ^ r.Office ^ ")")
-val eq_office : eq {Office : string} = Record.equal
 
 table a : { Company : string, EmployeeId : int, Something : string, SomethingElse : string }
   PRIMARY KEY (Company, EmployeeId)
@@ -23,7 +21,6 @@ val read_a : read {Company : string, EmployeeId : int} =
                                          Some {Company = String.substring s1 {Start = 0, Len = String.length s1 - 1},
                                                EmployeeId = n})
     "a"
-val eq_a : eq {Company : string, EmployeeId : int} = Record.equal
 
 table time : { Hour : int, Minute : int, Description : string }
   PRIMARY KEY (Hour, Minute)
@@ -39,7 +36,6 @@ fun pad s =
     end
 
 val show_time : show {Hour : int, Minute : int} = mkShow (fn r => show r.Hour ^ ":" ^ pad r.Minute)
-val eq_time : eq {Hour : int, Minute : int} = Record.equal
 val read_time : read {Hour : int, Minute : int} = mkRead' (fn s => case String.split s #":" of
                                                                        None => None
                                                                      | Some (hr, mn) =>
@@ -64,29 +60,17 @@ structure S = MeetingGrid.Make(struct
                                    val const = {}
                                end)
 
-fun page f = Theme.page f "MG" <xml/>
+val main = Ui.simple "MG"
+                     (Ui.seq
+                          (S.Home.FullGrid.ui,
+                           Ui.const <xml>
+                             <hr/>
 
-val main =
-    fg <- S.Home.FullGrid.create;
-    page
-        (S.Home.FullGrid.onload fg)
-        "MG"
-        <xml>
-          {S.Home.FullGrid.render fg}
+                             <button value="Schedule" onclick={fn _ => rpc S.scheduleSome}/>
+                           </xml>))
 
-          <hr/>
-
-          <button value="Schedule" onclick={fn _ => rpc S.scheduleSome}/>
-        </xml>
-
-val mainRev =
-    fg <- S.Away.FullGrid.create;
-    page
-        (S.Away.FullGrid.onload fg)
-        "MG"
-        <xml>
-          {S.Away.FullGrid.render fg}
-        </xml>
+val mainRev = Ui.simple "MG"
+                        S.Away.FullGrid.ui
 
 fun away s =
     case read s of
@@ -95,13 +79,8 @@ fun away s =
         setCookie awayC {Value = aw,
                          Secure = False,
                          Expires = None};
-        oa <- S.Away.One.create aw;
-        page
-            (S.Away.One.onload oa)
-            ("Your Schedule (" ^ s ^ ")")
-            <xml>
-              {S.Away.One.render oa}
-            </xml>
+        Ui.simple ("Your Schedule (" ^ s ^ ")")
+                  (S.Away.One.ui aw)
 
 fun home s =
     case read s of
@@ -110,68 +89,42 @@ fun home s =
         setCookie homeC {Value = aw,
                          Secure = False,
                          Expires = None};
-        oa <- S.Home.One.create aw;
-        page
-            (S.Home.One.onload oa)
-            ("Your Schedule (" ^ s ^ ")")
-            <xml>
-              {S.Home.One.render oa}
-            </xml>
+        Ui.simple ("Your Schedule (" ^ s ^ ")")
+                  (S.Home.One.ui aw)
 
 fun homepref s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some ho =>
-        hp <- S.Home.Prefs.create ho;
-        page
-            (return ())
-            ("Your Preferences (" ^ s ^ ")")
-            <xml>
-              {S.Home.Prefs.render hp}
-            </xml>
+        Ui.simple ("Your Preferences (" ^ s ^ ")")
+                  (S.Home.Prefs.ui ho)
 
 fun awaypref s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some aw =>
-        ap <- S.Away.Prefs.create aw;
-        page
-            (return ())
-            ("Your Preferences (" ^ s ^ ")")
-            <xml>
-              {S.Away.Prefs.render ap}
-            </xml>
+        Ui.simple ("Your Preferences (" ^ s ^ ")")
+                  (S.Away.Prefs.ui aw)
 
 fun homeavail s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some ho =>
-        hp <- S.Home.Unavail.create ho;
-        page
-            (return ())
-            ("Your Time Conflicts (" ^ s ^ ")")
-            <xml>
-              {S.Home.Unavail.render hp}
-            </xml>
+        Ui.simple ("Your Time Conflicts (" ^ s ^ ")")
+                  (S.Home.Unavail.ui ho)
 
 fun awayavail s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some aw =>
-        ap <- S.Away.Unavail.create aw;
-        page
-            (return ())
-            ("Your Time Conflicts (" ^ s ^ ")")
-            <xml>
-              {S.Away.Unavail.render ap}
-            </xml>
+        Ui.simple ("Your Time Conflicts (" ^ s ^ ")")
+                  (S.Away.Unavail.ui aw)
 
 structure AP = InputStrings.Make(struct
                                      val const = {}
                                      val tab = a
                                      val chosenLabels = {Something = "Something",
                                                          SomethingElse = "Something Else"}
-                                     val givenEq = Record.equal
                                      val textLabel = "Your Data"
                                      val amGiven = getCookie awayC
                                 end)
@@ -180,13 +133,8 @@ fun awayprof s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some aw =>
-        ap <- AP.create aw;
-        page
-            (return ())
-            ("Your Profile (" ^ s ^ ")")
-            <xml>
-              {AP.render ap}
-            </xml>
+        Ui.simple ("Your Profile (" ^ s ^ ")")
+                  (AP.ui aw)
 
 structure AG = EditGrid.Make(struct
                                  con key = [Company = _, EmployeeId = _]
@@ -199,11 +147,8 @@ structure AG = EditGrid.Make(struct
                              end)
 
 val awaygrid =
-    ap <- AG.create;
-    page
-        (return ())
-        ("All Aways")
-        (AG.render ap)
+    Ui.simple "All Aways"
+              AG.ui
 
 
 task initialize = fn () =>
@@ -234,13 +179,12 @@ open Bootstrap3
 
 val admin =
     input <- source "";
-    page (return ())
-               "Admin"
-               <xml>
-                 <ctextarea class="form-control" source={input}/>
-                 <button class="btn btn-primary"
-                         value="Import Homes"
-                         onclick={fn _ =>
-                                     input <- get input;
-                                     rpc (importHomes input)}/>
-                 </xml>
+    Ui.simple "Admin"
+              (Ui.const <xml>
+                <ctextarea class="form-control" source={input}/>
+                <button class="btn btn-primary"
+                value="Import Homes"
+                onclick={fn _ =>
+                            input <- get input;
+                            rpc (importHomes input)}/>
+               </xml>)

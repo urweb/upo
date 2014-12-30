@@ -21,7 +21,7 @@ functor Make(M : sig
                  val homeKeyFl : folder homeKey
                  val homeKeyShow : show $homeKey
                  val homeKeyRead : read $homeKey
-                 val homeKeyEq : eq $homeKey
+                 val homeKeyEq : $(map eq homeKey)
                  val officeFl : folder homeOffice
                  val officeShow : show $homeOffice
                  val constFl : folder homeConst
@@ -43,7 +43,7 @@ functor Make(M : sig
                  val awayKeyFl : folder awayKey
                  val awayKeyShow : show $awayKey
                  val awayKeyRead : read $awayKey
-                 val awayKeyEq : eq $awayKey
+                 val awayKeyEq : $(map eq awayKey)
 
                  con timeKey1 :: Name
                  type timeKeyT
@@ -60,7 +60,7 @@ functor Make(M : sig
                  val timeKeyFl : folder timeKey
                  val timeKeyShow : show $timeKey
                  val timeKeyRead : read $timeKey
-                 val timeKeyEq : eq $timeKey
+                 val timeKeyEq : $(map eq timeKey)
 
                  constraint homeKey ~ awayKey
                  constraint (homeKey ++ awayKey) ~ timeKey
