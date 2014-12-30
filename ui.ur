@@ -31,11 +31,32 @@ fun seq [ts] (fl : folder ts) (ts : $(map t ts)) = {
                                               r.Render ctx) fl ts
 }
 
+datatype moded a1 a2 = First of a1 | Second of a2
+fun moded [a1] [a2] (t1 : t a1) (t2 : t a2) (which : bool) = {
+    Create = if which then
+                 x <- t1.Create;
+                 return (First x)
+             else
+                 x <- t2.Create;
+                 return (Second x),
+    Onload = fn st => case st of
+                          First x => t1.Onload x
+                        | Second x => t2.Onload x,
+    Render = fn ctx st => case st of
+                              First x => t1.Render ctx x
+                            | Second x => t2.Render ctx x
+}
+
 type const = unit
 fun const bod = {
     Create = return (),
     Onload = fn () => return (),
     Render = fn _ () => bod
+}
+fun constM bod = {
+    Create = return (),
+    Onload = fn () => return (),
+    Render = fn ctx () => bod ctx
 }
 
 fun simple [a] titl (t : t a) =
@@ -50,7 +71,7 @@ fun simple [a] titl (t : t a) =
         <link rel="stylesheet" href="/style.css"/>
       </head>
 
-      <body style="padding-top: 50px" onload={t.Onload state}>
+      <body onload={t.Onload state}>
         <div class="modal" id={mid}>
           <dyn signal={signal ms}/>
         </div>
@@ -78,12 +99,12 @@ fun simple [a] titl (t : t a) =
       </body>
     </xml>
 
-fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => string * t a) ts)) =
+fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => option string * t a) ts)) =
     nid <- fresh;
     mid <- fresh;
     ms <- source <xml/>;
 
-    state <- @Monad.mapR _ [fn a => string * t a] [ident]
+    state <- @Monad.mapR _ [fn a => option string * t a] [ident]
               (fn [nm ::_] [t ::_] (_, r) => r.Create) fl ts;
 
     curTab <- (case @fold [fn r => option (variant (map (fn _ => unit) r))]
@@ -99,9 +120,9 @@ fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => string * t a) ts)) =
         <link rel="stylesheet" href="/style.css"/>
       </head>
 
-      <body style="padding-top: 50px" onload={@Monad.appR2 _ [fn a => string * t a] [ident]
-                                               (fn [nm ::_] [t ::_] (_, r) => r.Onload)
-                                               fl ts state}>
+      <body onload={@Monad.appR2 _ [fn a => option string * t a] [ident]
+                     (fn [nm ::_] [t ::_] (_, r) => r.Onload)
+                     fl ts state}>
         <div class="modal" id={mid}>
           <dyn signal={signal ms}/>
         </div>
@@ -119,18 +140,20 @@ fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => string * t a) ts)) =
             </div>
             <div id={nid} class="collapse navbar-collapse">
               <ul class="bs3-nav navbar-nav">
-                {@foldR2 [fn a => string * t a] [ident]
+                {@foldR2 [fn a => option string * t a] [ident]
                   [fn r => rest :: {Type} -> [r ~ rest] =>
                       folder (rest ++ r)
                       -> source (variant (map (fn _ => unit) (rest ++ r)))
                       -> xbody]
-                 (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (labl, r) st
+                 (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (labl : option string, r) st
                               (acc : rest :: {Type} -> [r ~ rest] =>
                                folder (rest ++ r)
                                -> source (variant (map (fn _ => unit) (rest ++ r)))
                                -> xbody) [rest ::_]
                               [([nm = t] ++ r) ~ rest] (fl : folder ([nm = t] ++ r ++ rest))
-                              curTab => <xml>
+                              curTab => case labl of
+                                            None => @acc [[nm = t] ++ rest] ! fl curTab
+                                          | Some labl =><xml>
                                 <li dynClass={ct <- signal curTab;
                                               return (@@match [[nm = unit]
                                                                    ++ map (fn _ => unit)
@@ -152,7 +175,7 @@ fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => string * t a) ts)) =
         <div class="container-fluid">
           <dyn signal={ct <- signal curTab;
                        return (@@match [map (fn _ => unit) ts] [xbody] ct
-                                 (@map2 [fn a => string * t a] [ident]
+                                 (@map2 [fn a => option string * t a] [ident]
                                    [fn _ => unit -> xbody]
                                    (fn [t] (_, t) st () =>
                                        t.Render {ModalId = mid, ModalSpot = ms} st)
@@ -202,3 +225,4 @@ val h1 bod = const <xml><h1>{bod}</h1></xml>
 val h2 bod = const <xml><h2>{bod}</h2></xml>
 val h3 bod = const <xml><h3>{bod}</h3></xml>
 val h4 bod = const <xml><h4>{bod}</h4></xml>
+val hr = const <xml><hr/></xml>

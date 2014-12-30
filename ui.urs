@@ -27,9 +27,15 @@ end
 con seq :: {Type} -> Type
 val seq : ts ::: {Type} -> folder ts -> $(map t ts) -> t (seq ts)
 
+(* A widget that can be in one of two modes, indicated by a [bool] *)
+con moded :: Type -> Type -> Type
+val moded : a1 ::: Type -> a2 ::: Type -> t a1 -> t a2
+            -> bool (* use first one? *) -> t (moded a1 a2)
+
 (* Boring "static" units *)
 type const
 val const : xbody -> t const
+val constM : (context -> xbody) -> t const
 
 (* Specialized versions that wrap with particular tags *)
 val p : xbody -> t const
@@ -37,6 +43,7 @@ val h1 : xbody -> t const
 val h2 : xbody -> t const
 val h3 : xbody -> t const
 val h4 : xbody -> t const
+val hr : t const
 
 (* Render a page with just one simple UI worth of content. *)
 val simple : a ::: Type
@@ -47,9 +54,10 @@ val simple : a ::: Type
 (* Render a page with several named tabs, each with its own UI.
  * Switch between tabs using the top navbar. *)
 val tabbed : ts ::: {Type} -> folder ts
-             -> string                              (* title *)
-             -> $(map (fn a => string * t a) ts)    (* content *)
+             -> string                                     (* title *)
+             -> $(map (fn a => option string * t a) ts)    (* content *)
              -> transaction page
+(* Tabs labeled with [None] are hidden in this rendering. *)
 
 (* Create an HTML button that opens a modal dialog with the content
  * that the callback function returns. *)
