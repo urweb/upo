@@ -14,7 +14,7 @@ record
 sql
 csv
 ui
-#inputStrings
+inputStrings
 #editGrid
 #chooseForeign
 #meetingGrid

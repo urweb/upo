@@ -31,7 +31,8 @@ functor Make(M : sig
 
     open M
 
-    type t = _
+    type input = _
+    type a = _
 
     con chosen' = mapU string chosen
     val chosenFl' = @Folder.mp chosenFl
@@ -121,5 +122,9 @@ functor Make(M : sig
                                    chosenFl chosenLabels t.Values}
                                </div></xml>)}/>
     </xml>
+
+    fun ui x = {Create = create x,
+                Onload = fn _ => return (),
+                Render = fn _ => render}
 
 end

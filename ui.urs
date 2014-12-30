@@ -9,6 +9,18 @@ type t a = {
      Render : context -> a -> xbody
 }
 
+(* Some signatures for packaging units with their abstract state types *)
+signature S0 = sig
+    type a
+    val ui : t a
+end
+
+signature S = sig
+    type input
+    type a
+    val ui : input -> t a
+end
+
 (* Compose some units in sequence
  * (whether that means horizontally or vertically on the page depends on the
  * surrounding DOM context!). *)

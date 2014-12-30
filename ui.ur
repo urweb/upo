@@ -11,6 +11,17 @@ type t a = {
      Render : context -> a -> xbody
 }
 
+signature S0 = sig
+    type a
+    val ui : t a
+end
+
+signature S = sig
+    type input
+    type a
+    val ui : input -> t a
+end
+
 type seq ts = $ts
 fun seq [ts] (fl : folder ts) (ts : $(map t ts)) = {
     Create = @Monad.mapR _ [t] [ident] (fn [nm ::_] [t ::_] r => r.Create) fl ts,
