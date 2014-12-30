@@ -54,6 +54,7 @@ val tabbed : ts ::: {Type} -> folder ts
 (* Create an HTML button that opens a modal dialog with the content
  * that the callback function returns. *)
 val modalButton : context
+                  -> css_class         (* additional styling *)
                   -> xml [Body] [] []  (* text label *)
                   -> transaction xbody (* content of modal dialog *)
                   -> xbody

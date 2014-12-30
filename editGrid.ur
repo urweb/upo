@@ -26,7 +26,7 @@ functor Make(M : sig
 
     open M
 
-    type t = _
+    type a = _
 
     con all = key ++ rest
     val allFl = @Folder.concat ! keyFl restFl
@@ -64,10 +64,7 @@ functor Make(M : sig
                     vs <- acc;
                     return ({nm = v} ++ vs))
                 (return {}) allFl;
-        mid <- fresh;
-        modalSpot <- source <xml/>;
-        return {Rows = vs, New = new,
-                ModalId = mid, ModalSpot = modalSpot}
+        return {Rows = vs, New = new}
 
     val ensure =
         b <- authorized;
@@ -93,11 +90,7 @@ functor Make(M : sig
         ensure;
         @@Sql.easy_insert [all] [_] allInj allFl tab row
 
-    fun render t = <xml>
-      <div class="modal" id={t.ModalId}>
-        <dyn signal={signal t.ModalSpot}/>
-      </div>
-
+    fun render ctx t = <xml>
       <button class="btn btn-primary"
               value="Save"
               onclick={fn _ =>
@@ -126,16 +119,13 @@ functor Make(M : sig
                      return (List.mapX (fn r => <xml>
                        <tr>
                          <td>
-                           <button class="btn glyphicon glyphicon-remove"
-                                   data-toggle="modal"
-                                   data-target={"#" ^ show t.ModalId}
-                                   onclick={fn _ =>
-                                               set t.ModalSpot (Theme.makeModal
-                                                                    (rpc (del r.OldKey);
-                                                                     set t.Rows (List.filter (fn r' => r'.OldKey <> r.OldKey) vs))
-                                                                    <xml>Are you sure you want to delete this row?</xml>
-                                                                    <xml/>
-                                                                    "Yes!")}/>
+                           {Ui.modalButton ctx (CLASS "btn glyphicon glyphicon-remove") <xml/>
+                                           (return (Ui.modal
+                                                        (rpc (del r.OldKey);
+                                                         set t.Rows (List.filter (fn r' => r'.OldKey <> r.OldKey) vs))
+                                                        <xml>Are you sure you want to delete this row?</xml>
+                                                        <xml/>
+                                                        <xml>Yes!</xml>))}
                          </td>
 
                          {@mapX [fn _ => source string] [tr]
@@ -174,4 +164,8 @@ functor Make(M : sig
         </tr>
       </table>
     </xml>
+
+    val ui = {Create = create,
+              Render = render,
+              Onload = fn _ => return ()}
 end

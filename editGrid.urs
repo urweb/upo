@@ -22,8 +22,4 @@ functor Make(M : sig
                  val labels : $(map (fn _ => string) (key ++ rest))
 
                  val authorized : transaction bool
-             end) : sig
-    type t
-    val create : transaction t
-    val render : t -> xbody
-end
+             end) : Ui.S0

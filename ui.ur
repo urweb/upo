@@ -161,8 +161,8 @@ fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => string * t a) ts)) =
       </body>
     </xml>
 
-fun modalButton ctx bod onclick = <xml>
-  <button class="close"
+fun modalButton ctx cls bod onclick = <xml>
+  <button class={cls}
           data-toggle="modal"
           data-target={"#" ^ show ctx.ModalId}
           onclick={fn _ =>

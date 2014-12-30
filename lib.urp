@@ -15,7 +15,7 @@ sql
 csv
 ui
 inputStrings
-#editGrid
+editGrid
 #chooseForeign
 #meetingGrid
 #rsvp2
