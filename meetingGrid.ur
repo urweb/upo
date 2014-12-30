@@ -268,7 +268,7 @@ functor Make(M : sig
             type themSet = list $themKey
             type timeMap = list ($timeKey * bool (* available? *) * themSet)
             type usMap = list ($usKey * $usOffice * timeMap)
-            type t = _
+            type a = _
 
             val create =
                 allTimes <- queryL1 (SELECT time.{{timeKey}}
@@ -398,15 +398,12 @@ functor Make(M : sig
                                                    unavails
                                                    []
                                                    []);
-                    mid <- fresh;
-                    modalSpot <- source <xml/>;
                     chan <- channel;
                     dml (INSERT INTO globalListeners (Channel) VALUES ({[chan]}));
                     mf <- source None;
                     mt <- source None;
                     return {Thems = thems, Times = allTimes, Meetings = meetings,
-                            ModalId = mid, ModalSpot = modalSpot, Channel = chan,
-                            MovingFrom = mf, MovingTo = mt}
+                            Channel = chan, MovingFrom = mf, MovingTo = mt}
                 end
 
             val ensureUser =
@@ -453,11 +450,7 @@ functor Make(M : sig
                     delMeeting (r.Them ++ r.OldUs ++ r.OldTime);
                     addMeeting (r.Them ++ r.NewUs ++ r.NewTime)
 
-            fun render t = <xml>
-              <div class="modal" id={t.ModalId}>
-                <dyn signal={signal t.ModalSpot}/>
-              </div>
-
+            fun render ctx t = <xml>
               <table class="bs3-table table-striped">
                 <tr>
                   <th/>
@@ -530,41 +523,35 @@ functor Make(M : sig
                                                                                          Them = th,
                                                                                          Time = tm})}>
                                                            {[th]}
-                                                           <button class="close"
-                                                                   data-toggle="modal"
-                                                                   data-target={"#" ^ show t.ModalId}
-                                                                   onclick={fn _ =>
-                                                                               set deleting True;
-                                                                               set t.ModalSpot (Theme.makeModal
+                                                           {Ui.modalButton ctx (CLASS "close")
+                                                                           <xml>&times;</xml>
+                                                                           (set deleting True;
+                                                                            return (Ui.modal
                                                                                  (rpc (unschedule (th ++ us ++ tm)))
                                                                                  <xml>Are you sure you want to delete the {[tm]} meeting between {[us]} and {[th]}?</xml>
                                                                                  <xml/>
-                                                                                 "Yes!")}>
-                                                             &times;
-                                                           </button>
+                                                                                 <xml>Yes!</xml>))}
                                                          </div>
                                                        </xml>) thsv}
 
-                                                       <button class="btn btn-default btn-xs"
-                                                               value="+"
-                                                               data-toggle="modal"
-                                                               data-target={"#" ^ show t.ModalId}
-                                                               onclick={fn _ => set t.ModalSpot (Theme.makeModal
-                                                                                  (sel <- get selected;
-                                                                                   th <- return (readError sel : $themKey);
-                                                                                   rpc (schedule (th ++ us ++ tm)))
-                                                                                  <xml>Adding meeting for {[us]} at {[tm]}</xml>
-                                                                                  <xml>
-                                                                                    <cselect class="form-control"
-                                                                                             source={selected}>
-                                                                                      {List.mapX (fn th =>
-                                                                                                     if List.mem th thsv then
-                                                                                                         <xml/>
-                                                                                                     else
-                                                                                                         <xml><coption>{[th]}</coption></xml>) t.Thems}
-                                                                                    </cselect>
-                                                                                  </xml>
-                                                                                  "Add Meeting")}/>
+                                                       {Ui.modalButton ctx (CLASS "btn btn-default btn-xs")
+                                                               <xml>+</xml>
+                                                               (return (Ui.modal
+                                                                            (sel <- get selected;
+                                                                             th <- return (readError sel : $themKey);
+                                                                             rpc (schedule (th ++ us ++ tm)))
+                                                                            <xml>Adding meeting for {[us]} at {[tm]}</xml>
+                                                                            <xml>
+                                                                              <cselect class="form-control"
+                                                                                       source={selected}>
+                                                                                {List.mapX (fn th =>
+                                                                                               if List.mem th thsv then
+                                                                                                   <xml/>
+                                                                                               else
+                                                                                                   <xml><coption>{[th]}</coption></xml>) t.Thems}
+                                                                              </cselect>
+                                                                            </xml>
+                                                                            <xml>Add Meeting</xml>))}
                                                      </xml>}/>
                                       </xml>}/>
                       </td>
@@ -621,12 +608,19 @@ functor Make(M : sig
                     spawn (loop ())
                 end
 
+            val ui = {
+                Create = create,
+                Onload = onload,
+                Render = render
+            }
+
         end
 
         structure One = struct
             type themSet = list ($themKey * $themOffice)
             type timeMap = list ($timeKey * themSet)
-            type t = _
+            type input = $usKey
+            type a = _
 
             fun create us =
                 let
@@ -734,6 +728,12 @@ functor Make(M : sig
                 in
                     spawn (loop ())
                 end
+
+            fun ui x = {
+                Create = create x,
+                Onload = onload,
+                Render = fn _ => render
+            }
 
         end
 

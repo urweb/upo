@@ -17,6 +17,6 @@ ui
 inputStrings
 editGrid
 chooseForeign
-#meetingGrid
+meetingGrid
 #rsvp2
 #clientCert

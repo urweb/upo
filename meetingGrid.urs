@@ -75,66 +75,30 @@ functor Make(M : sig
 
     structure Home : sig
         (* Display a full, editable grid of all meetings (rows: homes, columns: times). *)
-        structure FullGrid : sig
-            type t
-            val create : transaction t
-            val onload : t -> transaction unit
-            val render : t -> xbody
-        end
+        structure FullGrid : Ui.S0
 
         (* Display a read-only record of all records for a home. *)
-        structure One : sig
-            type t
-            val create : $M.homeKey -> transaction t
-            val onload : t -> transaction unit
-            val render : t -> xbody
-        end
+        structure One : Ui.S where type input = $M.homeKey
 
         (* Inputing meeting preferences for a home *)
-        structure Prefs : sig
-            type t
-            val create : $M.homeKey -> transaction t
-            val render : t -> xbody
-        end
+        structure Prefs : Ui.S where type input = $M.homeKey
 
         (* Inputing schedule constraints for a home *)
-        structure Unavail : sig
-            type t
-            val create : $M.homeKey -> transaction t
-            val render : t -> xbody
-        end
+        structure Unavail : Ui.S where type input = $M.homeKey
     end
 
     structure Away : sig
         (* Display a full, editable grid of all meetings (rows: aways, columns: times). *)
-        structure FullGrid : sig
-            type t
-            val create : transaction t
-            val onload : t -> transaction unit
-            val render : t -> xbody
-        end
+        structure FullGrid : Ui.S0
 
         (* Display a read-only record of all records for an away. *)
-        structure One : sig
-            type t
-            val create : $M.awayKey -> transaction t
-            val onload : t -> transaction unit
-            val render : t -> xbody
-        end
+        structure One : Ui.S where type input = $M.awayKey
 
         (* Inputing meeting preferences for an away *)
-        structure Prefs : sig
-            type t
-            val create : $M.awayKey -> transaction t
-            val render : t -> xbody
-        end
+        structure Prefs : Ui.S where type input = $M.awayKey
 
         (* Inputing schedule constraints for an away *)
-        structure Unavail : sig
-            type t
-            val create : $M.awayKey -> transaction t
-            val render : t -> xbody
-        end
+        structure Unavail : Ui.S where type input = $M.awayKey
     end
 
     (* Using preferences from both sides, try to schedule more meetings heuristically. *)
