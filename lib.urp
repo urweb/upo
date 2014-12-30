@@ -9,13 +9,14 @@ allow env SSL_CLIENT_S_DN
 
 $/list
 $/string
+$/monad
 record
 sql
 csv
-theme
-inputStrings
-editGrid
-chooseForeign
-meetingGrid
-rsvp2
-clientCert
+ui
+#inputStrings
+#editGrid
+#chooseForeign
+#meetingGrid
+#rsvp2
+#clientCert
