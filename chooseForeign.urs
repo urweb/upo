@@ -43,10 +43,4 @@ functor Make(M : sig
 
                  (* Authentication *)
                  val amGiven : transaction (option $given)
-             end) : sig
-
-    type t
-    val create : $M.given -> transaction t
-    val render : t -> xbody
-
-end
+             end) : Ui.S where type input = $M.given

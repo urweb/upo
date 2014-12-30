@@ -16,7 +16,7 @@ csv
 ui
 inputStrings
 editGrid
-#chooseForeign
+chooseForeign
 #meetingGrid
 #rsvp2
 #clientCert

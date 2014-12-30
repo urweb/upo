@@ -43,7 +43,8 @@ functor Make(M : sig
     open M
 
     type choiceSet = list $chosen
-    type t = _
+    type input = _
+    type a = _
 
     fun create gv =
         opts <- queryL1 (SELECT options.{{chosen}}
@@ -129,5 +130,11 @@ functor Make(M : sig
                      </xml>}/>
       </table>
     </xml>
+
+    fun ui x = {
+        Create = create x,
+        Onload = fn _ => return (),
+        Render = fn _ => render
+    }
 
 end
