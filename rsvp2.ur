@@ -101,7 +101,8 @@ functor Make(M : sig
         type awayEnts = list away
         type event = {Event : $eventKey, Data : $eventData, Home : homeEnts, Away : awayEnts}
         type events = list event
-        type t = _
+        type input = _
+        type a = _
 
         fun ensure ho =
             user <- amHome;
@@ -390,12 +391,19 @@ functor Make(M : sig
             in
                 spawn (loop ())
             end
+
+        fun ui x = {
+            Create = create x,
+            Onload = onload,
+            Render = fn _ => render
+        }
     end
 
     structure Away = struct
         type event = {Event : $eventKey, Data : $eventData, Registered : source bool}
         type events = list event
-        type t = _
+        type input = _
+        type a = _
 
 
         fun ensure aw =
@@ -497,6 +505,12 @@ functor Make(M : sig
                                                </xml>}/>
                             </div></xml>}/>
             </xml>) t.Events
+
+        fun ui x = {
+            Create = create x,
+            Onload = fn _ => return (),
+            Render = fn _ => render
+        }
 
     end
 

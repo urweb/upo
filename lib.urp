@@ -18,5 +18,5 @@ inputStrings
 editGrid
 chooseForeign
 meetingGrid
-#rsvp2
-#clientCert
+rsvp2
+clientCert

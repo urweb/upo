@@ -76,18 +76,9 @@ functor Make(M : sig
              end) : sig
 
     (* Home's view: a list of all events, with attendee lists and buttons to change your own RSVP's *)
-    structure Home : sig
-        type t
-        val create : $M.homeKey -> transaction t
-        val render : t -> xbody
-        val onload : t -> transaction unit
-    end
+    structure Home : Ui.S where type input = $M.homeKey
 
     (* Away's view: a list of all events, with buttons to change your own RSVP's *)
-    structure Away : sig
-        type t
-        val create : $M.awayKey -> transaction t
-        val render : t -> xbody
-    end
+    structure Away : Ui.S where type input = $M.awayKey
 
 end
