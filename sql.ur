@@ -52,6 +52,34 @@ fun easy_update [key] [fields] [uniques] [key ~ fields]
                 tab
                 (@easy_where [#T] ! ! keyInj keyFl key))
 
+fun easy_insertOrUpdate [keys ::_] [fields] [uniques] [keys ~ fields]
+                        (kinjs : $(map sql_injectable keys)) (finjs : $(map sql_injectable fields))
+                        (kfl : folder keys) (ffl : folder fields)
+                        (tab : sql_table (keys ++ fields) uniques) (fs : $(keys ++ fields)) =
+    b <- oneRowE1 (SELECT COUNT( * ) > 0
+                   FROM tab
+                   WHERE {@easy_where [#Tab] ! ! kinjs kfl (fs --- fields)});
+    if b then
+        (* Row already exists.  Update it. *)
+        @easy_update ! kinjs finjs kfl ffl tab (fs --- fields) (fs --- keys)
+    else
+        (* Doesn't exist yet.  Insert it. *)
+        @@easy_insert [keys ++ fields] [_] (kinjs ++ finjs) (@Folder.concat ! kfl ffl) tab fs
+
+fun easy_insertOrSkip [keys ::_] [fields] [uniques] [keys ~ fields]
+                      (kinjs : $(map sql_injectable keys)) (finjs : $(map sql_injectable fields))
+                      (kfl : folder keys) (ffl : folder fields)
+                      (tab : sql_table (keys ++ fields) uniques) (fs : $(keys ++ fields)) =
+    b <- oneRowE1 (SELECT COUNT( * ) > 0
+                   FROM tab
+                   WHERE {@easy_where [#Tab] ! ! kinjs kfl (fs --- fields)});
+    if b then
+        (* Row already exists.  Ignore it. *)
+        return ()
+    else
+        (* Doesn't exist yet.  Insert it. *)
+        @@easy_insert [keys ++ fields] [_] (kinjs ++ finjs) (@Folder.concat ! kfl ffl) tab fs
+
 fun easy_update' [key] [fields] [uniques] [key ~ fields]
     (keyInj : $(map sql_injectable key)) (fieldsInj : $(map sql_injectable fields))
     (keyFl : folder key) (fieldsFl : folder fields)

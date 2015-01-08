@@ -29,7 +29,29 @@ val easy_insert : fields ::: {Type} -> uniques ::: {{Unit}}
                   -> $fields
                   -> transaction unit
 
-(* Easy table insert update with constants *)
+(* Like above, but does update instead if rows exist with matching keys *)
+val easy_insertOrUpdate : keys :: {Type} -> fields ::: {Type} -> uniques ::: {{Unit}}
+                          -> [keys ~ fields]
+                          => $(map sql_injectable keys)
+                          -> $(map sql_injectable fields)
+                          -> folder keys
+                          -> folder fields
+                          -> sql_table (keys ++ fields) uniques
+                          -> $(keys ++ fields)
+                          -> transaction unit
+
+(* Like above, but does nothing if rows exist with matching keys *)
+val easy_insertOrSkip : keys :: {Type} -> fields ::: {Type} -> uniques ::: {{Unit}}
+                        -> [keys ~ fields]
+                        => $(map sql_injectable keys)
+                        -> $(map sql_injectable fields)
+                        -> folder keys
+                        -> folder fields
+                        -> sql_table (keys ++ fields) uniques
+                        -> $(keys ++ fields)
+                        -> transaction unit
+
+(* Easy table update with constants *)
 val easy_update : key ::: {Type} -> fields ::: {Type} -> uniques ::: {{Unit}}
                   -> [key ~ fields]
                   => $(map sql_injectable key)
