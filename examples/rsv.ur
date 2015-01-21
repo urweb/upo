@@ -40,12 +40,15 @@ structure S = Rsvp2.Make(struct
 
                              val homeDataLabels = {Bogosity = "Bogosity",
                                                    Office = "Office"}
+                             val homeSensitiveDataLabels = {}
                              val awayDataLabels = {Awesome = "Awesome"}
+                             val awaySensitiveDataLabels = {}
 
                              val homeLabel = "Home"
                              val awayLabel = "Away"
 
                              val amHome = getCookie homeC
+                             val amPrivilegedHome = amHome
                              val amAway = getCookie awayC
                          end)
 

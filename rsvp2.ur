@@ -8,13 +8,15 @@ functor Make(M : sig
                  constraint [homeKey1] ~ homeKeyR
                  con homeKey = [homeKey1 = homeKeyT] ++ homeKeyR
                  con homeData :: {Type}
+                 con homeSensitiveData :: {Type}
                  con homeRest :: {Type}
                  constraint homeKey ~ homeRest
                  constraint (homeKey ++ homeRest) ~ homeData
+                 constraint (homeKey ++ homeRest ++ homeData) ~ homeSensitiveData
                  con homeKeyName :: Name
                  con homeOtherConstraints :: {{Unit}}
                  constraint [homeKeyName] ~ homeOtherConstraints
-                 val home : sql_table (homeKey ++ homeData ++ homeRest) ([homeKeyName = map (fn _ => ()) homeKey] ++ homeOtherConstraints)
+                 val home : sql_table (homeKey ++ homeData ++ homeSensitiveData ++ homeRest) ([homeKeyName = map (fn _ => ()) homeKey] ++ homeOtherConstraints)
                  val homeInj : $(map sql_injectable_prim homeKey)
                  val homeKeyFl : folder homeKey
                  val homeKeyShow : show $homeKey
@@ -22,6 +24,9 @@ functor Make(M : sig
                  val homeDataFl : folder homeData
                  val homeDataShow : $(map show homeData)
                  val homeDataLabels : $(map (fn _ => string) homeData)
+                 val homeSensitiveDataFl : folder homeSensitiveData
+                 val homeSensitiveDataShow : $(map show homeSensitiveData)
+                 val homeSensitiveDataLabels : $(map (fn _ => string) homeSensitiveData)
 
                  val awayLabel : string
                  con awayKey1 :: Name
@@ -30,13 +35,15 @@ functor Make(M : sig
                  constraint [awayKey1] ~ awayKeyR
                  con awayKey = [awayKey1 = awayKeyT] ++ awayKeyR
                  con awayData :: {Type}
+                 con awaySensitiveData :: {Type}
                  con awayRest :: {Type}
                  constraint awayKey ~ awayRest
                  constraint (awayKey ++ awayRest) ~ awayData
+                 constraint (awayKey ++ awayRest ++ awayData) ~ awaySensitiveData
                  con awayKeyName :: Name
                  con awayOtherConstraints :: {{Unit}}
                  constraint [awayKeyName] ~ awayOtherConstraints
-                 val away : sql_table (awayKey ++ awayData ++ awayRest) ([awayKeyName = map (fn _ => ()) awayKey] ++ awayOtherConstraints)
+                 val away : sql_table (awayKey ++ awayData ++ awaySensitiveData ++ awayRest) ([awayKeyName = map (fn _ => ()) awayKey] ++ awayOtherConstraints)
                  val awayInj : $(map sql_injectable_prim awayKey)
                  val awayKeyFl : folder awayKey
                  val awayKeyShow : show $awayKey
@@ -44,6 +51,9 @@ functor Make(M : sig
                  val awayDataFl : folder awayData
                  val awayDataShow : $(map show awayData)
                  val awayDataLabels : $(map (fn _ => string) awayData)
+                 val awaySensitiveDataFl : folder awaySensitiveData
+                 val awaySensitiveDataShow : $(map show awaySensitiveData)
+                 val awaySensitiveDataLabels : $(map (fn _ => string) awaySensitiveData)
 
                  con eventKey1 :: Name
                  type eventKeyT
@@ -68,6 +78,7 @@ functor Make(M : sig
                  constraint awayKey ~ eventKey
 
                  val amHome : transaction (option $homeKey)
+                 val amPrivilegedHome : transaction (option $homeKey)
                  val amAway : transaction (option $awayKey)
              end) = struct
 
@@ -89,19 +100,38 @@ functor Make(M : sig
       {{one_constraint [#Away] (@Sql.easy_foreign ! ! ! ! ! ! awayKeyFl away)}},
       {{one_constraint [#Event] (@Sql.easy_foreign ! ! ! ! ! ! eventKeyFl event)}}
 
-    datatype user = Home of ($homeKey * option $homeData) | Away of ($awayKey * option $awayData)
+    datatype user h a = Home of ($homeKey * option h) | Away of ($awayKey * option a)
     datatype operation = Add | Del
-    type log = {Event : $eventKey, User : user, Operation : operation}
-    table listeners : {Channel : channel log}
+    type log h a = {Event : $eventKey, User : user h a, Operation : operation}
+    table listeners : {Channel : channel (log $homeData $awayData)}
+    table privilegedListeners : {Channel : channel (log $(homeData ++ homeSensitiveData) $(awayData ++ awaySensitiveData))}
 
     val homeInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim homeKeyFl homeInj
     val awayInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim awayKeyFl awayInj
     val eventInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim eventKeyFl eventInj
 
-    structure Home = struct
-        type home = {Home : $homeKey, Data : $homeData}
+    functor HomeFn(N : sig
+                       con homeShownData :: {Type}
+                       val homeShownData : $(homeData ++ homeSensitiveData) -> $homeShownData
+                       val homeShownDataFl : folder homeShownData
+                       val homeShownDataShow : $(map show homeShownData)
+                       val homeShownDataLabels : $(map (fn _ => string) homeShownData)
+
+                       con awayShownData :: {Type}
+                       val awayShownData : $(awayData ++ awaySensitiveData) -> $awayShownData
+                       val awayShownDataFl : folder awayShownData
+                       val awayShownDataShow : $(map show awayShownData)
+                       val awayShownDataLabels : $(map (fn _ => string) awayShownData)
+
+                       table my_listeners : {Channel : channel (log $homeShownData $awayShownData)}
+
+                       val amHome : transaction (option $homeKey)
+                   end) = struct
+        open N
+
+        type home = {Home : $homeKey, Data : $homeShownData}
         type homeEnts = list home
-        type away = {Away : $awayKey, Data : $awayData}
+        type away = {Away : $awayKey, Data : $awayShownData}
         type awayEnts = list away
         type event = {Event : $eventKey, Data : $eventData, Home : homeEnts, Away : awayEnts}
         type events = list event
@@ -120,7 +150,7 @@ functor Make(M : sig
 
         fun add ev ho =
             ensure ho;
-            da <- oneRow1 (SELECT home.{{homeData}}
+            da <- oneRow1 (SELECT home.{{homeData}}, home.{{homeSensitiveData}}
                            FROM home
                            WHERE {@@Sql.easy_where [#Home] [homeKey] [_] [_] [_] [_]
                              ! ! homeInj' homeKeyFl ho});
@@ -128,6 +158,10 @@ functor Make(M : sig
             @@Sql.easy_insert [eventKey ++ homeKey] [_] (eventInj' ++ homeInj')
               (@Folder.concat ! eventKeyFl homeKeyFl) homeRsvp (ev ++ ho);
             queryI1 (SELECT * FROM listeners)
+            (fn r => send r.Channel {Event = ev,
+                                     User = Home (ho, Some (da --- homeSensitiveData)),
+                                     Operation = Add});
+            queryI1 (SELECT * FROM privilegedListeners)
             (fn r => send r.Channel {Event = ev,
                                      User = Home (ho, Some da),
                                      Operation = Add})
@@ -140,14 +174,18 @@ functor Make(M : sig
             queryI1 (SELECT * FROM listeners)
             (fn r => send r.Channel {Event = ev,
                                      User = Home (ho, None),
+                                     Operation = Del});
+            queryI1 (SELECT * FROM privilegedListeners)
+            (fn r => send r.Channel {Event = ev,
+                                     User = Home (ho, None),
                                      Operation = Del})
 
         fun create ho =
             let
                 fun initEvents (acc : events)
                                (evrows : list $(eventKey ++ eventData))
-                               (homerows : list {HomeRsvp : $(homeKey ++ eventKey), Home : $homeData})
-                               (awayrows : list {AwayRsvp : $(awayKey ++ eventKey), Away : $awayData})
+                               (homerows : list {HomeRsvp : $(homeKey ++ eventKey), Home : $homeShownData})
+                               (awayrows : list {AwayRsvp : $(awayKey ++ eventKey), Away : $awayShownData})
                                (homes : homeEnts)
                                (aways : awayEnts)
                     : events =
@@ -214,19 +252,19 @@ functor Make(M : sig
                                    ORDER BY {{{@Sql.order_by eventKeyFl
                                      (@Sql.some_fields [#Event] [eventKey] ! ! eventKeyFl)
                                      sql_desc}}});
-                homes <- queryL (SELECT homeRsvp.*, home.{{homeData}}
+                homes <- queryL (SELECT homeRsvp.*, home.{{homeData}}, home.{{homeSensitiveData}}
                                  FROM homeRsvp
                                    JOIN home ON {@@Sql.easy_join [#HomeRsvp] [#Home] [homeKey]
-                                     [eventKey] [homeData ++ homeRest] [_] [_] [_]
+                                     [eventKey] [homeData ++ homeSensitiveData ++ homeRest] [_] [_] [_]
                                      ! ! ! ! homeKeyFl}
                                  ORDER BY {{{@Sql.order_by (@Folder.concat ! eventKeyFl homeKeyFl)
                                     (@Sql.some_fields [#HomeRsvp] [eventKey ++ homeKey] ! !
                                      (@Folder.concat ! eventKeyFl homeKeyFl))
                                     sql_desc}}});
-                aways <- queryL (SELECT awayRsvp.*, away.{{awayData}}
+                aways <- queryL (SELECT awayRsvp.*, away.{{awayData}}, away.{{awaySensitiveData}}
                                  FROM awayRsvp
                                    JOIN away ON {@@Sql.easy_join [#AwayRsvp] [#Away] [awayKey]
-                                     [eventKey] [awayData ++ awayRest] [_] [_] [_]
+                                     [eventKey] [awayData ++ awaySensitiveData ++ awayRest] [_] [_] [_]
                                      ! ! ! ! awayKeyFl}
                                  ORDER BY {{{@Sql.order_by (@Folder.concat ! eventKeyFl awayKeyFl)
                                     (@Sql.some_fields [#AwayRsvp] [eventKey ++ awayKey] ! !
@@ -236,9 +274,12 @@ functor Make(M : sig
                                         homes <- source r.Home;
                                         aways <- source r.Away;
                                         return (r -- #Home -- #Away ++ {Home = homes, Away = aways}))
-                                    (initEvents [] events homes aways [] []);
+                                    (initEvents [] events
+                                                (List.mp (fn r => r -- #Home ++ {Home = homeShownData r.Home}) homes)
+                                                (List.mp (fn r => r -- #Away ++ {Away = awayShownData r.Away}) aways)
+                                                [] []);
                 chan <- channel;
-                dml (INSERT INTO listeners (Channel) VALUES ({[chan]}));
+                dml (INSERT INTO my_listeners (Channel) VALUES ({[chan]}));
                 return {Self = ho, Events = events, Channel = chan}
             end
 
@@ -297,7 +338,7 @@ functor Make(M : sig
                                                           {@mapX [fn _ => string] [tr]
                                                             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] label =>
                                                                 <xml><th>{[label]}</th></xml>)
-                                                            awayDataFl awayDataLabels}
+                                                            awayShownDataFl awayShownDataLabels}
                                                         </tr>
                                                                                
                                                         {List.mapX (fn aw => <xml><tr>
@@ -305,7 +346,7 @@ functor Make(M : sig
                                                           {@mapX2 [show] [ident] [tr]
                                                             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) =>
                                                                 <xml><td>{[x]}</td></xml>)
-                                                            awayDataFl awayDataShow aw.Data}
+                                                            awayShownDataFl awayShownDataShow aw.Data}
                                                         </tr></xml>) aws}
                                                       </table>
                                                     </xml>}
@@ -321,7 +362,7 @@ functor Make(M : sig
                                                           {@mapX [fn _ => string] [tr]
                                                             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] label =>
                                                                 <xml><th>{[label]}</th></xml>)
-                                                            homeDataFl homeDataLabels}
+                                                            homeShownDataFl homeShownDataLabels}
                                                         </tr>
                                                                                
                                                         {List.mapX (fn ho => <xml><tr>
@@ -329,7 +370,7 @@ functor Make(M : sig
                                                           {@mapX2 [show] [ident] [tr]
                                                             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) =>
                                                                 <xml><td>{[x]}</td></xml>)
-                                                            homeDataFl homeDataShow ho.Data}
+                                                            homeShownDataFl homeShownDataShow ho.Data}
                                                         </tr></xml>) hos}
                                                       </table>
                                                     </xml>}
@@ -403,6 +444,40 @@ functor Make(M : sig
         }
     end
 
+    structure Home = HomeFn(struct
+                                con homeShownData = homeData
+                                fun homeShownData r = r --- homeSensitiveData
+                                val homeShownDataFl = homeDataFl
+                                val homeShownDataShow = homeDataShow
+                                val homeShownDataLabels = homeDataLabels
+
+                                con awayShownData = awayData
+                                fun awayShownData r = r --- awaySensitiveData
+                                val awayShownDataFl = awayDataFl
+                                val awayShownDataShow = awayDataShow
+                                val awayShownDataLabels = awayDataLabels
+
+                                val my_listeners = listeners
+                                val amHome = amHome
+                            end)
+
+    structure HomePrivileged = HomeFn(struct
+                                          con homeShownData = homeData ++ homeSensitiveData
+                                          fun homeShownData r = r
+                                          val homeShownDataFl = @Folder.concat ! homeDataFl homeSensitiveDataFl
+                                          val homeShownDataShow = homeDataShow ++ homeSensitiveDataShow
+                                          val homeShownDataLabels = homeDataLabels ++ homeSensitiveDataLabels
+
+                                          con awayShownData = awayData ++ awaySensitiveData
+                                          fun awayShownData r = r
+                                          val awayShownDataFl = @Folder.concat ! awayDataFl awaySensitiveDataFl
+                                          val awayShownDataShow = awayDataShow ++ awaySensitiveDataShow
+                                          val awayShownDataLabels = awayDataLabels ++ awaySensitiveDataLabels
+
+                                          val my_listeners = privilegedListeners
+                                          val amHome = amPrivilegedHome
+                                      end)
+
     structure Away = struct
         type event = {Event : $eventKey, Data : $eventData, Registered : source bool}
         type events = list event
@@ -422,7 +497,7 @@ functor Make(M : sig
 
         fun add ev aw =
             ensure aw;
-            da <- oneRow1 (SELECT away.{{awayData}}
+            da <- oneRow1 (SELECT away.{{awayData}}, away.{{awaySensitiveData}}
                            FROM away
                            WHERE {@@Sql.easy_where [#Away] [awayKey] [_] [_] [_] [_]
                              ! ! awayInj' awayKeyFl aw});
@@ -430,9 +505,13 @@ functor Make(M : sig
             @@Sql.easy_insert [eventKey ++ awayKey] [_] (eventInj' ++ awayInj')
               (@Folder.concat ! eventKeyFl awayKeyFl) awayRsvp (ev ++ aw);
             queryI1 (SELECT * FROM listeners)
-            (fn r => send r.Channel {Event = ev,
-                                     User = Away (aw, Some da),
-                                     Operation = Add})
+                    (fn r => send r.Channel {Event = ev,
+                                             User = Away (aw, Some (da --- awaySensitiveData)),
+                                             Operation = Add});
+            queryI1 (SELECT * FROM privilegedListeners)
+                    (fn r => send r.Channel {Event = ev,
+                                             User = Away (aw, Some da),
+                                             Operation = Add})
 
         fun del ev aw =
             ensure aw;
@@ -440,6 +519,10 @@ functor Make(M : sig
                  WHERE {@@Sql.easy_where [#T] [eventKey ++ awayKey] [_] [_] [_] [_]
                    ! ! (eventInj' ++ awayInj') (@Folder.concat ! eventKeyFl awayKeyFl) (ev ++ aw)});
             queryI1 (SELECT * FROM listeners)
+            (fn r => send r.Channel {Event = ev,
+                                     User = Away (aw, None),
+                                     Operation = Del});
+            queryI1 (SELECT * FROM privilegedListeners)
             (fn r => send r.Channel {Event = ev,
                                      User = Away (aw, None),
                                      Operation = Del})
