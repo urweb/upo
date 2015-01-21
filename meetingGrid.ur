@@ -1,5 +1,6 @@
 style meeting_default
 style meeting_selected
+style meeting_conflict
 
 open Bootstrap3
 
@@ -510,15 +511,30 @@ functor Make(M : sig
                                                      return <xml>
                                                        {List.mapX (fn th => <xml>
                                                          <div dynClass={mf <- signal t.MovingFrom;
+                                                                        column_conflict <-
+                                                                          List.foldlM (fn (us', _, tms) acc =>
+                                                                                          if us' = us then
+                                                                                              return acc
+                                                                                          else
+                                                                                              List.foldlM (fn (tm', _, ths) acc =>
+                                                                                                              if tm' <> tm then
+                                                                                                                  return acc
+                                                                                                              else
+                                                                                                                  ths <- signal ths;
+                                                                                                                  return (acc || List.mem th ths)) acc tms)
+                                                                                      False t.Meetings;
+                                                                        default <- return (case thsv of
+                                                                                               _ :: _ :: _ => meeting_conflict
+                                                                                             | _ => if column_conflict then meeting_conflict else meeting_default);
                                                                         return (case mf of
-                                                                                    None => meeting_default
+                                                                                    None => default
                                                                                   | Some mf =>
                                                                                     if mf.Us = us
                                                                                        && mf.Them = th
                                                                                        && mf.Time = tm then
                                                                                         meeting_selected
                                                                                     else
-                                                                                        meeting_default)}
+                                                                                        default)}
                                                               onclick={fn _ =>
                                                                           del <- get deleting;
                                                                           if del then
