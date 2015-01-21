@@ -1,3 +1,6 @@
+style meeting_default
+style meeting_selected
+
 open Bootstrap3
 
 functor Make(M : sig
@@ -506,16 +509,16 @@ functor Make(M : sig
                                                      (* One button per meeting *)
                                                      return <xml>
                                                        {List.mapX (fn th => <xml>
-                                                         <div dynStyle={mf <- signal t.MovingFrom;
+                                                         <div dynClass={mf <- signal t.MovingFrom;
                                                                         return (case mf of
-                                                                                    None => STYLE "border-style: double; cursor: move"
+                                                                                    None => meeting_default
                                                                                   | Some mf =>
                                                                                     if mf.Us = us
                                                                                        && mf.Them = th
                                                                                        && mf.Time = tm then
-                                                                                        STYLE "border-style: double; cursor: move; background-color: green"
+                                                                                        meeting_selected
                                                                                     else
-                                                                                        STYLE "border-style: double; cursor: move")}
+                                                                                        meeting_default)}
                                                               onclick={fn _ =>
                                                                           del <- get deleting;
                                                                           if del then
