@@ -46,6 +46,11 @@ functor Make(M : sig
                     (fn [nm ::_] [p ::_] (w : Widget.t' p) => @Widget.initialize w)
                     fl widgets
 
+    val rowOut = @Monad.mapR2 _ [Widget.t'] [snd] [fst]
+                  (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : snd p) =>
+                      current (@Widget.value w v))
+                  fl widgets
+
     val create =
         perm <- permission;
         toAdd <- freshRow;
@@ -87,12 +92,13 @@ functor Make(M : sig
                    | MOD d =>
                      rows <- get a.Rows;
                      editing <- source None;
-                     set a.Rows (List.mp (fn a =>
-                                             if a.Content = d.Old then
-                                                 {Editing = editing,
-                                                  Content = d.New}
-                                             else
-                                                 a) rows));
+                     set a.Rows (List.sort (fn a b => a.Content > b.Content)
+                                           (List.mp (fn a =>
+                                                        if a.Content = d.Old then
+                                                            {Editing = editing,
+                                                             Content = d.New}
+                                                        else
+                                                            a) rows)));
                 loop ()
         in
             loop ()
@@ -124,6 +130,24 @@ functor Make(M : sig
         queryI1 (SELECT * FROM listeners)
         (fn x => send x.Channel (DEL r))
 
+    fun mod r =
+        perm <- permission;
+        (if perm.Modify then
+             return ()
+         else
+             error <xml>Don't have permission to delete row</xml>);
+
+        dml (@@update [[]] [_] [map fst fs] !
+              (@map2 [fn p => sql_injectable p.1] [fst] [fn p => sql_exp _ _ _ p.1]
+                (fn [p] => @sql_inject)
+                fl injs r.New)
+              tab
+              (@@Sql.easy_where [#T] [map fst fs] [[]] [[]] [[]] [[]] ! !
+                 injs (@@Folder.mp [fst] [_] fl) r.Old));
+
+        queryI1 (SELECT * FROM listeners)
+        (fn x => send x.Channel (MOD r))
+
     fun render ctx a = <xml>
       <table class="bs3-table table-striped">
         <tr>
@@ -149,6 +173,13 @@ functor Make(M : sig
                                                                                      <xml>Yes!</xml>))
                                                      else
                                                          <xml/>}
+                                                    {if a.Perm.Modify then <xml>
+                                                         <button class="btn glyphicon glyphicon-pencil"
+                                                                 onclick={fn _ =>
+                                                                             fr <- initRow r.Content;
+                                                                             set r.Editing (Some fr)}/>
+                                                     </xml> else
+                                                         <xml/>}
                                                   </td>
                                                   {@mapX2 [Widget.t'] [fst] [_]
                                                     (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
@@ -157,7 +188,16 @@ functor Make(M : sig
                                                     fl widgets r.Content}
                                                 </xml>
                                               | Some ws => <xml>
-                                                <td/>
+                                                <td>
+                                                  <button class="btn glyphicon glyphicon-ok"
+                                                          onclick={fn _ =>
+                                                                      vs <- rowOut ws;
+                                                                      set r.Editing None;
+                                                                      rpc (mod {Old = r.Content,
+                                                                                New = vs})}/>
+                                                  <button class="btn glyphicon glyphicon-remove"
+                                                          onclick={fn _ => set r.Editing None}/>
+                                                </td>
                                                 {@mapX2 [Widget.t'] [snd] [_]
                                                   (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
                                                                (w : Widget.t' p) (v : snd p) =>
@@ -173,10 +213,7 @@ functor Make(M : sig
                  <th><button value="Add:"
                              class="btn btn-primary"
                              onclick={fn _ =>
-                                         r <- @Monad.mapR2 _ [Widget.t'] [snd] [fst]
-                                               (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : snd p) =>
-                                                   current (@Widget.value w v))
-                                               fl widgets a.ToAdd;
+                                         r <- rowOut a.ToAdd;
                                          rpc (add r)}/></th>
 
                  {@mapX2 [Widget.t'] [snd] [_]
