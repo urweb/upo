@@ -34,7 +34,8 @@ functor Make(M : sig
 
     type row = { Editing : source (option state),
                  Content : data }
-    type a = { Rows : source (list row),
+    type a = { Perm : permission,
+               Rows : source (list row),
                ToAdd : state,
                Channel : channel action }
 
@@ -46,6 +47,7 @@ functor Make(M : sig
                     fl widgets
 
     val create =
+        perm <- permission;
         toAdd <- freshRow;
 
         rows <- List.mapQueryM (SELECT *
@@ -62,7 +64,8 @@ functor Make(M : sig
         chan <- channel;
         dml (INSERT INTO listeners(Channel) VALUES ({[chan]}));
                                    
-        return {Rows = rows,
+        return {Perm = perm,
+                Rows = rows,
                 ToAdd = toAdd,
                 Channel = chan}
 
@@ -107,7 +110,21 @@ functor Make(M : sig
         queryI1 (SELECT * FROM listeners)
         (fn x => send x.Channel (ADD r))
 
-    fun render _ a = <xml>
+    fun del r =
+        perm <- permission;
+        (if perm.Delete then
+             return ()
+         else
+             error <xml>Don't have permission to delete row</xml>);
+
+        dml (DELETE FROM tab
+             WHERE {@@Sql.easy_where [#T] [map fst fs] [[]] [[]] [[]] [[]] ! !
+               injs (@@Folder.mp [fst] [_] fl) r});
+
+        queryI1 (SELECT * FROM listeners)
+        (fn x => send x.Channel (DEL r))
+
+    fun render ctx a = <xml>
       <table class="bs3-table table-striped">
         <tr>
           <th/>
@@ -118,17 +135,29 @@ functor Make(M : sig
 
         <dyn signal={rs <- signal a.Rows;
                      return (List.mapX (fn r => <xml><tr>
-                       <td/>
                        <dyn signal={ed <- signal r.Editing;
                                     return (case ed of
                                                 None => <xml>
+                                                  <td>
+                                                    {if a.Perm.Delete then
+                                                         Ui.modalButton ctx (CLASS "btn glyphicon glyphicon-remove")
+                                                                        <xml/>
+                                                                        (return (Ui.modal
+                                                                                     (rpc (del r.Content))
+                                                                                     <xml>Are you sure you want to delete this row?</xml>
+                                                                                     <xml/>
+                                                                                     <xml>Yes!</xml>))
+                                                     else
+                                                         <xml/>}
+                                                  </td>
                                                   {@mapX2 [Widget.t'] [fst] [_]
                                                     (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
                                                                  (w : Widget.t' p) (v : fst p) =>
-                                                        <xml><th>{@Widget.asValue w v}</th></xml>)
+                                                        <xml><td>{@Widget.asValue w v}</td></xml>)
                                                     fl widgets r.Content}
                                                 </xml>
                                               | Some ws => <xml>
+                                                <td/>
                                                 {@mapX2 [Widget.t'] [snd] [_]
                                                   (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
                                                                (w : Widget.t' p) (v : snd p) =>
@@ -136,23 +165,28 @@ functor Make(M : sig
                                                   fl widgets ws}
                                               </xml>)}/>
                      </tr></xml>) rs)}/>
-        <tr/>
+        {if a.Perm.Add then
+             <xml>
+               <tr/>
 
-        <tr>
-          <th><button value="Add:"
-                      class="btn btn-primary"
-                      onclick={fn _ =>
-                                  r <- @Monad.mapR2 _ [Widget.t'] [snd] [fst]
-                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : snd p) =>
-                                            current (@Widget.value w v))
-                                        fl widgets a.ToAdd;
-                                  rpc (add r)}/></th>
+               <tr>
+                 <th><button value="Add:"
+                             class="btn btn-primary"
+                             onclick={fn _ =>
+                                         r <- @Monad.mapR2 _ [Widget.t'] [snd] [fst]
+                                               (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : snd p) =>
+                                                   current (@Widget.value w v))
+                                               fl widgets a.ToAdd;
+                                         rpc (add r)}/></th>
 
-          {@mapX2 [Widget.t'] [snd] [_]
-            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : snd p) =>
-                <xml><td>{@Widget.asWidget w v}</td></xml>)
-            fl widgets a.ToAdd}
-        </tr>
+                 {@mapX2 [Widget.t'] [snd] [_]
+                   (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : snd p) =>
+                       <xml><td>{@Widget.asWidget w v}</td></xml>)
+                   fl widgets a.ToAdd}
+               </tr>
+             </xml>
+         else
+             <xml/>}
       </table>
     </xml>
 
