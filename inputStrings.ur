@@ -31,7 +31,7 @@ functor Make(M : sig
 
     open M
 
-    val givenEq : eq $given = @Record.equal givenEq givenFl
+    val givenEq : eq $given = @Record.eq givenEq givenFl
 
     type input = _
     type a = _

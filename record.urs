@@ -1,3 +1,4 @@
 (* Metaprogramming helpers for records in general *)
 
-val equal : ts ::: {Type} -> $(map eq ts) -> folder ts -> eq $ts
+val eq : ts ::: {Type} -> $(map eq ts) -> folder ts -> eq $ts
+val ord : ts ::: {Type} -> $(map ord ts) -> folder ts -> ord $ts

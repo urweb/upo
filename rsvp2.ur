@@ -84,9 +84,9 @@ functor Make(M : sig
 
     open M
 
-    val homeKeyEq : eq $homeKey = @@Record.equal [homeKey] homeKeyEq homeKeyFl
-    val awayKeyEq : eq $awayKey = @@Record.equal [awayKey] awayKeyEq awayKeyFl
-    val eventKeyEq : eq $eventKey = @@Record.equal [eventKey] eventKeyEq eventKeyFl
+    val homeKeyEq : eq $homeKey = @@Record.eq [homeKey] homeKeyEq homeKeyFl
+    val awayKeyEq : eq $awayKey = @@Record.eq [awayKey] awayKeyEq awayKeyFl
+    val eventKeyEq : eq $eventKey = @@Record.eq [eventKey] eventKeyEq eventKeyFl
 
     table homeRsvp : (homeKey ++ eventKey)
       PRIMARY KEY {{@primary_key [homeKey1] [homeKeyR ++ eventKey] ! !

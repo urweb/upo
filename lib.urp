@@ -14,9 +14,11 @@ record
 sql
 csv
 ui
+widget
 inputStrings
 editGrid
 chooseForeign
 meetingGrid
 rsvp2
+editableTable
 clientCert

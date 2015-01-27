@@ -1,0 +1,20 @@
+body {
+    padding-top: 60px
+}
+
+.MeetingGrid_meeting_default {
+    border-style: double;
+    cursor: move
+}
+
+.MeetingGrid_meeting_selected {
+    border-style: double;
+    cursor: move;
+    background-color: green
+}
+
+.MeetingGrid_meeting_conflict {
+    border-style: double;
+    cursor: move;
+    background-color: red
+}

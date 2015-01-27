@@ -32,7 +32,7 @@ functor Make(M : sig
     val allFl = @Folder.concat ! keyFl restFl
     val allInj = keyInj ++ restInj
 
-    val keyEq' : eq $key = @Record.equal keyEq keyFl
+    val keyEq' : eq $key = @Record.eq keyEq keyFl
 
     val create =
         vs <- List.mapQueryM (SELECT *
