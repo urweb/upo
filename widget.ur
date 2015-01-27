@@ -20,10 +20,19 @@ val textbox = { Create = source "",
                 Initialize = source,
                 AsWidget = fn s => <xml><ctextbox source={s}/></xml>,
                 Value = signal,
-                AsValue = cdata }
+                AsValue = txt }
 
 val checkbox = { Create = source False,
                  Initialize = source,
                  AsWidget = fn s => <xml><ccheckbox source={s}/></xml>,
                  Value = signal,
                  AsValue = txt }
+
+val urlbox = { Create = source "",
+               Initialize = source,
+               AsWidget = fn s => <xml><ctextbox source={s}/></xml>,
+               Value = signal,
+               AsValue = fn s =>
+                           case checkUrl s of
+                               None => <xml><b>[BLOCKED URL]</b></xml>
+                             | Some url => <xml><a href={url}><tt>{[url]}</tt></a></xml> }

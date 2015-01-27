@@ -22,8 +22,13 @@ val make : value ::: Type -> state ::: Type
 
 (* Some default widgets *)
 
+type urlbox
+val urlbox : t string urlbox
+(* This one is earlier in the list so that [textbox] overrides it by default! *)
+
 type textbox
 val textbox : t string textbox
 
 type checkbox
 val checkbox : t bool checkbox
+
