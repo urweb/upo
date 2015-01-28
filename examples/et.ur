@@ -14,9 +14,6 @@ structure ET = EditableTable.Make(struct
                                                                Modify = True}
 
                                       val widgets = {Url = urlbox} ++ _
-                                      val eqs = _
-                                      val ords = _
-                                      val injs = _
                                   end)
 
 val main = Ui.simple "Main" ET.ui

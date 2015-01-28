@@ -9,9 +9,9 @@ functor Make(M : sig
                  val widgets : $(map Widget.t' fs)
                  table tab : $(map fst fs)
                  val fl : folder fs
-                 val eqs : $(map (fn p => eq p.1) fs)
-                 val ords : $(map (fn p => ord p.1) fs)
-                 val injs : $(map (fn p => sql_injectable p.1) fs)
+                 val eqs : $(map eq (map fst fs))
+                 val ords : $(map ord (map fst fs))
+                 val injs : $(map sql_injectable (map fst fs))
 
                  val labels : $(map (fn _ => string) fs)
                  val permission : transaction permission
