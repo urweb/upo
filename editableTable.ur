@@ -101,7 +101,7 @@ functor Make(M : sig
                                                             a) rows)));
                 loop ()
         in
-            loop ()
+            spawn (loop ())
         end
 
     fun add r =
