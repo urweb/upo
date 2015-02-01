@@ -122,3 +122,11 @@ fun easy_join [tab1 :: Name] [tab2 :: Name] [using] [notUsing1] [notUsing2] [oth
         (WHERE {{tab1}}.{nm} = {{tab2}}.{nm} AND {acc [[nm = t] ++ rest]}))
     (fn [rest ::_] [notUsing1 ~ rest] [notUsing2 ~ rest] [notUsing1 ~ []] [notUsing2 ~ []] [rest ~ []] =>
         (WHERE TRUE)) fl [[]] ! ! ! ! !
+
+fun unnull [fs] (fl : folder fs) (r : $(map option fs)) : option $fs =
+    @foldR [option] [fn r => option $r]
+    (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (v : option t) (acc : option $r) =>
+        case (v, acc) of
+            (Some v, Some acc) => Some ({nm = v} ++ acc)
+          | _ => None)
+    (Some {}) fl r

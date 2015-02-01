@@ -10,6 +10,7 @@ allow env SSL_CLIENT_S_DN
 $/list
 $/string
 $/monad
+$/option
 record
 sql
 csv
@@ -21,4 +22,5 @@ chooseForeign
 meetingGrid
 rsvp2
 editableTable
+openBallot
 clientCert

@@ -102,3 +102,6 @@ val easy_join : tab1 :: Name -> tab2 :: Name -> using ::: {Type}
                 => [[tab1, tab2] ~ otherTables]
                 => folder using
                 -> sql_exp ([tab1 = using ++ notUsing1, tab2 = using ++ notUsing2] ++ otherTables) agg exps bool
+
+(* Convert a set of possibly-NULL columns en masse to be not NULL, or indicate that it can't be done. *)
+val unnull : fs ::: {Type} -> folder fs -> $(map option fs) -> option $fs
