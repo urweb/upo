@@ -28,6 +28,12 @@ val checkbox = { Create = source False,
                  Value = signal,
                  AsValue = txt }
 
+val intbox = { Create = source "",
+               Initialize = fn n => source (show n),
+               AsWidget = fn s => <xml><ctextbox source={s}/></xml>,
+               Value = fn s => v <- signal s; return (Option.get 0 (read v)),
+               AsValue = txt }
+
 val urlbox = { Create = source "",
                Initialize = source,
                AsWidget = fn s => <xml><ctextbox source={s}/></xml>,

@@ -1,7 +1,6 @@
 open Bootstrap3
 
 functor Make(M : sig
-                 val voterLabel : string
                  con voterKey1 :: Name
                  type voterKeyT
                  con voterKeyR :: {Type}
@@ -17,6 +16,7 @@ functor Make(M : sig
                  val voterKeyFl : folder voterKey
                  val voterKeyShow : show $voterKey
                  val voterKeyEq : $(map eq voterKey)
+                 val voterKeyOrd : $(map ord voterKey)
 
                  con choiceBallot :: {Type} (* Identifies subsets of the choices that should be considered together *)
                  con choiceKey1 :: Name
@@ -30,7 +30,7 @@ functor Make(M : sig
                  con choiceKeyName :: Name
                  con choiceOtherConstraints :: {{Unit}}
                  constraint [choiceKeyName] ~ choiceOtherConstraints
-                 val choice : sql_table (choiceBallot ++ choiceKey ++ choiceRest) ([choiceKeyName = map (fn _ => ()) choiceKey] ++ choiceOtherConstraints)
+                 val choice : sql_table (choiceBallot ++ choiceKey ++ choiceRest) ([choiceKeyName = map (fn _ => ()) (choiceBallot ++ choiceKey)] ++ choiceOtherConstraints)
                  val choiceKeyInj : $(map sql_injectable_prim choiceKey)
                  val choiceKeyFl : folder choiceKey
                  val choiceKeyShow : show $choiceKey
@@ -40,13 +40,16 @@ functor Make(M : sig
 
                  constraint voterKey ~ (choiceBallot ++ choiceKey)
                  constraint (voterKey ++ choiceBallot ++ choiceKey) ~ [Votes]
+                 constraint choiceBallot ~ [Channel]
 
                  val amVoter : transaction (option $voterKey)
+                 val maxVotesPerVoter : option int
              end) = struct
 
     open M
 
     val voterKeyEq : eq $voterKey = @@Record.eq [voterKey] voterKeyEq voterKeyFl
+    val voterKeyOrd : ord $voterKey = @@Record.ord [voterKey] voterKeyOrd voterKeyFl
     val choiceKeyEq : eq $choiceKey = @@Record.eq [choiceKey] choiceKeyEq choiceKeyFl
 
     val voterKeyInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim voterKeyFl voterKeyInj
@@ -58,16 +61,21 @@ functor Make(M : sig
     table vote : (choiceBallot ++ choiceKey ++ voterKey ++ [Votes = int])
       PRIMARY KEY {{@primary_key [choiceKey1] [choiceKeyR ++ choiceBallot ++ voterKey] ! !
                     (choiceKeyInj ++ choiceBallotInj ++ voterKeyInj)}},
-      {{one_constraint [#Choice] (@Sql.easy_foreign ! ! ! ! ! ! choiceKeyFl choice)}},
+      {{one_constraint [#Choice] (@Sql.easy_foreign ! ! ! ! ! ! (@Folder.concat ! choiceBallotFl choiceKeyFl) choice)}},
       {{one_constraint [#Voter] (@Sql.easy_foreign ! ! ! ! ! ! voterKeyFl voter)}}
 
     type choice = {Key : $choiceKey,
                    Votes : source (list ($voterKey * int))}
 
+    datatype operation = Vote | Unvote
+    type action = { Operation : operation, Voter : $voterKey, Choice : $choiceKey }
+    table listeners : (choiceBallot ++ [Channel = channel action])
+
     type input = _
     type a = {Voter : $voterKey,
               Ballot : $choiceBallot,
-              Choices : source (list choice)}
+              Choices : source (list choice),
+              Channel : channel action}
 
     fun create r =
         let
@@ -142,11 +150,208 @@ functor Make(M : sig
 
             choices <- doVotes votes [] None [];
             choices <- source choices;
-            return (r ++ {Choices = choices})
+
+            chan <- channel;
+            @@Sql.easy_insert [[Channel = channel action] ++ choiceBallot] [_]
+              ({Channel = _ : sql_injectable (channel action)} ++ choiceBallotInj')
+              (@Folder.cons [#Channel] [_] ! choiceBallotFl)
+              listeners ({Channel = chan} ++ r.Ballot);
+
+            return (r ++ {Choices = choices, Channel = chan})
         end
 
+    fun onload a =
+        let
+            fun loop () =
+                act <- recv a.Channel;
+                (case act.Operation of
+                     Vote =>
+                     chs <- Basis.get a.Choices;
+                     List.app (fn ch =>
+                                  if ch.Key <> act.Choice then
+                                      return ()
+                                  else
+                                      votes <- Basis.get ch.Votes;
+                                      oldcount <- return (Option.get 0 (List.assoc act.Voter votes));
+                                      votes <- return ((act.Voter, oldcount+1)
+                                                           :: List.filter (fn (v, _) =>
+                                                                              v <> act.Voter) votes);
+                                      set ch.Votes (List.sort (fn (v1, _) (v2, _) => v1 > v2) votes)) chs
+                   | Unvote =>
+                     chs <- Basis.get a.Choices;
+                     List.app (fn ch =>
+                                  if ch.Key <> act.Choice then
+                                      return ()
+                                  else
+                                      votes <- Basis.get ch.Votes;
+                                      oldcount <- return (Option.get 0 (List.assoc act.Voter votes));
+                                      votes <- return (List.filter (fn (v, _) =>
+                                                                       v <> act.Voter) votes);
+                                      votes <- return (if oldcount > 1 then
+                                                           (act.Voter, oldcount-1) :: votes
+                                                       else
+                                                           votes);
+                                      set ch.Votes (List.sort (fn (v1, _) (v2, _) => v1 > v2) votes)) chs);
+                loop ()
+        in
+            spawn (loop ())
+        end
+
+    fun del r =
+        v <- amVoter;
+        case v of
+            None => error <xml>Not authenticated as a voter</xml>
+          | Some v =>
+            oldCount <- oneOrNoRowsE1 (SELECT (vote.Votes)
+                                       FROM vote
+                                       WHERE {@@Sql.easy_where [#Vote] [choiceBallot ++ choiceKey ++ voterKey]
+                                         [[Votes = _]] [[]] [[]] [[]] ! !
+                                         (choiceBallotInj' ++ choiceKeyInj' ++ voterKeyInj')
+                                         (@Folder.concat ! choiceBallotFl
+                                           (@Folder.concat ! choiceKeyFl voterKeyFl))
+                                         (r.Ballot ++ r.Choice ++ v)});
+            case oldCount of
+                None => return ()
+              | Some 1 =>
+                dml (DELETE FROM vote
+                     WHERE {@@Sql.easy_where [#T] [choiceBallot ++ choiceKey ++ voterKey]
+                       [[Votes = _]] [[]] [[]] [[]] ! !
+                       (choiceBallotInj' ++ choiceKeyInj' ++ voterKeyInj')
+                       (@Folder.concat ! choiceBallotFl
+                         (@Folder.concat ! choiceKeyFl voterKeyFl))
+                       (r.Ballot ++ r.Choice ++ v)});
+                queryI1 (SELECT listeners.Channel
+                         FROM listeners
+                         WHERE {@Sql.easy_where [#Listeners] ! ! choiceBallotInj' choiceBallotFl r.Ballot})
+                (fn l => send l.Channel {Operation = Unvote, Voter = v, Choice = r.Choice})
+              | Some oldCount =>
+                dml (UPDATE vote
+                     SET Votes = Votes - 1
+                     WHERE {@@Sql.easy_where [#T] [choiceBallot ++ choiceKey ++ voterKey]
+                       [[Votes = _]] [[]] [[]] [[]] ! !
+                       (choiceBallotInj' ++ choiceKeyInj' ++ voterKeyInj')
+                       (@Folder.concat ! choiceBallotFl
+                         (@Folder.concat ! choiceKeyFl voterKeyFl))
+                       (r.Ballot ++ r.Choice ++ v)});
+                queryI1 (SELECT listeners.Channel
+                         FROM listeners
+                         WHERE {@Sql.easy_where [#Listeners] ! ! choiceBallotInj' choiceBallotFl r.Ballot})
+                (fn l => send l.Channel {Operation = Unvote, Voter = v, Choice = r.Choice})
+
+    fun add r =
+        v <- amVoter;
+        case v of
+            None => error <xml>Not authenticated as a voter</xml>
+          | Some v =>
+            oldCount <- oneOrNoRowsE1 (SELECT (vote.Votes)
+                                       FROM vote
+                                       WHERE {@@Sql.easy_where [#Vote] [choiceBallot ++ choiceKey ++ voterKey]
+                                         [[Votes = _]] [[]] [[]] [[]] ! !
+                                         (choiceBallotInj' ++ choiceKeyInj' ++ voterKeyInj')
+                                         (@Folder.concat ! choiceBallotFl
+                                           (@Folder.concat ! choiceKeyFl voterKeyFl))
+                                         (r.Ballot ++ r.Choice ++ v)});
+            case oldCount of
+                None =>
+                @@Sql.easy_insert [choiceBallot ++ choiceKey ++ voterKey ++ [Votes = int]] [_]
+                  ({Votes = _} ++ choiceBallotInj' ++ choiceKeyInj' ++ voterKeyInj')
+                  (@Folder.cons [#Votes] [_] ! (@Folder.concat ! choiceBallotFl
+                                                 (@Folder.concat ! choiceKeyFl voterKeyFl)))
+                  vote
+                  (r.Ballot ++ r.Choice ++ v ++ {Votes = 1});
+                queryI1 (SELECT listeners.Channel
+                         FROM listeners
+                         WHERE {@Sql.easy_where [#Listeners] ! ! choiceBallotInj' choiceBallotFl r.Ballot})
+                        (fn l => send l.Channel {Operation = Vote, Voter = v, Choice = r.Choice})
+              | Some n =>
+                if (case maxVotesPerVoter of
+                        None => False
+                      | Some m => n >= m) then
+                    return ()
+                else
+                    dml (UPDATE vote
+                         SET Votes = Votes + 1
+                         WHERE {@@Sql.easy_where [#T] [choiceBallot ++ choiceKey ++ voterKey]
+                           [[Votes = _]] [[]] [[]] [[]] ! !
+                           (choiceBallotInj' ++ choiceKeyInj' ++ voterKeyInj')
+                           (@Folder.concat ! choiceBallotFl
+                             (@Folder.concat ! choiceKeyFl voterKeyFl))
+                           (r.Ballot ++ r.Choice ++ v)});
+                    queryI1 (SELECT listeners.Channel
+                             FROM listeners
+                             WHERE {@Sql.easy_where [#Listeners] ! ! choiceBallotInj' choiceBallotFl r.Ballot})
+                            (fn l => send l.Channel {Operation = Vote, Voter = v, Choice = r.Choice})
+
+    fun render _ a = <xml>
+      <table class="bs3-table table-striped">
+        <tr>
+          <th/>
+          <th>Choice</th>
+          <th>Your Vote</th>
+          <th>Votes</th>
+        </tr>
+
+        <dyn signal={choices <- signal a.Choices;
+                     return (List.mapX (fn ch => <xml>
+                       <tr>
+                         <td>
+                           <dyn signal={votes <- signal ch.Votes;
+                                        myVotes <- return (Option.get 0 (List.assoc a.Voter votes));
+                                        return <xml>
+                                          <button class={if myVotes = 0 then
+                                                             CLASS "disabled btn glyphicon glyphicon-minus"
+                                                         else
+                                                             CLASS "btn glyphicon glyphicon-minus"}
+                                                  onclick={fn _ => rpc (del {Ballot = a.Ballot,
+                                                                             Choice = ch.Key})}/>
+                                          <button class={if (case maxVotesPerVoter of
+                                                                 None => False
+                                                               | Some n => myVotes >= n) then
+                                                             CLASS "disabled btn glyphicon glyphicon-plus"
+                                                         else
+                                                             CLASS "btn glyphicon glyphicon-plus"}
+                                                  onclick={fn _ => rpc (add {Ballot = a.Ballot,
+                                                                                    Choice = ch.Key})}/>
+                                        </xml>}/>
+                         </td>
+                         <td>{[ch.Key]}</td>
+                         <td>
+                           <dyn signal={votes <- signal ch.Votes;
+                                        return <xml>{[List.foldl (fn (v, n) m => if v = a.Voter then n + m else m) 0 votes]}</xml>}/>
+                         </td>
+                         <td>
+                           <dyn signal={votes <- signal ch.Votes;
+                                        return <xml>{[List.foldl (fn (_, n) m => n + m) 0 votes]}</xml>}/>
+                         </td>
+                       </tr>
+                     </xml>) choices)}/>
+      </table>
+
+      <dyn signal={choices <- signal a.Choices;
+                   (count, choices) <- List.foldlM (fn ch (count, choices) =>
+                                                       votes <- signal ch.Votes;
+                                                       thisCount <- return (List.foldl (fn (_, n) m => n + m) 0 votes);
+                                                       if thisCount > count then
+                                                           return (thisCount, ch.Key :: [])
+                                                       else if thisCount = count then
+                                                           return (count, ch.Key :: choices)
+                                                       else
+                                                           return (count, choices))
+                                                   (0, []) choices;
+                   if count = 0 then
+                       return <xml/>
+                   else
+                       return <xml>
+                         <h3>Current leader{case choices of
+                                                _ :: _ :: _ => <xml>s</xml>
+                                              | _ => <xml/>}, with <i>{[count]}</i> votes:</h3>
+                         
+                         {List.mapX (fn ch => <xml>{[ch]}<br/></xml>) choices}
+                       </xml>}/>
+    </xml>
+
     fun ui r = {Create = create r,
-                Onload = fn _ => return (),
-                Render = fn _ _ => <xml/>}
+                Onload = onload,
+                Render = render}
 
 end

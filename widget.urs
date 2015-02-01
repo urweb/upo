@@ -32,3 +32,5 @@ val textbox : t string textbox
 type checkbox
 val checkbox : t bool checkbox
 
+type intbox
+val intbox : t int intbox

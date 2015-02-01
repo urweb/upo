@@ -1,7 +1,6 @@
 (* Generalized voting, where every authorized user may see who voted for what *)
 
 functor Make(M : sig
-                 val voterLabel : string
                  con voterKey1 :: Name
                  type voterKeyT
                  con voterKeyR :: {Type}
@@ -17,6 +16,7 @@ functor Make(M : sig
                  val voterKeyFl : folder voterKey
                  val voterKeyShow : show $voterKey
                  val voterKeyEq : $(map eq voterKey)
+                 val voterKeyOrd : $(map ord voterKey)
 
                  con choiceBallot :: {Type} (* Identifies subsets of the choices that should be considered together *)
                  con choiceKey1 :: Name
@@ -30,7 +30,7 @@ functor Make(M : sig
                  con choiceKeyName :: Name
                  con choiceOtherConstraints :: {{Unit}}
                  constraint [choiceKeyName] ~ choiceOtherConstraints
-                 val choice : sql_table (choiceBallot ++ choiceKey ++ choiceRest) ([choiceKeyName = map (fn _ => ()) choiceKey] ++ choiceOtherConstraints)
+                 val choice : sql_table (choiceBallot ++ choiceKey ++ choiceRest) ([choiceKeyName = map (fn _ => ()) (choiceBallot ++ choiceKey)] ++ choiceOtherConstraints)
                  val choiceKeyInj : $(map sql_injectable_prim choiceKey)
                  val choiceKeyFl : folder choiceKey
                  val choiceKeyShow : show $choiceKey
@@ -40,8 +40,10 @@ functor Make(M : sig
 
                  constraint voterKey ~ (choiceBallot ++ choiceKey)
                  constraint (voterKey ++ choiceBallot ++ choiceKey) ~ [Votes]
+                 constraint choiceBallot ~ [Channel]
 
                  val amVoter : transaction (option $voterKey)
+                 val maxVotesPerVoter : option int
              end) : sig
 
     include Ui.S where type input = {Ballot : $M.choiceBallot, Voter : $M.voterKey}
