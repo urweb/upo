@@ -39,6 +39,15 @@ structure VotingUnlimited = OpenBallot.Make(struct
                                                 val maxVotesPerVoter = None
                                             end)
 
+structure VotingLimited = OpenBallot.Make(struct
+                                              con choiceBallot = [Ballot = _]
+                                              con choiceKey = [City = _, Year = _]
+                                              val voter = user
+                                              val choice = choice
+                                              val amVoter = getCookie userC
+                                              val maxVotesPerVoter = Some 2
+                                          end)
+
 fun auth s =
     alreadyThere <- oneRowE1 (SELECT COUNT( * ) > 0
                               FROM user
@@ -52,7 +61,7 @@ fun auth s =
                          Secure = False}
 
 val main =
-    latest <- oneOrNoRows1 (SELECT * FROM ballot);
+    latest <- oneOrNoRows1 (SELECT * FROM ballot ORDER BY ballot.Ballot LIMIT 1);
     newuname <- source "";
     uname <- getCookie userC;
     uname <- return (Option.get {User = ""} uname);
@@ -68,5 +77,7 @@ val main =
       Choices.ui),
      (Some "Vote (unlimited)",
       VotingUnlimited.ui {Ballot = Option.get {Ballot = ""} latest,
-                          Voter = uname}))
-
+                          Voter = uname}),
+     (Some "Vote (limited)",
+      VotingLimited.ui {Ballot = Option.get {Ballot = ""} latest,
+                        Voter = uname}))
