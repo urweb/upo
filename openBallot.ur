@@ -65,7 +65,8 @@ functor Make(M : sig
       {{one_constraint [#Voter] (@Sql.easy_foreign ! ! ! ! ! ! voterKeyFl voter)}}
 
     type choice = {Key : $choiceKey,
-                   Votes : source (list ($voterKey * int))}
+                   Votes : source (list ($voterKey * int)),
+                   ShowVoters : source bool}
 
     datatype operation = Vote | Unvote
     type action = { Operation : operation, Voter : $voterKey, Choice : $choiceKey }
@@ -88,8 +89,9 @@ functor Make(M : sig
                     (case lastChoice of
                          None => return acc
                        | Some ch =>
-                         votes <- source votes;
-                         return ({Key = ch, Votes = votes} :: acc))
+                         votes <- source (List.rev votes);
+                         sv <- source False;
+                         return ({Key = ch, Votes = votes, ShowVoters = sv} :: acc))
                   | {Choice = ch, Vote = v} :: ls =>
                     case @Sql.unnull (@Folder.concat ! (_ : folder [Votes = _]) voterKeyFl) v of
                         None =>
@@ -97,11 +99,14 @@ functor Make(M : sig
                         (case lastChoice of
                              None =>
                              votes <- source [];
-                             doVotes ls ({Key = ch, Votes = votes} :: acc) None []
+                             sv <- source False;
+                             doVotes ls ({Key = ch, Votes = votes, ShowVoters = sv} :: acc) None []
                            | Some ch' =>
-                             votes' <- source votes;
+                             votes' <- source (List.rev votes);
+                             sv' <- source False;
                              votes <- source [];
-                             doVotes ls ({Key = ch, Votes = votes} :: {Key = ch', Votes = votes'} :: acc) None [])
+                             sv <- source False;
+                             doVotes ls ({Key = ch, Votes = votes, ShowVoters = sv} :: {Key = ch', Votes = votes', ShowVoters = sv'} :: acc) None [])
                       | Some v =>
                         (* This is a vote for the current choice. *)
                         if lastChoice = Some ch then
@@ -113,8 +118,9 @@ functor Make(M : sig
                                 (* There was no last choice needing further processing. *)
                                 doVotes ls acc (Some ch) ((v -- #Votes, v.Votes) :: [])
                               | Some lastChoice =>
-                                votes <- source votes;
-                                doVotes ls ({Key = lastChoice, Votes = votes} :: acc)
+                                votes <- source (List.rev votes);
+                                sv <- source False;
+                                doVotes ls ({Key = lastChoice, Votes = votes, ShowVoters = sv} :: acc)
                                         (Some ch) ((v -- #Votes, v.Votes) :: [])
         in
             votes <- queryL ({{{sql_query1 [[]]
@@ -321,7 +327,20 @@ functor Make(M : sig
                          </td>
                          <td>
                            <dyn signal={votes <- signal ch.Votes;
-                                        return <xml>{[List.foldl (fn (_, n) m => n + m) 0 votes]}</xml>}/>
+                                        return <xml>
+                                          {[List.foldl (fn (_, n) m => n + m) 0 votes]}
+
+                                          <dyn signal={sv <- signal ch.ShowVoters;
+                                                       return (if sv then <xml>
+                                                         <button class="btn glyphicon glyphicon-chevron-left"
+                                                                 onclick={fn _ => set ch.ShowVoters False}/>
+
+                                                         {List.mapX (fn (k, n) => <xml><br/>{[k]} ({[n]})</xml>) votes}
+                                                       </xml> else <xml>
+                                                         <button class="btn glyphicon glyphicon-chevron-right"
+                                                                 onclick={fn _ => set ch.ShowVoters True}/>
+                                                       </xml>)}/>
+                                        </xml>}/>
                          </td>
                        </tr>
                      </xml>) choices)}/>

@@ -52,13 +52,13 @@ fun auth s =
     alreadyThere <- oneRowE1 (SELECT COUNT( * ) > 0
                               FROM user
                               WHERE user.User = {[s]});
-    if alreadyThere then
-        return ()
-    else
-        dml (INSERT INTO user(User) VALUES ({[s]}));
-        setCookie userC {Value = {User = s},
-                         Expires = None,
-                         Secure = False}
+    (if alreadyThere then
+         return ()
+     else
+         dml (INSERT INTO user(User) VALUES ({[s]})));
+    setCookie userC {Value = {User = s},
+                     Expires = None,
+                     Secure = False}
 
 val main =
     latest <- oneOrNoRows1 (SELECT * FROM ballot ORDER BY ballot.Ballot LIMIT 1);
