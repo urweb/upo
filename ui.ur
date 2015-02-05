@@ -116,7 +116,7 @@ fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => option string * t a) 
     return <xml>
       <head>
         <title>{[titl]}</title>
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css"/>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css"/>
         <link rel="stylesheet" href="/style.css"/>
       </head>
 
