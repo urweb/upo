@@ -801,6 +801,16 @@ functor Make(M : sig
                                                    val amGiven = amUs
                                                end)
 
+        fun deleteFor r =
+            queryI1 (SELECT meeting.{{themKey}}, meeting.{{timeKey}}
+                     FROM meeting
+                     WHERE {@@Sql.easy_where [#Meeting] [usKey] [_] [_] [_] [_]
+                       ! ! usInj' usFl r})
+                    (fn r' => delMeeting (r ++ r'));
+
+            dml (DELETE FROM meeting
+                        WHERE {@@Sql.easy_where [#T] [usKey] [_] [_] [_] [_]
+                          ! ! usInj' usFl r})
     end
 
     val show_unit : show unit = mkShow (fn () => "")

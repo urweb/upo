@@ -85,6 +85,9 @@ functor Make(M : sig
 
         (* Inputing schedule constraints for a home *)
         structure Unavail : Ui.S where type input = $M.homeKey
+
+        (* Delete all of this person's meetings. *)
+        val deleteFor : $M.homeKey -> transaction unit
     end
 
     structure Away : sig
@@ -99,6 +102,9 @@ functor Make(M : sig
 
         (* Inputing schedule constraints for an away *)
         structure Unavail : Ui.S where type input = $M.awayKey
+
+        (* Delete all of this person's meetings. *)
+        val deleteFor : $M.awayKey -> transaction unit
     end
 
     (* Using preferences from both sides, try to schedule more meetings heuristically. *)
