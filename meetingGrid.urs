@@ -8,15 +8,19 @@ functor Make(M : sig
                  constraint [homeKey1] ~ homeKeyR
                  con homeKey = [homeKey1 = homeKeyT] ++ homeKeyR
                  con homeOffice :: {Type}
-                 con homeConst :: {Type}
+                 con homeHardConst :: {Type}
+                 (* Flat-out ignore rows that don't match the hard constants. *)
+                 con homeSoftConst :: {Type}
+                 (* Allow bidding on rows that don't match the soft constants, but omit them from the grid for now. *)
                  con homeRest :: {Type}
                  constraint homeKey ~ homeRest
                  constraint (homeKey ++ homeRest) ~ homeOffice
-                 constraint (homeKey ++ homeRest ++ homeOffice) ~ homeConst
+                 constraint (homeKey ++ homeRest ++ homeOffice) ~ homeSoftConst
+                 constraint (homeKey ++ homeRest ++ homeOffice ++ homeSoftConst) ~ homeHardConst
                  con homeKeyName :: Name
                  con homeOtherConstraints :: {{Unit}}
                  constraint [homeKeyName] ~ homeOtherConstraints
-                 val home : sql_table (homeKey ++ homeOffice ++ homeConst ++ homeRest) ([homeKeyName = map (fn _ => ()) homeKey] ++ homeOtherConstraints)
+                 val home : sql_table (homeKey ++ homeOffice ++ homeSoftConst ++ homeHardConst ++ homeRest) ([homeKeyName = map (fn _ => ()) homeKey] ++ homeOtherConstraints)
                  val homeInj : $(map sql_injectable_prim homeKey)
                  val homeKeyFl : folder homeKey
                  val homeKeyShow : show $homeKey
@@ -24,26 +28,34 @@ functor Make(M : sig
                  val homeKeyEq : $(map eq homeKey)
                  val officeFl : folder homeOffice
                  val officeShow : show $homeOffice
-                 val constFl : folder homeConst
-                 val constInj : $(map sql_injectable homeConst)
-                 val const : $homeConst
+                 val homeSoftConstFl : folder homeSoftConst
+                 val homeSoftConstInj : $(map sql_injectable homeSoftConst)
+                 val homeSoftConst : $homeSoftConst
+                 val homeHardConstFl : folder homeHardConst
+                 val homeHardConstInj : $(map sql_injectable homeHardConst)
+                 val homeHardConst : $homeHardConst
 
                  con awayKey1 :: Name
                  type awayKeyT
                  con awayKeyR :: {Type}
                  constraint [awayKey1] ~ awayKeyR
                  con awayKey = [awayKey1 = awayKeyT] ++ awayKeyR
+                 con awayConst :: {Type}
                  con awayRest :: {Type}
                  constraint awayKey ~ awayRest
+                 constraint (awayKey ++ awayRest) ~ awayConst
                  con awayKeyName :: Name
                  con awayOtherConstraints :: {{Unit}}
                  constraint [awayKeyName] ~ awayOtherConstraints
-                 val away : sql_table (awayKey ++ awayRest) ([awayKeyName = map (fn _ => ()) awayKey] ++ awayOtherConstraints)
+                 val away : sql_table (awayKey ++ awayConst ++ awayRest) ([awayKeyName = map (fn _ => ()) awayKey] ++ awayOtherConstraints)
                  val awayInj : $(map sql_injectable_prim awayKey)
                  val awayKeyFl : folder awayKey
                  val awayKeyShow : show $awayKey
                  val awayKeyRead : read $awayKey
                  val awayKeyEq : $(map eq awayKey)
+                 val awayConstFl : folder awayConst
+                 val awayConstInj : $(map sql_injectable awayConst)
+                 val awayConst : $awayConst
 
                  con timeKey1 :: Name
                  type timeKeyT

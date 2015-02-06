@@ -11,15 +11,17 @@ functor Make(M : sig
                  constraint [homeKey1] ~ homeKeyR
                  con homeKey = [homeKey1 = homeKeyT] ++ homeKeyR
                  con homeOffice :: {Type}
-                 con homeConst :: {Type}
+                 con homeHardConst :: {Type}
+                 con homeSoftConst :: {Type}
                  con homeRest :: {Type}
                  constraint homeKey ~ homeRest
                  constraint (homeKey ++ homeRest) ~ homeOffice
-                 constraint (homeKey ++ homeRest ++ homeOffice) ~ homeConst
+                 constraint (homeKey ++ homeRest ++ homeOffice) ~ homeSoftConst
+                 constraint (homeKey ++ homeRest ++ homeOffice ++ homeSoftConst) ~ homeHardConst
                  con homeKeyName :: Name
                  con homeOtherConstraints :: {{Unit}}
                  constraint [homeKeyName] ~ homeOtherConstraints
-                 val home : sql_table (homeKey ++ homeOffice ++ homeConst ++ homeRest) ([homeKeyName = map (fn _ => ()) homeKey] ++ homeOtherConstraints)
+                 val home : sql_table (homeKey ++ homeOffice ++ homeSoftConst ++ homeHardConst ++ homeRest) ([homeKeyName = map (fn _ => ()) homeKey] ++ homeOtherConstraints)
                  val homeInj : $(map sql_injectable_prim homeKey)
                  val homeKeyFl : folder homeKey
                  val homeKeyShow : show $homeKey
@@ -27,26 +29,34 @@ functor Make(M : sig
                  val homeKeyEq : $(map eq homeKey)
                  val officeFl : folder homeOffice
                  val officeShow : show $homeOffice
-                 val constFl : folder homeConst
-                 val constInj : $(map sql_injectable homeConst)
-                 val const : $homeConst
+                 val homeSoftConstFl : folder homeSoftConst
+                 val homeSoftConstInj : $(map sql_injectable homeSoftConst)
+                 val homeSoftConst : $homeSoftConst
+                 val homeHardConstFl : folder homeHardConst
+                 val homeHardConstInj : $(map sql_injectable homeHardConst)
+                 val homeHardConst : $homeHardConst
 
                  con awayKey1 :: Name
                  type awayKeyT
                  con awayKeyR :: {Type}
                  constraint [awayKey1] ~ awayKeyR
                  con awayKey = [awayKey1 = awayKeyT] ++ awayKeyR
+                 con awayConst :: {Type}
                  con awayRest :: {Type}
                  constraint awayKey ~ awayRest
+                 constraint (awayKey ++ awayRest) ~ awayConst
                  con awayKeyName :: Name
                  con awayOtherConstraints :: {{Unit}}
                  constraint [awayKeyName] ~ awayOtherConstraints
-                 val away : sql_table (awayKey ++ awayRest) ([awayKeyName = map (fn _ => ()) awayKey] ++ awayOtherConstraints)
+                 val away : sql_table (awayKey ++ awayConst ++ awayRest) ([awayKeyName = map (fn _ => ()) awayKey] ++ awayOtherConstraints)
                  val awayInj : $(map sql_injectable_prim awayKey)
                  val awayKeyFl : folder awayKey
                  val awayKeyShow : show $awayKey
                  val awayKeyRead : read $awayKey
                  val awayKeyEq : $(map eq awayKey)
+                 val awayConstFl : folder awayConst
+                 val awayConstInj : $(map sql_injectable awayConst)
+                 val awayConst : $awayConst
 
                  con timeKey1 :: Name
                  type timeKeyT
@@ -181,19 +191,23 @@ functor Make(M : sig
     functor Side(N : sig
                      con usKey :: {Type}
                      con usOffice :: {Type}
-                     con usConst :: {Type}
+                     con usSoftConst :: {Type}
+                     con usHardConst :: {Type}
                      con usOther :: {Type}
                      con themKey :: {Type}
                      con themOffice :: {Type}
-                     con themConst :: {Type}
+                     con themSoftConst :: {Type}
+                     con themHardConst :: {Type}
                      con themOther :: {Type}
 
                      constraint usKey ~ usOther
                      constraint (usKey ++ usOther) ~ usOffice
-                     constraint (usKey ++ usOther ++ usOffice) ~ usConst
+                     constraint (usKey ++ usOther ++ usOffice) ~ usSoftConst
+                     constraint (usKey ++ usOther ++ usOffice ++ usSoftConst) ~ usHardConst
                      constraint themKey ~ themOther
                      constraint (themKey ++ themOther) ~ themOffice
-                     constraint (themKey ++ themOther ++ themOffice) ~ themConst
+                     constraint (themKey ++ themOther ++ themOffice) ~ themSoftConst
+                     constraint (themKey ++ themOther ++ themOffice ++ themSoftConst) ~ themHardConst
                      constraint usKey ~ themKey
                      constraint (usKey ++ themKey) ~ timeKey
                      constraint themOffice ~ timeKey
@@ -204,8 +218,8 @@ functor Make(M : sig
                      val canonical : { Us : $usKey, Them : $themKey }
                                      -> { Home : $homeKey, Away : $awayKey }
 
-                     table us : (usKey ++ usOffice ++ usConst ++ usOther)
-                     table them : (themKey ++ themOffice ++ themConst ++ themOther)
+                     table us : (usKey ++ usOffice ++ usSoftConst ++ usHardConst ++ usOther)
+                     table them : (themKey ++ themOffice ++ themSoftConst ++ themHardConst ++ themOther)
 
                      table preference : ([ByHome = bool] ++ usKey ++ themKey)
                      table unavailable : (usKey ++ timeKey)
@@ -240,13 +254,19 @@ functor Make(M : sig
                      val usOfficeShow : show $usOffice
                      val themOfficeShow : show $themOffice
 
-                     val usConstFl : folder usConst
-                     val usConstInj : $(map sql_injectable usConst)
-                     val usConst : $usConst
+                     val usSoftConstFl : folder usSoftConst
+                     val usSoftConstInj : $(map sql_injectable usSoftConst)
+                     val usSoftConst : $usSoftConst
+                     val usHardConstFl : folder usHardConst
+                     val usHardConstInj : $(map sql_injectable usHardConst)
+                     val usHardConst : $usHardConst
 
-                     val themConstFl : folder themConst
-                     val themConstInj : $(map sql_injectable themConst)
-                     val themConst : $themConst
+                     val themSoftConstFl : folder themSoftConst
+                     val themSoftConstInj : $(map sql_injectable themSoftConst)
+                     val themSoftConst : $themSoftConst
+                     val themHardConstFl : folder themHardConst
+                     val themHardConstInj : $(map sql_injectable themHardConst)
+                     val themHardConst : $themHardConst
 
                      val byHome : bool
 
@@ -369,17 +389,21 @@ functor Make(M : sig
                 in
                     uses <- queryL1 (SELECT us.{{usKey}}, us.{{usOffice}}
                                      FROM us
-                                     WHERE {@@Sql.easy_where [#Us] [usConst]
+                                     WHERE {@@Sql.easy_where [#Us] [usHardConst ++ usSoftConst]
                                        [usKey ++ usOffice ++ usOther] [_] [_] [_]
-                                       ! ! usConstInj usConstFl usConst}
+                                       ! ! (usHardConstInj ++ usSoftConstInj)
+                                       (@Folder.concat ! usHardConstFl usSoftConstFl)
+                                       (usHardConst ++ usSoftConst)}
                                      ORDER BY {{{@Sql.order_by usFl
                                         (@Sql.some_fields [#Us] [usKey] ! ! usFl)
                                         sql_desc}}});
                     thems <- queryL1 (SELECT them.{{themKey}}
                                       FROM them
-                                      WHERE {@@Sql.easy_where [#Them] [themConst]
+                                      WHERE {@@Sql.easy_where [#Them] [themHardConst ++ themSoftConst]
                                         [themKey ++ themOffice ++ themOther] [_] [_] [_]
-                                        ! ! themConstInj themConstFl themConst}
+                                        ! ! (themHardConstInj ++ themSoftConstInj)
+                                        (@Folder.concat ! themHardConstFl themSoftConstFl)
+                                        (themHardConst ++ themSoftConst)}
                                       ORDER BY {{{@Sql.order_by themFl
                                         (@Sql.some_fields [#Them] [themKey] ! ! themFl)
                                         sql_desc}}});
@@ -671,10 +695,17 @@ functor Make(M : sig
                     meetings <- queryL (SELECT meeting.{{timeKey}}, meeting.{{themKey}}, them.{{themOffice}}
                                         FROM meeting
                                           JOIN them ON {@@Sql.easy_join [#Meeting] [#Them] [themKey]
-                                                [usKey ++ timeKey] [themOffice ++ themConst ++ themOther] [_] [_] [_]
+                                                [usKey ++ timeKey]
+                                                [themOffice ++ themHardConst ++ themSoftConst ++ themOther]
+                                                [_] [_] [_]
                                                 ! ! ! ! themFl}
                                         WHERE {@@Sql.easy_where [#Meeting] [usKey] [_] [_] [_] [_]
                                           ! ! usInj' usFl us}
+                                          AND {@@Sql.easy_where [#Them] [themHardConst ++ themSoftConst]
+                                            [themKey ++ themOffice ++ themOther] [_] [_] [_]
+                                            ! ! (themHardConstInj ++ themSoftConstInj)
+                                            (@Folder.concat ! themHardConstFl themSoftConstFl)
+                                            (themHardConst ++ themSoftConst)}
                                         ORDER BY {{{@Sql.order_by (@Folder.concat ! timeKeyFl themFl)
                                           (@Sql.some_fields [#Meeting] [timeKey ++ themKey] ! !
                                             (@Folder.concat ! timeKeyFl themFl))
@@ -762,7 +793,7 @@ functor Make(M : sig
 
         structure Prefs = ChooseForeign.Make(struct
                                                  val const = {ByHome = byHome}
-                                                 val optionsConst = themConst
+                                                 val optionsConst = themHardConst
                                                  con given = usKey
                                                  con chosen = themKey
 
@@ -778,8 +809,8 @@ functor Make(M : sig
 
                                                  val amGiven = amUs
 
-                                                 val optionsConstInj = themConstInj
-                                                 val optionsConstFl = themConstFl
+                                                 val optionsConstInj = themHardConstInj
+                                                 val optionsConstFl = themHardConstFl
                                              end)
 
         structure Unavail = ChooseForeign.Make(struct
@@ -818,10 +849,12 @@ functor Make(M : sig
     structure Home = Side(struct
                               con usKey = homeKey
                               con usOffice = homeOffice
-                              con usConst = homeConst
+                              con usHardConst = homeHardConst
+                              con usSoftConst = homeSoftConst
                               con themKey = awayKey
                               con themOffice = []
-                              con themConst = []
+                              con themHardConst = []
+                              con themSoftConst = awayConst
 
                               fun localized r = {Us = r.Home, Them = r.Away}
                               fun canonical r = {Home = r.Us, Away = r.Them}
@@ -847,20 +880,28 @@ functor Make(M : sig
 
                               val amUs = amHome
 
-                              val usConst = const
-                              val themConst = {}
+                              val usHardConst = homeHardConst
+                              val usSoftConst = homeSoftConst
+                              val themHardConst = {}
+                              val themSoftConst = awayConst
 
-                              val usConstInj = constInj
-                              val usConstFl = constFl
+                              val usHardConstInj = homeHardConstInj
+                              val usHardConstFl = homeHardConstFl
+                              val usSoftConstInj = homeSoftConstInj
+                              val usSoftConstFl = homeSoftConstFl
+                              val themSoftConstInj = awayConstInj
+                              val themSoftConstFl = awayConstFl
                           end)
 
     structure Away = Side(struct
                               con usKey = awayKey
                               con usOffice = []
-                              con usConst = []
+                              con usHardConst = []
+                              con usSoftConst = awayConst
                               con themKey = homeKey
                               con themOffice = homeOffice
-                              con themConst = homeConst
+                              con themHardConst = homeHardConst
+                              con themSoftConst = homeSoftConst
 
                               fun localized r = {Us = r.Away, Them = r.Home}
                               fun canonical r = {Away = r.Us, Home = r.Them}
@@ -885,11 +926,17 @@ functor Make(M : sig
 
                               val amUs = amAway
 
-                              val usConst = {}
-                              val themConst = const
+                              val usHardConst = {}
+                              val usSoftConst = awayConst
+                              val themSoftConst = homeSoftConst
+                              val themHardConst = homeHardConst
 
-                              val themConstInj = constInj
-                              val themConstFl = constFl
+                              val usSoftConstInj = awayConstInj
+                              val usSoftConstFl = awayConstFl
+                              val themHardConstInj = homeHardConstInj
+                              val themHardConstFl = homeHardConstFl
+                              val themSoftConstInj = homeSoftConstInj
+                              val themSoftConstFl = homeSoftConstFl
                           end)
 
     val scheduleSome =
@@ -940,6 +987,21 @@ functor Make(M : sig
                                                AND {@@Sql.easy_join [#AwayUnavailable] [#Time] [timeKey]
                                                  [awayKey] [timeRest] [_] [_] [_]
                                                  ! ! ! ! timeKeyFl}) IS NULL
+                                        AND NOT ((SELECT TRUE
+                                                  FROM home
+                                                  WHERE {@@Sql.easy_where [#Home] [homeKey] [_] [_] [_] [_]
+                                                    ! ! homeInj' homeKeyFl (r --- awayKey)}
+                                                    AND {@@Sql.easy_where [#Home] [homeHardConst ++ homeSoftConst]
+                                                    [_] [_] [_] [_]
+                                                    ! ! (homeHardConstInj ++ homeSoftConstInj)
+                                                    (@Folder.concat ! homeHardConstFl homeSoftConstFl)
+                                                    (homeHardConst ++ homeSoftConst)}) IS NULL)
+                                        AND NOT ((SELECT TRUE
+                                                  FROM away
+                                                  WHERE {@@Sql.easy_where [#Away] [awayKey] [_] [_] [_] [_]
+                                                    ! ! awayInj' awayKeyFl (r --- homeKey)}
+                                                    AND {@@Sql.easy_where [#Away] [awayConst] [_] [_] [_] [_]
+                                                    ! ! awayConstInj awayConstFl awayConst}) IS NULL)
                                       LIMIT 1);
                 case slot of
                     None =>
