@@ -1,0 +1,8 @@
+database dbname=upotest
+sql upo.sql
+library ..
+rewrite url Wc/*
+safeGet main
+file /style.css style.css
+
+wc
