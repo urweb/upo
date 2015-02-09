@@ -107,9 +107,16 @@ fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => option string * t a) 
     state <- @Monad.mapR _ [fn a => option string * t a] [ident]
               (fn [nm ::_] [t ::_] (_, r) => r.Create) fl ts;
 
-    curTab <- (case @fold [fn r => option (variant (map (fn _ => unit) r))]
-                     (fn [nm ::_] [v ::_] [r ::_] [[nm] ~ r] _ => Some (make [nm] ()))
-                     None fl of
+    curTab <- (case @foldR [fn a => option string * t a]
+                     [fn r => others :: {Type} -> [r ~ others] => option (variant (map (fn _ => unit) (r ++ others)))]
+                     (fn [nm ::_] [v ::_] [r ::_] [[nm] ~ r] (opt : option string * t v)
+                                  (acc : others :: {Type} -> [r ~ others] =>
+                                   option (variant (map (fn _ => unit) (r ++ others))))
+                                  [others ::_] [([nm = v] ++ r) ~ others] =>
+                         case opt.1 of
+                             Some _ => Some (make [nm] ())
+                           | _ => acc [[nm = v] ++ others])
+                     (fn [others ::_] [[] ~ others] => None) fl ts [[]] ! of
                    None => error <xml>Ui.tabbed: empty tab list</xml>
                  | Some v => source v);
 

@@ -290,6 +290,62 @@ functor Make(M : sig
                              WHERE {@Sql.easy_where [#Listeners] ! ! choiceBallotInj' choiceBallotFl r.Ballot})
                             (fn l => send l.Channel {Operation = Vote, Voter = v, Choice = r.Choice})
 
+    fun oneChoice showKey a ch = <xml>
+        <tr>
+          <td>
+            <dyn signal={votes <- signal ch.Votes;
+                         myVotes <- return (Option.get 0 (List.assoc a.Voter votes));
+                         return <xml>
+                           <button class={if myVotes = 0 then
+                                              CLASS "disabled btn glyphicon glyphicon-minus"
+                                          else
+                                              CLASS "btn glyphicon glyphicon-minus"}
+                                   onclick={fn _ => rpc (del {Ballot = a.Ballot,
+                                                              Choice = ch.Key})}/>
+                           <button class={if (case maxVotesPerVoter of
+                                                  None => False
+                                                | Some n => myVotes >= n) then
+                                              CLASS "disabled btn glyphicon glyphicon-plus"
+                                          else
+                                              CLASS "btn glyphicon glyphicon-plus"}
+                                   onclick={fn _ => rpc (add {Ballot = a.Ballot,
+                                                                     Choice = ch.Key})}/>
+                         </xml>}/>
+          </td>
+          {if showKey then
+               <xml><td>{[ch.Key]}</td></xml>
+           else
+               <xml/>}
+          <td>
+            <dyn signal={votes <- signal ch.Votes;
+                         return <xml>{[List.foldl (fn (v, n) m => if v = a.Voter then n + m else m) 0 votes]}</xml>}/>
+          </td>
+          <td>
+            <dyn signal={votes <- signal ch.Votes;
+                         return <xml>
+                           {[List.foldl (fn (_, n) m => n + m) 0 votes]}
+
+                           <dyn signal={sv <- (if showKey then
+                                                   signal ch.ShowVoters
+                                               else
+                                                   return True);
+                                        return (if sv then <xml>
+                                          {if showKey then
+                                               <xml><button class="btn glyphicon glyphicon-chevron-left"
+                                                            onclick={fn _ => set ch.ShowVoters False}/></xml>
+                                           else
+                                               <xml/>}
+
+                                          {List.mapX (fn (k, n) => <xml><br/>{[k]} ({[n]})</xml>) votes}
+                                        </xml> else <xml>
+                                          <button class="btn glyphicon glyphicon-chevron-right"
+                                                  onclick={fn _ => set ch.ShowVoters True}/>
+                                        </xml>)}/>
+                         </xml>}/>
+          </td>
+        </tr>
+      </xml>
+
     fun render _ a = <xml>
       <table class="bs3-table table-striped">
         <tr>
@@ -300,52 +356,7 @@ functor Make(M : sig
         </tr>
 
         <dyn signal={choices <- signal a.Choices;
-                     return (List.mapX (fn ch => <xml>
-                       <tr>
-                         <td>
-                           <dyn signal={votes <- signal ch.Votes;
-                                        myVotes <- return (Option.get 0 (List.assoc a.Voter votes));
-                                        return <xml>
-                                          <button class={if myVotes = 0 then
-                                                             CLASS "disabled btn glyphicon glyphicon-minus"
-                                                         else
-                                                             CLASS "btn glyphicon glyphicon-minus"}
-                                                  onclick={fn _ => rpc (del {Ballot = a.Ballot,
-                                                                             Choice = ch.Key})}/>
-                                          <button class={if (case maxVotesPerVoter of
-                                                                 None => False
-                                                               | Some n => myVotes >= n) then
-                                                             CLASS "disabled btn glyphicon glyphicon-plus"
-                                                         else
-                                                             CLASS "btn glyphicon glyphicon-plus"}
-                                                  onclick={fn _ => rpc (add {Ballot = a.Ballot,
-                                                                                    Choice = ch.Key})}/>
-                                        </xml>}/>
-                         </td>
-                         <td>{[ch.Key]}</td>
-                         <td>
-                           <dyn signal={votes <- signal ch.Votes;
-                                        return <xml>{[List.foldl (fn (v, n) m => if v = a.Voter then n + m else m) 0 votes]}</xml>}/>
-                         </td>
-                         <td>
-                           <dyn signal={votes <- signal ch.Votes;
-                                        return <xml>
-                                          {[List.foldl (fn (_, n) m => n + m) 0 votes]}
-
-                                          <dyn signal={sv <- signal ch.ShowVoters;
-                                                       return (if sv then <xml>
-                                                         <button class="btn glyphicon glyphicon-chevron-left"
-                                                                 onclick={fn _ => set ch.ShowVoters False}/>
-
-                                                         {List.mapX (fn (k, n) => <xml><br/>{[k]} ({[n]})</xml>) votes}
-                                                       </xml> else <xml>
-                                                         <button class="btn glyphicon glyphicon-chevron-right"
-                                                                 onclick={fn _ => set ch.ShowVoters True}/>
-                                                       </xml>)}/>
-                                        </xml>}/>
-                         </td>
-                       </tr>
-                     </xml>) choices)}/>
+                     return (List.mapX (oneChoice True a) choices)}/>
       </table>
 
       <dyn signal={choices <- signal a.Choices;
@@ -384,5 +395,38 @@ functor Make(M : sig
                       (choiceBallotInj' ++ choiceKeyInj')
                        (@Folder.concat ! choiceBallotFl choiceKeyFl)
                        r})
+
+    structure OneChoice = struct
+        type input = _
+        type a = {Base : a,
+                  Choice : $choiceKey}
+
+        val create r =
+            base <- create (r -- #Choice);
+            return {Base = base, Choice = r.Choice}
+
+        val onload a = onload a.Base
+
+        fun render _ a = <xml>
+          <table class="bs3-table table-striped">
+            <tr>
+              <th/>
+              <th>Your Vote</th>
+              <th>Votes</th>
+            </tr>
+
+            <dyn signal={choices <- signal a.Base.Choices;
+                         return (List.mapX (fn ch =>
+                                               if ch.Key <> a.Choice then
+                                                   <xml/>
+                                               else
+                                                   oneChoice False a.Base ch) choices)}/>
+          </table>
+        </xml>
+
+        fun ui x = {Create = create x,
+                    Onload = onload,
+                    Render = render}
+    end
 
 end

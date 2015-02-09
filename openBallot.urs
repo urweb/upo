@@ -52,4 +52,8 @@ functor Make(M : sig
 
     val removeVotesFor : $(M.choiceBallot ++ M.choiceKey) -> transaction unit
 
+    structure OneChoice : Ui.S where type input = {Ballot : $M.choiceBallot,
+                                                   Choice : $M.choiceKey,
+                                                   Voter : $M.voterKey}
+
 end
