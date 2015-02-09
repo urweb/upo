@@ -27,6 +27,7 @@ functor Make(M : sig
                  val homeKeyShow : show $homeKey
                  val homeKeyRead : read $homeKey
                  val homeKeyEq : $(map eq homeKey)
+                 val homeKeyOrd : $(map ord homeKey)
                  val officeFl : folder homeOffice
                  val officeShow : show $homeOffice
                  val homeSoftConstFl : folder homeSoftConst
@@ -54,6 +55,7 @@ functor Make(M : sig
                  val awayKeyShow : show $awayKey
                  val awayKeyRead : read $awayKey
                  val awayKeyEq : $(map eq awayKey)
+                 val awayKeyOrd : $(map ord awayKey)
                  val awayConstFl : folder awayConst
                  val awayConstInj : $(map sql_injectable awayConst)
                  val awayConst : $awayConst
@@ -89,6 +91,9 @@ functor Make(M : sig
     val homeKeyEq : eq $homeKey = @@Record.eq [homeKey] homeKeyEq homeKeyFl
     val awayKeyEq : eq $awayKey = @@Record.eq [awayKey] awayKeyEq awayKeyFl
     val timeKeyEq : eq $timeKey = @@Record.eq [timeKey] timeKeyEq timeKeyFl
+
+    val homeKeyOrd : ord $homeKey = @@Record.ord [homeKey] homeKeyOrd homeKeyFl
+    val awayKeyOrd : ord $awayKey = @@Record.ord [awayKey] awayKeyOrd awayKeyFl
 
     table meeting : (homeKey ++ timeKey ++ awayKey)
       PRIMARY KEY {{@primary_key [homeKey1] [homeKeyR ++ timeKey ++ awayKey] ! !
@@ -248,6 +253,7 @@ functor Make(M : sig
                      val themRead : read $themKey
 
                      val usEq : eq $usKey
+                     val usOrd : ord $usKey
                      val themEq : eq $themKey
 
                      val usOfficeFl : folder usOffice
@@ -356,7 +362,10 @@ functor Make(M : sig
                                                 ((time, available, List.rev themsDone) :: timesDone)
                                     end
                                   | row :: rows' =>
-                                    if row --- themKey --- timeKey = us --- usOffice
+                                    if row --- themKey --- timeKey < us --- usOffice then
+                                        (* We've encountered a meeting for an invalid us.  Skip it! *)
+                                        initMap acc rows' uses times unavails themsDone timesDone
+                                    else if row --- themKey --- timeKey = us --- usOffice
                                        && @eq timeKeyEq (row --- usKey --- themKey) time then
                                         (* Aha, a match!  Record this meeting. *)
                                         initMap acc

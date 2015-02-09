@@ -9,9 +9,7 @@ functor Make(M : sig
                  con homeKey = [homeKey1 = homeKeyT] ++ homeKeyR
                  con homeOffice :: {Type}
                  con homeHardConst :: {Type}
-                 (* Flat-out ignore rows that don't match the hard constants. *)
                  con homeSoftConst :: {Type}
-                 (* Allow bidding on rows that don't match the soft constants, but omit them from the grid for now. *)
                  con homeRest :: {Type}
                  constraint homeKey ~ homeRest
                  constraint (homeKey ++ homeRest) ~ homeOffice
@@ -26,6 +24,7 @@ functor Make(M : sig
                  val homeKeyShow : show $homeKey
                  val homeKeyRead : read $homeKey
                  val homeKeyEq : $(map eq homeKey)
+                 val homeKeyOrd : $(map ord homeKey)
                  val officeFl : folder homeOffice
                  val officeShow : show $homeOffice
                  val homeSoftConstFl : folder homeSoftConst
@@ -53,6 +52,7 @@ functor Make(M : sig
                  val awayKeyShow : show $awayKey
                  val awayKeyRead : read $awayKey
                  val awayKeyEq : $(map eq awayKey)
+                 val awayKeyOrd : $(map ord awayKey)
                  val awayConstFl : folder awayConst
                  val awayConstInj : $(map sql_injectable awayConst)
                  val awayConst : $awayConst
