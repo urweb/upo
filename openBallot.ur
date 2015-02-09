@@ -377,4 +377,12 @@ functor Make(M : sig
                 Onload = onload,
                 Render = render}
 
+    fun removeVotesFor r =
+        dml (DELETE FROM vote
+                    WHERE {@@Sql.easy_where [#T] [choiceBallot ++ choiceKey] [voterKey ++ [Votes = _]]
+                      [[]] [[]] [[]] ! !
+                      (choiceBallotInj' ++ choiceKeyInj')
+                       (@Folder.concat ! choiceBallotFl choiceKeyFl)
+                       r})
+
 end

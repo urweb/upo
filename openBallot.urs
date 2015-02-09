@@ -50,4 +50,6 @@ functor Make(M : sig
 
     include Ui.S where type input = {Ballot : $M.choiceBallot, Voter : $M.voterKey}
 
+    val removeVotesFor : $(M.choiceBallot ++ M.choiceKey) -> transaction unit
+
 end
