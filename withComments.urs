@@ -43,4 +43,11 @@ functor Make(M : sig
 
                  val render : $(key ++ rest) -> xbody
                  val amUser : transaction (option $user)
-             end) : Ui.S where type input = option $M.user
+             end) : sig
+    include Ui.S where type input = option $M.user
+
+    (* Call these when changing the [key] table. *)
+    val add : $M.key -> transaction unit
+    val delete : $M.key -> transaction unit
+    val modify : {Old : $M.key, New : $M.key} -> transaction unit
+end

@@ -8,15 +8,6 @@ table widget : { Title : string, Size : int }
 
 cookie userC : { User : string }
 
-structure Widgets = EditableTable.Make(struct
-                                           val tab = widget
-                                           val labels = {Title = "Title",
-                                                         Size = "Size"}
-                                           val permission = return {Add = True,
-                                                                    Delete = True,
-                                                                    Modify = True}
-                                       end)
-
 structure Commented = WithComments.Make(struct
                                             val key = widget
                                             val user = user
@@ -29,6 +20,21 @@ structure Commented = WithComments.Make(struct
 
                                             val amUser = getCookie userC
                                         end)
+
+structure Widgets = EditableTable.Make(struct
+                                           val tab = widget
+                                           val labels = {Title = "Title",
+                                                         Size = "Size"}
+                                           val permission = return {Add = True,
+                                                                    Delete = True,
+                                                                    Modify = True}
+
+                                           fun shrink w = w -- #Size
+                                           fun onAdd w = Commented.add (shrink w)
+                                           fun onDelete w = Commented.delete (shrink w)
+                                           fun onModify w = Commented.modify {Old = shrink w.Old,
+                                                                              New = shrink w.New}
+                                       end)
 
 fun auth s =
     alreadyThere <- oneRowE1 (SELECT COUNT( * ) > 0

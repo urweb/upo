@@ -63,7 +63,7 @@ functor Make(M : sig
       {{one_constraint [#User] (@Sql.easy_foreign ! ! ! ! ! ! userFl user)}}
 
     datatype action =
-             SetKey of { Key : $key, Rest : option $rest }
+             SetKey of { Key : $key, NewKey : option $key, Rest : option $rest }
            | SetComment of { Key : $key, User : $user, Comment : option string }
     (* [None] for deletion *)
 
@@ -173,17 +173,22 @@ functor Make(M : sig
                         | Some rest =>
                           if List.exists (fn ent => ent.Key = r.Key) ents then
                               set a.Entries
-                                  (List.mp (fn ent => if ent.Key = r.Key then
-                                                          ent -- #Rest ++ {Rest = rest}
-                                                      else
-                                                          ent) ents)
+                                  (List.sort (fn r1 r2 => r1.Key > r2.Key)
+                                             (List.mp (fn ent => if ent.Key = r.Key then
+                                                                     case r.NewKey of
+                                                                         None => ent -- #Rest ++ {Rest = rest}
+                                                                       | Some nk => ent -- #Key -- #Rest
+                                                                                        ++ {Key = nk, Rest = rest}
+                                                                 else
+                                                                     ent) ents))
                            else
                                comments <- source [];
                                ync <- source None;
                                set a.Entries (List.sort (fn r1 r2 => r1.Key > r2.Key)
-                                                        ((r -- #Rest ++ {Rest = rest,
-                                                                         Comments = comments,
-                                                                         YourNewComment = ync}) :: ents)))
+                                                        ((r -- #NewKey -- #Rest
+                                                            ++ {Rest = rest,
+                                                                Comments = comments,
+                                                                YourNewComment = ync}) :: ents)))
                    | SetComment r =>
                      ents <- get a.Entries;
                      List.app (fn ent =>
@@ -288,5 +293,38 @@ functor Make(M : sig
     fun ui u = {Create = create u,
                 Onload = onload,
                 Render = render}
+
+    fun add k =
+        rest <- oneRow1 ({{{sql_query1 [[]]
+                                       {Distinct = False,
+                                        From = sql_from_query [#Q] query,
+                                        Where = @@Sql.easy_where [#Q] [key] [_] [_] [_] [_]
+                                                  ! ! keyInj' keyFl k,
+                                        GroupBy = sql_subset_all [_],
+                                        Having = (WHERE TRUE),
+                                        SelectFields = sql_subset [[Q = (rest, _)]],
+                                        SelectExps = {}} }}});
+        queryI1 (SELECT listeners.Channel
+                 FROM listeners)
+                (fn l => send l.Channel (SetKey {Key = k, NewKey = None, Rest = Some rest}))
+
+    fun delete k =
+        queryI1 (SELECT listeners.Channel
+                 FROM listeners)
+                (fn l => send l.Channel (SetKey {Key = k, NewKey = None, Rest = None}))
+
+    fun modify r =
+        rest <- oneRow1 ({{{sql_query1 [[]]
+                                       {Distinct = False,
+                                        From = sql_from_query [#Q] query,
+                                        Where = @@Sql.easy_where [#Q] [key] [_] [_] [_] [_]
+                                                  ! ! keyInj' keyFl r.New,
+                                        GroupBy = sql_subset_all [_],
+                                        Having = (WHERE TRUE),
+                                        SelectFields = sql_subset [[Q = (rest, _)]],
+                                        SelectExps = {}} }}});
+        queryI1 (SELECT listeners.Channel
+                 FROM listeners)
+                (fn l => send l.Channel (SetKey {Key = r.Old, NewKey = Some r.New, Rest = Some rest}))
 
 end

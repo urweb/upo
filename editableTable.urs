@@ -15,4 +15,8 @@ functor Make(M : sig
 
                  val labels : $(map (fn _ => string) fs)
                  val permission : transaction permission
+
+                 val onAdd : $(map fst fs) -> transaction unit
+                 val onDelete : $(map fst fs) -> transaction unit
+                 val onModify : {Old : $(map fst fs), New : $(map fst fs)} -> transaction unit
              end) : Ui.S0

@@ -15,6 +15,10 @@ functor Make(M : sig
 
                  val labels : $(map (fn _ => string) fs)
                  val permission : transaction permission
+
+                 val onAdd : $(map fst fs) -> transaction unit
+                 val onDelete : $(map fst fs) -> transaction unit
+                 val onModify : {Old : $(map fst fs), New : $(map fst fs)} -> transaction unit
              end) = struct
 
     open M
@@ -114,7 +118,9 @@ functor Make(M : sig
         @@Sql.easy_insert [map fst fs] [_] injs (@@Folder.mp [fst] [_] fl) tab r;
 
         queryI1 (SELECT * FROM listeners)
-        (fn x => send x.Channel (ADD r))
+        (fn x => send x.Channel (ADD r));
+
+        onAdd r
 
     fun del r =
         perm <- permission;
@@ -128,7 +134,9 @@ functor Make(M : sig
                injs (@@Folder.mp [fst] [_] fl) r});
 
         queryI1 (SELECT * FROM listeners)
-        (fn x => send x.Channel (DEL r))
+        (fn x => send x.Channel (DEL r));
+
+        onDelete r
 
     fun mod r =
         perm <- permission;
@@ -146,7 +154,9 @@ functor Make(M : sig
                  injs (@@Folder.mp [fst] [_] fl) r.Old));
 
         queryI1 (SELECT * FROM listeners)
-        (fn x => send x.Channel (MOD r))
+        (fn x => send x.Channel (MOD r));
+
+        onModify r
 
     fun render ctx a = <xml>
       <table class="bs3-table table-striped">
