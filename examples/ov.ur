@@ -20,6 +20,10 @@ structure Ballots = EditableTable.Make(struct
                                            val permission = return {Add = True,
                                                                     Delete = True,
                                                                     Modify = True}
+
+                                           fun onAdd _ = return ()
+                                           fun onDelete _ = return ()
+                                           fun onModify _ = return ()
                                        end)
 
 structure Choices = EditableTable.Make(struct
@@ -28,6 +32,10 @@ structure Choices = EditableTable.Make(struct
                                            val permission = return {Add = True,
                                                                     Delete = True,
                                                                     Modify = True}
+
+                                           fun onAdd _ = return ()
+                                           fun onDelete _ = return ()
+                                           fun onModify _ = return ()
                                        end)
 
 structure VotingUnlimited = OpenBallot.Make(struct

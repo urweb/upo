@@ -14,6 +14,10 @@ structure ET = EditableTable.Make(struct
                                                                Modify = True}
 
                                       val widgets = {Url = urlbox} ++ _
+
+                                      fun onAdd _ = return ()
+                                      fun onDelete _ = return ()
+                                      fun onModify _ = return ()
                                   end)
 
 val main = Ui.simple "Main" ET.ui
