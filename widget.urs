@@ -34,3 +34,6 @@ val checkbox : t bool checkbox
 
 type intbox
 val intbox : t int intbox
+
+type timebox
+val timebox : t time timebox

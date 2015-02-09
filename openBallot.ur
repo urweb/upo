@@ -44,6 +44,7 @@ functor Make(M : sig
 
                  val amVoter : transaction (option $voterKey)
                  val maxVotesPerVoter : option int
+                 val keyFilter : sql_exp [Choice = choiceBallot ++ choiceKey ++ choiceRest] [] [] bool
              end) = struct
 
     open M
@@ -137,11 +138,12 @@ functor Make(M : sig
                                                 (_ ++ voterKeyInj
                                                    ++ choiceBallotInj ++ choiceKeyInj)}
                                               (FROM choice) (FROM vote)
-                                              (@@Sql.easy_join [#Choice] [#Vote]
+                                              (WHERE {@@Sql.easy_join [#Choice] [#Vote]
                                                  [choiceKey] [choiceBallot ++ choiceRest]
                                                  [choiceBallot ++ [Votes = _] ++ voterKey]
                                                  [[]] [[]] [[]]
-                                                 ! ! ! ! choiceKeyFl),
+                                                 ! ! ! ! choiceKeyFl}
+                                                 AND {sql_exp_weaken keyFilter}),
                                      Where = @@Sql.easy_where [#Choice] [choiceBallot] [_] [_] [_] [_]
                                                ! ! choiceBallotInj' choiceBallotFl r.Ballot,
                                      GroupBy = sql_subset_all [_],
@@ -363,7 +365,9 @@ functor Make(M : sig
                        return <xml>
                          <h3>Current leader{case choices of
                                                 _ :: _ :: _ => <xml>s</xml>
-                                              | _ => <xml/>}, with <i>{[count]}</i> votes:</h3>
+                                              | _ => <xml/>}, with <i>{[count]}</i> vote{case count of
+                                                                                             1 => <xml/>
+                                                                                           | _ => <xml>s</xml>}:</h3>
                          
                          {List.mapX (fn ch => <xml>{[ch]}<br/></xml>) choices}
                        </xml>}/>
