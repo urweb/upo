@@ -142,10 +142,10 @@ functor Make(M : sig
                                                  [choiceKey] [choiceBallot ++ choiceRest]
                                                  [choiceBallot ++ [Votes = _] ++ voterKey]
                                                  [[]] [[]] [[]]
-                                                 ! ! ! ! choiceKeyFl}
-                                                 AND {sql_exp_weaken keyFilter}),
-                                     Where = @@Sql.easy_where [#Choice] [choiceBallot] [_] [_] [_] [_]
-                                               ! ! choiceBallotInj' choiceBallotFl r.Ballot,
+                                                 ! ! ! ! choiceKeyFl}),
+                                     Where = (WHERE {@@Sql.easy_where [#Choice] [choiceBallot] [_] [_] [_] [_]
+                                                ! ! choiceBallotInj' choiceBallotFl r.Ballot}
+                                                AND {sql_exp_weaken keyFilter}),
                                      GroupBy = sql_subset_all [_],
                                      Having = (WHERE TRUE),
                                      SelectFields = sql_subset [[Choice = (choiceKey, _),
