@@ -173,7 +173,7 @@ functor Make(M : sig
                         | Some rest =>
                           if List.exists (fn ent => ent.Key = r.Key) ents then
                               set a.Entries
-                                  (List.sort (fn r1 r2 => r1.Key > r2.Key)
+                                  (List.sort (fn r1 r2 => r1.Key < r2.Key)
                                              (List.mp (fn ent => if ent.Key = r.Key then
                                                                      case r.NewKey of
                                                                          None => ent -- #Rest ++ {Rest = rest}
@@ -184,7 +184,7 @@ functor Make(M : sig
                            else
                                comments <- source [];
                                ync <- source None;
-                               set a.Entries (List.sort (fn r1 r2 => r1.Key > r2.Key)
+                               set a.Entries (List.sort (fn r1 r2 => r1.Key < r2.Key)
                                                         ((r -- #NewKey -- #Rest
                                                             ++ {Rest = rest,
                                                                 Comments = comments,
