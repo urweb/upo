@@ -110,8 +110,14 @@ fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => option string * t a) 
     size <- return (@fold [fn _ => int]
                      (fn [nm ::_] [v ::_] [r ::_] [[nm] ~ r] n => n + 1)
                      0 fl);
-    (curTab : source int) <- source 0;
-
+    (curTab : source int) <- source (@foldR [fn a => option string * t a] [fn _ => int * int]
+                                      (fn [nm ::_] [v ::_] [r ::_] [[nm] ~ r] (opt, _) (cur, chosen) =>
+                                          (cur - 1,
+                                           case opt of
+                                               None => chosen
+                                             | Some _ => cur))
+                                      (size-1, size) fl ts).2;
+                                  
     return <xml>
       <head>
         <title>{[titl]}</title>

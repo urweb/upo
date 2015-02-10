@@ -95,7 +95,7 @@ functor Make(M : sig
                     (case thisKey of
                          None => return acc
                        | Some (key, rest) =>
-                         comments <- source comments;
+                         comments <- source (List.rev comments);
                          ync <- source None;
                          return ({Key = key, Rest = rest, Comments = comments, YourNewComment = ync} :: acc))
                   | {Q = q, Comment = c} :: ls' =>
@@ -115,9 +115,9 @@ functor Make(M : sig
                         if @eq keyEq key (q --- rest) then
                             case @Sql.unnull (@Folder.concat ! (_ : folder [Comment = _]) userFl) c of
                                 None => error <xml>WithComments: Inconsistent left join</xml>
-                              | Some c => setup ls' acc thisKey ({User = c -- #Comment, Comment = c.Comment} :: [])
+                              | Some c => setup ls' acc thisKey ({User = c -- #Comment, Comment = c.Comment} :: comments)
                         else
-                            comments <- source comments;
+                            comments <- source (List.rev comments);
                             comments' <- return (case @Sql.unnull (@Folder.concat ! (_ : folder [Comment = _]) userFl) c of
                                                      None => []
                                                    | Some c => {User = c -- #Comment, Comment = c.Comment} :: []);
