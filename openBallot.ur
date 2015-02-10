@@ -92,7 +92,7 @@ functor Make(M : sig
                     (case lastChoice of
                          None => return acc
                        | Some ch =>
-                         votes <- source (List.rev votes);
+                         votes <- source votes;
                          sv <- source False;
                          return ({Key = ch, Votes = votes, ShowVoters = sv} :: acc))
                   | {Choice = ch, Vote = v} :: ls =>
@@ -105,7 +105,7 @@ functor Make(M : sig
                              sv <- source False;
                              doVotes ls ({Key = ch, Votes = votes, ShowVoters = sv} :: acc) None []
                            | Some ch' =>
-                             votes' <- source (List.rev votes);
+                             votes' <- source votes;
                              sv' <- source False;
                              votes <- source [];
                              sv <- source False;
@@ -121,7 +121,7 @@ functor Make(M : sig
                                 (* There was no last choice needing further processing. *)
                                 doVotes ls acc (Some ch) ((v -- #Votes, v.Votes) :: [])
                               | Some lastChoice =>
-                                votes <- source (List.rev votes);
+                                votes <- source votes;
                                 sv <- source False;
                                 doVotes ls ({Key = lastChoice, Votes = votes, ShowVoters = sv} :: acc)
                                         (Some ch) ((v -- #Votes, v.Votes) :: [])
@@ -156,7 +156,7 @@ functor Make(M : sig
                              ORDER BY {{{@Sql.order_by (@Folder.concat ! choiceKeyFl (@Folder.mp voterKeyFl))
                                           (@Sql.some_fields [#Choice] [choiceKey] ! ! choiceKeyFl
                                             ++ @Sql.some_fields [#Vote] [map option voterKey] ! ! (@Folder.mp voterKeyFl))
-                                          sql_desc}}});
+                                          sql_asc}}});
 
             choices <- doVotes votes [] None [];
             choices <- source choices;
