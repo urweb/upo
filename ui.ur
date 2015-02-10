@@ -107,18 +107,10 @@ fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => option string * t a) 
     state <- @Monad.mapR _ [fn a => option string * t a] [ident]
               (fn [nm ::_] [t ::_] (_, r) => r.Create) fl ts;
 
-    curTab <- (case @foldR [fn a => option string * t a]
-                     [fn r => others :: {Type} -> [r ~ others] => option (variant (map (fn _ => unit) (r ++ others)))]
-                     (fn [nm ::_] [v ::_] [r ::_] [[nm] ~ r] (opt : option string * t v)
-                                  (acc : others :: {Type} -> [r ~ others] =>
-                                   option (variant (map (fn _ => unit) (r ++ others))))
-                                  [others ::_] [([nm = v] ++ r) ~ others] =>
-                         case opt.1 of
-                             Some _ => Some (make [nm] ())
-                           | _ => acc [[nm = v] ++ others])
-                     (fn [others ::_] [[] ~ others] => None) fl ts [[]] ! of
-                   None => error <xml>Ui.tabbed: empty tab list</xml>
-                 | Some v => source v);
+    size <- return (@fold [fn _ => int]
+                     (fn [nm ::_] [v ::_] [r ::_] [[nm] ~ r] n => n + 1)
+                     0 fl);
+    (curTab : source int) <- source 0;
 
     return <xml>
       <head>
@@ -147,33 +139,23 @@ fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => option string * t a) 
             </div>
             <div id={nid} class="collapse navbar-collapse">
               <ul class="bs3-nav navbar-nav">
-                {@foldR2 [fn a => option string * t a] [ident]
-                  [fn r => rest :: {Type} -> [r ~ rest] =>
-                      folder (rest ++ r)
-                      -> source (variant (map (fn _ => unit) (rest ++ r)))
-                      -> xbody]
-                 (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (labl : option string, r) st
-                              (acc : rest :: {Type} -> [r ~ rest] =>
-                               folder (rest ++ r)
-                               -> source (variant (map (fn _ => unit) (rest ++ r)))
-                               -> xbody) [rest ::_]
-                              [([nm = t] ++ r) ~ rest] (fl : folder ([nm = t] ++ r ++ rest))
-                              curTab => case labl of
-                                            None => @acc [[nm = t] ++ rest] ! fl curTab
-                                          | Some labl =><xml>
-                                <li dynClass={ct <- signal curTab;
-                                              return (@@match [[nm = unit]
-                                                                   ++ map (fn _ => unit)
-                                                                              (rest ++ r)] [_] ct
-                                                        (@map0 [fn _ => unit -> css_class]
-                                                          (fn [t ::_] () => null)
-                                                          fl
-                                                          -- nm ++ {nm = fn () => bs3_active}))}
-                                    onclick={fn _ => set curTab (make [nm] ())}><a>{[labl]}</a></li>
-                                {@acc [[nm = t] ++ rest] ! fl curTab}
-                              </xml>)
-                 (fn [rest ::_] [[] ~ rest] _ _ => <xml/>)
-                 fl ts state [[]] ! fl curTab}
+                {(@foldR2 [fn a => option string * t a] [ident]
+                  [fn _ => xbody * int]
+                 (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (labl : option string, r) st (bod, n) =>
+                     (case labl of
+                          None => bod
+                        | Some labl => <xml>
+                          <li dynClass={ct <- signal curTab;
+                                              return (if ct = n then
+                                                          bs3_active
+                                                      else
+                                                          null)}
+                              onclick={fn _ => set curTab n}><a>{[labl]}</a></li>
+                              {bod}
+                        </xml>,
+                      n-1))
+                 (<xml/>, size-1)
+                 fl ts state).1}
               </ul>
             </div>
           </div>
@@ -181,12 +163,13 @@ fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => option string * t a) 
 
         <div class="container-fluid">
           <dyn signal={ct <- signal curTab;
-                       return (@@match [map (fn _ => unit) ts] [xbody] ct
-                                 (@map2 [fn a => option string * t a] [ident]
-                                   [fn _ => unit -> xbody]
-                                   (fn [t] (_, t) st () =>
-                                       t.Render {ModalId = mid, ModalSpot = ms} st)
-                                   fl ts state))}/>
+                       return (@foldR2 [fn a => option string * t a] [ident] [fn _ => xbody * int]
+                                (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_, t) st (acc, n) =>
+                                    (if ct = n then
+                                         t.Render {ModalId = mid, ModalSpot = ms} st
+                                     else
+                                         acc, n-1))
+                                (<xml/>, size-1) fl ts state).1}/>
         </div>
       </body>
     </xml>
