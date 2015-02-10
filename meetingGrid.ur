@@ -621,13 +621,13 @@ functor Make(M : sig
                 let
                     fun tweakUses uses =
                         case uses of
-                            [] => error <xml>FullGrid.tweakMeeting: unknown us</xml>
+                            [] => return ()
                           | (us', _, tms) :: uses' =>
                             if us' = us then
                                 let
                                     fun addTimes tms =
                                         case tms of
-                                            [] => error <xml>FullGrid.tweakMeeting: unknown time</xml>
+                                            [] => return ()
                                           | (tm', _, ths) :: tms' =>
                                             if tm' = tm then
                                                 v <- get ths;
@@ -757,7 +757,7 @@ functor Make(M : sig
                 let
                     fun addTimes tms =
                         case tms of
-                            [] => error <xml>One.tweakMeeting: unknown time</xml>
+                            [] => return ()
                           | (tm', ths) :: tms' =>
                             if tm' = tm then
                                 v <- get ths;
