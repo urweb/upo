@@ -45,6 +45,8 @@ functor Make(M : sig
                  val amVoter : transaction (option $voterKey)
                  val maxVotesPerVoter : option int
                  val keyFilter : sql_exp [Choice = choiceBallot ++ choiceKey ++ choiceRest] [] [] bool
+
+                 val alwaysShowVotes : bool
              end) = struct
 
     open M
@@ -290,7 +292,7 @@ functor Make(M : sig
                              WHERE {@Sql.easy_where [#Listeners] ! ! choiceBallotInj' choiceBallotFl r.Ballot})
                             (fn l => send l.Channel {Operation = Vote, Voter = v, Choice = r.Choice})
 
-    fun oneChoice showKey a ch = <xml>
+    fun oneChoice showKey showVotes a ch = <xml>
         <tr>
           <td>
             <dyn signal={votes <- signal ch.Votes;
@@ -325,16 +327,16 @@ functor Make(M : sig
                          return <xml>
                            {[List.foldl (fn (_, n) m => n + m) 0 votes]}
 
-                           <dyn signal={sv <- (if showKey then
-                                                   signal ch.ShowVoters
+                           <dyn signal={sv <- (if showVotes then
+                                                   return True
                                                else
-                                                   return True);
+                                                   signal ch.ShowVoters);
                                         return (if sv then <xml>
-                                          {if showKey then
-                                               <xml><button class="btn glyphicon glyphicon-chevron-left"
-                                                            onclick={fn _ => set ch.ShowVoters False}/></xml>
+                                          {if showVotes then
+                                               <xml/>
                                            else
-                                               <xml/>}
+                                               <xml><button class="btn glyphicon glyphicon-chevron-left"
+                                                            onclick={fn _ => set ch.ShowVoters False}/></xml>}
 
                                           {List.mapX (fn (k, n) => <xml><br/>{[k]} ({[n]})</xml>) votes}
                                         </xml> else <xml>
@@ -356,7 +358,7 @@ functor Make(M : sig
         </tr>
 
         <dyn signal={choices <- signal a.Choices;
-                     return (List.mapX (oneChoice True a) choices)}/>
+                     return (List.mapX (oneChoice True alwaysShowVotes a) choices)}/>
       </table>
 
       <dyn signal={choices <- signal a.Choices;
@@ -420,7 +422,7 @@ functor Make(M : sig
                                                if ch.Key <> a.Choice then
                                                    <xml/>
                                                else
-                                                   oneChoice False a.Base ch) choices)}/>
+                                                   oneChoice False True a.Base ch) choices)}/>
           </table>
         </xml>
 

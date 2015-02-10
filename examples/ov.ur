@@ -45,6 +45,7 @@ structure VotingUnlimited = OpenBallot.Make(struct
                                                 val choice = choice
                                                 val amVoter = getCookie userC
                                                 val maxVotesPerVoter = None
+                                                val alwaysShowVotes = False
                                             end)
 
 structure VotingLimited = OpenBallot.Make(struct
@@ -54,6 +55,7 @@ structure VotingLimited = OpenBallot.Make(struct
                                               val choice = choice
                                               val amVoter = getCookie userC
                                               val maxVotesPerVoter = Some 2
+                                              val alwaysShowVotes = False
                                           end)
 
 fun auth s =

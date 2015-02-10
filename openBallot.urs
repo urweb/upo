@@ -46,6 +46,9 @@ functor Make(M : sig
                  val maxVotesPerVoter : option int
                  val keyFilter : sql_exp [Choice = choiceBallot ++ choiceKey ++ choiceRest] [] [] bool
                  (* Only show choices matching this filter. *)
+
+                 val alwaysShowVotes : bool
+                 (* Next to each item, show who votes for it, without requiring user to click a button first? *)
              end) : sig
 
     include Ui.S where type input = {Ballot : $M.choiceBallot, Voter : $M.voterKey}
