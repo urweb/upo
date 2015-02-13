@@ -11,13 +11,13 @@ fun csvFold [fs] [acc] (f : $fs -> acc -> acc)
                              let
                                  val (commas, total, line, r) = acc line
                              in
-                                 (commas, total+1, "", {nm = readError line} ++ r)
+                                 (commas, total+1, "", {nm = readError (String.trim line)} ++ r)
                              end
                            | Some (token, line) =>
                              let
                                  val (commas, total, line, r) = acc line
                              in
-                                 (commas+1, total+1, line, {nm = readError token} ++ r)
+                                 (commas+1, total+1, line, {nm = readError (String.trim token)} ++ r)
                              end)
                      (fn line => (0, 0, line, {})) fl reads line
             in
