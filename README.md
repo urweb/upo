@@ -1,0 +1,1 @@
+Here lies a library of [Ur/Web](http://www.impredicative.com/ur/) code for rapid construction of web applications for organizing people in different ways.  More documentation and an official release will follow soon!  Until then, enjoy the detective work needed to understand the code. ;-)
