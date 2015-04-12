@@ -482,7 +482,7 @@ structure Locals = struct
              Monad.ignore requireAdmin;
              setCookie masquerade {Value = masqAs,
                                    Expires = None,
-                                   Secure = True});
+                                   Secure = False});
 
         user <- requirePiOrAdmin;
         key <- return {LocalName = user};
@@ -824,7 +824,6 @@ fun setIt v =
                       Secure = False}
 
 val cookieSetup =
-    (* PI portal *)
     sc <- source "";
 
     Ui.tabbed "Cookie Setup"

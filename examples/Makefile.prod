@@ -10,6 +10,10 @@ redb:
 	-sudo -u www-data dropdb visit
 	sudo -u www-data createdb visit
 	sudo -u www-data psql -f visit.sql visit
+	-sudo -u www-data dropdb jfac
+	sudo -u www-data createdb jfac
+	sudo -u www-data psql -f jfac.sql jfac
 
 extendb:
 	sudo -u www-data psql -f visit.sql visit
+	sudo -u www-data psql -f jfac.sql jfac
