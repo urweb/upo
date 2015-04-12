@@ -46,7 +46,7 @@ cookie localC : string
 val auth =
     lo <- getCookie localC;
     case lo of
-        None => error <xml>Invalid e-mail address in certificate</xml>
+        None => error <xml>You haven't set the cookie with your name.</xml>
       | Some r => return r
 
 val requireAuth = Monad.ignore auth

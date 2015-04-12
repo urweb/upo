@@ -78,7 +78,7 @@ cookie localC : string
 val authCsail =
     lo <- getCookie localC;
     case lo of
-        None => error <xml>Invalid e-mail address in certificate</xml>
+        None => error <xml>You haven't set the cookie with your name.</xml>
       | Some r => return r
 
 (* Fail if not authenticated as an admin. *)
