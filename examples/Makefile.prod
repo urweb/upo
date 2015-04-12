@@ -1,0 +1,15 @@
+.PHONY: install redb extendb
+
+LIB=/usr/local/lib
+
+install:
+	sudo cp -d *.so* ${LIB}/
+	sudo ldconfig
+
+redb:
+	-sudo -u www-data dropdb visit
+	sudo -u www-data createdb visit
+	sudo -u www-data psql -f visit.sql visit
+
+extendb:
+	sudo -u www-data psql -f visit.sql visit

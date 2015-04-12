@@ -7,5 +7,6 @@ safeGet Admits/main
 file /style.css style.css
 database dbname=visit
 sql visit.sql
+prefix /visit
 
 visit

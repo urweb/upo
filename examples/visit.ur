@@ -10,7 +10,8 @@ table schedulingStarted : { Started : bool }
 
 (* Local CSAIL people *)
 table local : { CsailId : string, LocalName : string, IsAdmin : bool, IsPI : bool, Attending : bool,
-                FiveMinute : string, PhoneNumber : string, DietaryRestriction : string, Office : string }
+                FiveMinute : string, PhoneNumber : string, DietaryRestriction : string, Office : string,
+                Transport : string }
   PRIMARY KEY CsailId,
   CONSTRAINT LocalName UNIQUE LocalName
 
@@ -66,8 +67,8 @@ task initialize = fn () =>
   if anyUsers then
       return ()
   else
-      dml (INSERT INTO local(CsailId, LocalName, IsAdmin, IsPI, Attending, Office, PhoneNumber, DietaryRestriction, FiveMinute)
-           VALUES ('admin', 'Admin', TRUE, TRUE, FALSE, '', '', '', ''))
+      dml (INSERT INTO local(CsailId, LocalName, IsAdmin, IsPI, Attending, Office, PhoneNumber, DietaryRestriction, FiveMinute, Transport)
+           VALUES ('admin', 'Admin', TRUE, TRUE, FALSE, '', '', '', '', ''))
 
 (* The real app uses client certificates, but here we'll do cookies for convenience. *)
 cookie localC : string
@@ -186,7 +187,6 @@ val amAway = o <- admitId;
                 None => None
               | Some (_, name) => Some {AdmitName = name})
 
-
 structure Dinners = Rsvp2.Make(struct
                                    val homeLabel = "Locals"
                                    val awayLabel = "Admits"
@@ -198,7 +198,7 @@ structure Dinners = Rsvp2.Make(struct
                                    val away = admit
                                    val event = dinner
 
-                                   val homeDataLabels = {DietaryRestriction = "Dietary Restriction", CsailId = "CSAIL ID"}
+                                   val homeDataLabels = {DietaryRestriction = "Dietary Restriction", Transport = "Transportation", CsailId = "CSAIL ID"}
                                    val homeSensitiveDataLabels = {PhoneNumber = "Phone Number"}
                                    val awayDataLabels = {DietaryRestriction = "Dietary Restriction"}
                                    val awaySensitiveDataLabels = {PhoneNumber = "Phone Number", Email = "E-mail Address"}
@@ -343,7 +343,8 @@ structure Locals = struct
                                                           FiveMinute = "Madness?",
                                                           Office = "Office",
                                                           PhoneNumber = "Phone#",
-                                                          DietaryRestriction = "Dietary Restriction"}
+                                                          DietaryRestriction = "Dietary Restriction",
+                                                          Transport = "Transport"}
                                             val authorized = amAdmin
                                         end)
 
@@ -388,7 +389,8 @@ structure Locals = struct
                                               val chosenLabels = {FiveMinute = "3-Minute-Madness Talk Title (if you want to give one the morning of March 6)",
                                                                   PhoneNumber = "Mobile Phone#",
                                                                   DietaryRestriction = "Dietary Restriction",
-                                                                  Office = "Office"}
+                                                                  Office = "Office",
+                                                                  Transport = "Transportation to dinner, if going (driving, shuttle with admits [if your dinner has a shuttle], ...)"}
                                               val textLabel = "Personal information"
                                               val amGiven = amHomeOrAdmin
                                           end)
@@ -406,6 +408,71 @@ structure Locals = struct
              WHERE LocalName = {[name]});
         Meetings.Home.deleteFor {LocalName = name}
 
+    structure Lodging = SimpleQuery.Make(struct
+                                             con fs = [AdmitName = _, Email = _,
+                                                       LodgingPref = _, Arrival = _,
+                                                       Departure = _, Gender = _]
+                                             val query = (SELECT admit.AdmitName AS AdmitName,
+                                                            admit.Email AS Email,
+                                                            admit.LodgingPref AS LodgingPref,
+                                                            admit.Arrival AS Arrival,
+                                                            admit.Departure AS Departure,
+                                                            admit.Gender AS Gender
+                                                          FROM admit
+                                                          WHERE admit.Attending
+                                                          ORDER BY admit.AdmitName DESC)
+                                             val labels = {AdmitName = "Name",
+                                                           Email = "E-mail",
+                                                           LodgingPref = "Lodging?",
+                                                           Arrival = "Arrival",
+                                                           Departure = "Departure",
+                                                           Gender = "Gender"}
+                                         end)
+
+    structure Rsvp = SimpleQuery.Make(struct
+                                          con fs = [AdmitName = _, Email = _]
+                                          val query = (SELECT admit.AdmitName AS AdmitName,
+                                                         admit.Email AS Email
+                                                       FROM admit
+                                                       WHERE admit.Attending
+                                                       ORDER BY admit.AdmitName DESC)
+                                          val labels = {AdmitName = "Name",
+                                                        Email = "E-mail"}
+                                      end)
+
+    structure NoRsvp = SimpleQuery.Make(struct
+                                            con fs = [AdmitName = _, Email = _]
+                                            val query = (SELECT admit.AdmitName AS AdmitName,
+                                                           admit.Email AS Email
+                                                         FROM admit
+                                                         WHERE NOT admit.Attending
+                                                         ORDER BY admit.AdmitName DESC)
+                                             val labels = {AdmitName = "Name",
+                                                           Email = "E-mail"}
+                                         end)
+
+    structure PiRsvp = SimpleQuery.Make(struct
+                                            con fs = [LocalName = _, CsailId = _]
+                                            val query = (SELECT local.LocalName AS LocalName,
+                                                           local.CsailId AS CsailId
+                                                         FROM local
+                                                         WHERE local.IsPI AND local.Attending
+                                                         ORDER BY local.LocalName DESC)
+                                            val labels = {LocalName = "Name",
+                                                          CsailId = "CSAIL ID"}
+                                        end)
+
+    structure PiNoRsvp = SimpleQuery.Make(struct
+                                              con fs = [LocalName = _, CsailId = _]
+                                              val query = (SELECT local.LocalName AS LocalName,
+                                                             local.CsailId AS CsailId
+                                                           FROM local
+                                                           WHERE local.IsPI AND NOT local.Attending
+                                                           ORDER BY local.LocalName DESC)
+                                             val labels = {LocalName = "Name",
+                                                           CsailId = "CSAIL ID"}
+                                          end)
+
     (* PI portal *)
     fun pi masqAs =
         (case masqAs of
@@ -415,7 +482,7 @@ structure Locals = struct
              Monad.ignore requireAdmin;
              setCookie masquerade {Value = masqAs,
                                    Expires = None,
-                                   Secure = False});
+                                   Secure = True});
 
         user <- requirePiOrAdmin;
         key <- return {LocalName = user};
@@ -479,7 +546,15 @@ structure Locals = struct
                    (Some "Dinner RSVP",
                     Ui.seq
                         (Ui.h3 <xml>All dinners are on Friday, March 6.</xml>,
-                         Dinners.HomePrivileged.ui key)))
+                         Dinners.HomePrivileged.ui key)),
+                   (Some "Admits (RSVPd)",
+                    Rsvp.ui),
+                   (Some "Admits (No RSVP)",
+                    NoRsvp.ui),
+                   (Some "PIs (RSVPd)",
+                    PiRsvp.ui),
+                   (Some "PIs (No RSVP)",
+                    PiNoRsvp.ui))
 
     fun importPIs s =
         requireAdmin;
@@ -493,7 +568,8 @@ structure Locals = struct
                      else
                          Sql.easy_insertOrUpdate [[CsailId = _]]
                                                  local (r ++ {IsAdmin = False, IsPI = True, Attending = False,
-                                                              PhoneNumber = "", DietaryRestriction = "", FiveMinute = ""}))
+                                                              PhoneNumber = "", DietaryRestriction = "", FiveMinute = "",
+                                                              Transport = ""}))
                  (Csv.parse s)
 
     fun importAdmits s =
@@ -502,6 +578,7 @@ structure Locals = struct
                      id <- rand;
                      Sql.easy_insertOrSkip [[AdmitName = _]]
                                            admit ({AdmitId = id} ++ r ++ {Attending = False,
+                                                                          PhoneNumber = "",
                                                                           DietaryRestriction = "",
                                                                           LodgingPref = "",
                                                                           Arrival = "",
@@ -533,6 +610,49 @@ structure Locals = struct
     val scheduleMore =
         requireAdmin;
         Meetings.scheduleSome
+
+    structure Madness = SimpleQuery.Make(struct
+                                             con fs = [LocalName = _, Madness = _]
+                                             val query = (SELECT local.LocalName AS LocalName,
+                                                            local.FiveMinute AS Madness
+                                                          FROM local
+                                                          WHERE local.FiveMinute <> ''
+                                                          ORDER BY local.LocalName DESC)
+                                             val labels = {LocalName = "PI",
+                                                           Madness = "Talk Title"}
+                                         end)
+
+    structure Lodging = SimpleQuery.Make(struct
+                                             con fs = [AdmitName = _, Email = _,
+                                                       LodgingPref = _, Arrival = _,
+                                                       Departure = _, Gender = _]
+                                             val query = (SELECT admit.AdmitName AS AdmitName,
+                                                            admit.Email AS Email,
+                                                            admit.LodgingPref AS LodgingPref,
+                                                            admit.Arrival AS Arrival,
+                                                            admit.Departure AS Departure,
+                                                            admit.Gender AS Gender
+                                                          FROM admit
+                                                          WHERE admit.Attending
+                                                          ORDER BY admit.AdmitName DESC)
+                                             val labels = {AdmitName = "Name",
+                                                           Email = "E-mail",
+                                                           LodgingPref = "Lodging?",
+                                                           Arrival = "Arrival",
+                                                           Departure = "Departure",
+                                                           Gender = "Gender"}
+                                         end)
+
+    structure Dietary = SimpleQuery.Make(struct
+                                             val query = (SELECT local.DietaryRestriction AS Diet
+                                                          FROM local
+                                                          WHERE local.Attending
+                                                            UNION SELECT admit.DietaryRestriction AS Diet
+                                                                  FROM admit
+                                                                  WHERE admit.Attending
+                                                          ORDER BY Diet DESC)
+                                             val labels = {Diet = "Dietary Restriction"}
+                                         end)
 
     (* Database tweaking, etc. *)
     val admin =
@@ -579,7 +699,7 @@ structure Locals = struct
                    (Some "Admits",
                     EditAdmit.ui),
                    (Some "Import Admits", Ui.const <xml>
-                      <p>Enter one admit record per line, with fields separated by commas.  The field order is: <i>name</i>, <i>phone#</i>, <i>e-mail address</i>.</p>
+                      <p>Enter one admit record per line, with fields separated by commas.  The field order is: <i>name</i>, <i>e-mail address</i>.</p>
 
                       <ctextarea source={ia} cols={20} class="form-control"/>
                       <button class="btn btn-primary"
@@ -657,7 +777,19 @@ structure Locals = struct
                       <table class="bs3-table table-striped">
                         {admitsMasq}
                       </table>
-                    </xml>))
+                    </xml>),
+                  (Some "Madness",
+                   Madness.ui),
+                  (Some "Lodging",
+                   Lodging.ui),
+                  (Some "No RSVP",
+                   NoRsvp.ui),
+                  (Some "All Dietary Restrictions",
+                   Dietary.ui),
+                  (Some "PIs (RSVPd)",
+                   PiRsvp.ui),
+                  (Some "PIs (No RSVP)",
+                   PiNoRsvp.ui))
 
 
     structure InputLocal = InputStrings.Make(struct
@@ -668,7 +800,8 @@ structure Locals = struct
                                                  val tab = local
                                                  val chosenLabels = {PhoneNumber = "Mobile Phone#",
                                                                      DietaryRestriction = "Dietary Restriction",
-                                                                     Office = "Office"}
+                                                                     Office = "Office",
+                                                                     Transport = "Transportation to dinner, if going (driving, shuttle with admits [if your dinner has a shuttle], ...)"}
                                                  val textLabel = "Personal information"
                                                  val amGiven = amHome
                                              end)
@@ -685,14 +818,6 @@ structure Locals = struct
                         Dinners.Home.ui key))
 end
 
-(* Dummy page to keep Ur/Web from garbage-collecting handlers within modules *)
-val index = return <xml><body>
-  <li><a link={Locals.admin}>Admin</a></li>
-  <li><a link={Locals.pi ""}>PIs</a></li>
-  <li><a link={Locals.main}>Other locals</a></li>
-  <li><a link={Admits.main 0}>Admits</a></li>
-</body></xml>
-
 fun setIt v =
     setCookie localC {Value = v,
                       Expires = None,
@@ -708,3 +833,12 @@ val cookieSetup =
         <ctextbox source={sc}/>
         <button value="Set" onclick={fn _ => v <- get sc; rpc (setIt v)}/>
         </xml>)}
+
+(* Dummy page to keep Ur/Web from garbage-collecting handlers within modules *)
+val index = return <xml><body>
+  <li><a link={cookieSetup}>Cookie set-up</a></li>
+  <li><a link={Locals.admin}>Admin</a></li>
+  <li><a link={Locals.pi ""}>PIs</a></li>
+  <li><a link={Locals.main}>Other locals</a></li>
+  <li><a link={Admits.main 0}>Admits</a></li>
+</body></xml>
