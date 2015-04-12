@@ -18,7 +18,9 @@ LIB=/usr/local/lib
 
 package: visit_production.exe
 	mkdir -p dist
-	rm -f dist/*
+	rm -rf dist/*
+	mkdir dist/public_html
+	cp index.html dist/public_html/
 	cp visit_production.exe dist/
 	cp visit.sql dist/
 	cp -d ${LIB}/liburweb.so* dist/

@@ -1,0 +1,78 @@
+<!DOCTYPE html><html>
+  <head>
+    <title>The Ur/Web People Organizer</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css" rel="stylesheet" />
+  </head>
+  <body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">The Ur/Web People Organizer</a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="jumbotron">
+      <div class="container">
+        <h1>The Ur/Web People Organizer</h1>
+        <p><b>UPO</b> is a framework for rapid construction of web apps for organizing people and events, implemented in <a href="http://www.impredicative.com/ur/">the Ur/Web functional programming language</a>.  For the open-source distribution and developer documentation, visit <a href="http://github.com/achlipala/upo">the GitHub project</a>.  The site you're looking at now is a showcase of example UPO applications.  Choose your own adventure from the options below.  Each one is a live site that you're sharing with other visitors.</p>
+      </div>
+    </div>
+
+    <div class="container">
+      <!-- Example row of columns -->
+      <div class="row">
+        <div class="col-md-6">
+          <h2>PhD Student Visit Weekend</h2>
+          <p>This app was used at MIT for the 2015 visit weekend for admitted computer-science PhD students.  There are 4 classes of users:</p>
+
+          <ul>
+            <li><b>Admins</b>, who run the show</li>
+            <li><b>PIs</b> (principal investigators, e.g. professors), who are recruiting new students</li>
+            <li><b>Admits</b>, the visiting students who have been admitted</li>
+            <li><b>Other locals</b>, like current students</li>
+          </ul>
+
+          <p>There are several major pieces of functionality:</p>
+
+          <ul>
+            <li><b>RSVPs</b>, where users indicate whether they will attend the main event</li>
+            <li><b>Profiles</b> for all classes of users, including information like dietary restrictions</li>
+            <li><b>One-on-one meetings</b> scheduled between PIs and admits</li>
+            <li><b>Research-area dinners</b>, with logistical information and RSVPs by all classes of users</li>
+            <li><b>5-minute madness talks</b>, which PIs sign up to give</li>
+            <li><b>Masquerading</b>, where an admin may pretend to be any other user</li>
+          </ul>
+
+          <p>The other details should be discoverable from playing around with the demo.  Here's how to get started using it:</p>
+
+          <ol>
+            <li>Follow the "Cookie set-up" link and submit the form with some username.  "Admin" is a good one that's installed by default, with all privileges.</li>
+            <li>Go back to the index page and choose which category of user you'd like to pretend to be.</li>
+            <li>The last link on the index page, for admitted students, is intentionally nonfunctional.  The easiest way to see the student experience is with the "Admit Masquerade" tab on the Admin page.  You may need to use the "Import Admits" tab to create admits first, reload the Admin page, and then begin the masquerade.</li>
+            <li>It may similarly be useful to add new PIs with the "Import PIs" tab.  You may then either masquerade as them or return to "Cookie set-up" and log in as them directly.  That set-up page requires that data from the "Name" column of the "Locals" tab be entered.</li>
+          </ol>
+
+          <p><a class="btn btn-default" href="visit/index" role="button">Launch demo &raquo;</a></p>
+        </div>
+        <div class="col-md-6">
+          <h2>Coming Soon</h2>
+          <p>Describe it.</p>
+          <p><a class="btn btn-default" href="#" role="button">Launch demo &raquo;</a></p>
+       </div>
+      </div>
+
+      <hr>
+
+      <footer>
+        <p>Primary author: <a href="http://adam.chlipala.net/">Adam Chlipala</a></p>
+      </footer>
+    </div> <!-- /container -->
+  </body>
+</html>
