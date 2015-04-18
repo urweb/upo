@@ -20,6 +20,7 @@ clientCert
 ui
 widget
 simpleQuery
+simpleQuery1
 inputStrings
 editGrid
 chooseForeign
