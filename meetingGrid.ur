@@ -299,7 +299,7 @@ functor Make(M : sig
         val delMeeting r = delMeeting (canonicalized r)
 
         structure FullGrid = struct
-            type themSet = list $themKey
+            type themSet = list ($themKey * int (* number of meetings this them has at this time *))
             type timeMap = list ($timeKey * bool (* available? *) * themSet)
             type usMap = list ($usKey * $usOffice * timeMap)
             type a = _
@@ -315,7 +315,7 @@ functor Make(M : sig
                     (* A bit of a little dance to initialize the meeting states,
                      * including blank entries for unused us/time pairs *)
                     fun initMap (acc : usMap)
-                                (rows : list $all)
+                                (rows : list {Meeting : $all, ThisTime : option int})
                                 (uses : list $(usKey ++ usOffice))
                                 (times : list $timeKey)
                                 (unavails : list $(usKey ++ timeKey))
@@ -361,7 +361,7 @@ functor Make(M : sig
                                                 []
                                                 ((time, available, List.rev themsDone) :: timesDone)
                                     end
-                                  | row :: rows' =>
+                                  | {Meeting = row, ThisTime = tt} :: rows' =>
                                     if row --- themKey --- timeKey < us --- usOffice then
                                         (* We've encountered a meeting for an invalid us.  Skip it! *)
                                         initMap acc rows' uses times unavails themsDone timesDone
@@ -373,7 +373,7 @@ functor Make(M : sig
                                                 uses
                                                 times
                                                 unavails
-                                                ((row --- usKey --- timeKey) :: themsDone)
+                                                ((row --- usKey --- timeKey, Option.get 1 tt) :: themsDone)
                                                 timesDone
                                     else
                                         (* No match.  On to next time. *)
@@ -422,11 +422,19 @@ functor Make(M : sig
                                            (@Sql.some_fields [#Unavailable] [usKey ++ timeKey] ! !
                                              (@Folder.concat ! usFl timeKeyFl))
                                            sql_desc}}});
-                    meetings <- queryL1 (SELECT meeting.{{usKey}}, meeting.{{timeKey}}, meeting.{{themKey}}
-                                         FROM meeting
-                                         ORDER BY {{{@Sql.order_by allFl
-                                           (@Sql.some_fields [#Meeting] [all] ! ! allFl)
-                                           sql_desc}}});
+                    meetings <- queryL (SELECT meeting.{{usKey}}, meeting.{{timeKey}}, meeting.{{themKey}},
+                                          (SELECT COUNT( * )
+                                           FROM meeting AS ByThem
+                                           WHERE {@@Sql.easy_join [#ByThem] [#Meeting]
+                                             [themKey] [usKey ++ timeKey] [usKey ++ timeKey]
+                                             [_] [_] [_] ! ! ! ! themFl}
+                                             AND {@@Sql.easy_join [#ByThem] [#Meeting]
+                                             [timeKey] [usKey ++ themKey] [usKey ++ themKey]
+                                             [_] [_] [_] ! ! ! ! timeKeyFl}) AS ThisTime
+                                        FROM meeting
+                                        ORDER BY {{{@Sql.order_by allFl
+                                          (@Sql.some_fields [#Meeting] [all] ! ! allFl)
+                                          sql_desc}}});
                     meetings <- List.mapM (fn (us, off, tms) =>
                                               tms' <- List.mapM (fn (tm, avail, ths) =>
                                                                     ths <- source ths;
@@ -542,23 +550,11 @@ functor Make(M : sig
                                         <dyn signal={thsv <- signal ths;
                                                      (* One button per meeting *)
                                                      return <xml>
-                                                       {List.mapX (fn th => <xml>
+                                                       {List.mapX (fn (th, tt) => <xml>
                                                          <div dynClass={mf <- signal t.MovingFrom;
-                                                                        column_conflict <-
-                                                                          List.foldlM (fn (us', _, tms) acc =>
-                                                                                          if us' = us then
-                                                                                              return acc
-                                                                                          else
-                                                                                              List.foldlM (fn (tm', _, ths) acc =>
-                                                                                                              if tm' <> tm then
-                                                                                                                  return acc
-                                                                                                              else
-                                                                                                                  ths <- signal ths;
-                                                                                                                  return (acc || List.mem th ths)) acc tms)
-                                                                                      False t.Meetings;
                                                                         default <- return (case thsv of
                                                                                                _ :: _ :: _ => meeting_conflict
-                                                                                             | _ => if column_conflict then meeting_conflict else meeting_default);
+                                                                                             | _ => if tt > 1 then meeting_conflict else meeting_default);
                                                                         return (case mf of
                                                                                     None => default
                                                                                   | Some mf =>
@@ -601,7 +597,7 @@ functor Make(M : sig
                                                                               <cselect class="form-control"
                                                                                        source={selected}>
                                                                                 {List.mapX (fn th =>
-                                                                                               if List.mem th thsv then
+                                                                                               if List.exists (fn (th', _) => th' = th) thsv then
                                                                                                    <xml/>
                                                                                                else
                                                                                                    <xml><coption>{[th]}</coption></xml>) t.Thems}
@@ -617,31 +613,35 @@ functor Make(M : sig
               </table>
             </xml>
 
-            fun tweakMeeting (f : themSet -> themSet) (us : $usKey) (tm : $timeKey) =
-                let
-                    fun tweakUses uses =
-                        case uses of
-                            [] => return ()
-                          | (us', _, tms) :: uses' =>
-                            if us' = us then
-                                let
-                                    fun addTimes tms =
-                                        case tms of
-                                            [] => return ()
-                                          | (tm', _, ths) :: tms' =>
-                                            if tm' = tm then
-                                                v <- get ths;
-                                                set ths (f v)
-                                            else
-                                                addTimes tms'
-                                in
-                                    addTimes tms
-                                end
-                            else
-                                tweakUses uses'
-                in
-                    tweakUses
-                end
+            fun tweakMeeting (f : themSet -> themSet) (g : int -> int) (us : $usKey) (th : $themKey) (tm : $timeKey) =
+                List.app (fn (us', _, tms) =>
+                             (if us' = us then
+                                 let
+                                     fun addTimes tms =
+                                         case tms of
+                                             [] => return ()
+                                           | (tm', _, ths) :: tms' =>
+                                             if tm' = tm then
+                                                 v <- get ths;
+                                                 set ths (f v)
+                                             else
+                                                 addTimes tms'
+                                 in
+                                     addTimes tms
+                                 end
+                             else
+                                 return ());
+
+                             List.app (fn (tm', _, ths) =>
+                                          if tm = tm' then
+                                              thsv <- get ths;
+                                              set ths (List.mp (fn (th', count) =>
+                                                                   (th', if th' = th then
+                                                                             g count
+                                                                         else
+                                                                             count)) thsv)
+                                          else
+                                              return ()) tms)
 
             fun onload t =
                 let
@@ -649,15 +649,39 @@ functor Make(M : sig
                         r <- recv t.Channel;
                         let
                             val r' = localized (r -- #Operation -- #Time)
+
+                            fun findExistingMeeting uses =
+                                case uses of
+                                    [] => return 0
+                                  | (_, _, tms) :: uses' =>
+                                    let
+                                        fun fem tms =
+                                            case tms of
+                                                [] => findExistingMeeting uses'
+                                              | (tm, _, ths) :: tms' =>
+                                                if tm <> r.Time then
+                                                    fem tms'
+                                                else
+                                                    thsv <- get ths;
+                                                    case List.find (fn (th, _) => th = r'.Them) thsv of
+                                                        None => fem tms'
+                                                      | Some (_, count) => return count
+                                    in
+                                        fem tms
+                                    end
                         in
                             case r.Operation of
                                 Add =>
+                                count <- findExistingMeeting t.Meetings;
                                 tweakMeeting
-                                    (fn ls => List.sort (fn x y => show x > show y) (r'.Them :: ls))
-                                    r'.Us r.Time t.Meetings
+                                    (fn ls => List.sort (fn (x, _) (y, _) => show x > show y)
+                                                        ((r'.Them, count) :: ls))
+                                    (fn n => n + 1)
+                                    r'.Us r'.Them r.Time t.Meetings
                               | Del => tweakMeeting
-                                           (List.filter (fn th => th <> r'.Them))
-                                           r'.Us r.Time t.Meetings
+                                           (List.filter (fn (th, _) => th <> r'.Them))
+                                           (fn n => n - 1)
+                                           r'.Us r'.Them r.Time t.Meetings
                         end;
                         loop ()
                 in
