@@ -1,0 +1,13 @@
+library ..
+rewrite all Course/*
+safeGet admin
+safeGet main
+allow url http://*
+allow url https://*
+timeFormat %m/%d/%Y %I:%M %p
+file /style.css style.css
+database dbname=course
+sql course.sql
+prefix /course
+
+course
