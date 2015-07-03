@@ -158,7 +158,10 @@ fun extractWeek [a] (ls : list (time * string * list a)) : option {ThisWeek : li
             Some {ThisWeek = ls'', LaterWeeks = left}
         end
 
+style date
 style calendar
+style time
+style item
 
 val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map show tags)) (fl : folder tags) {FromDay = from, ToDay = to} : Ui.t (calendar tags) =
     let
@@ -180,7 +183,7 @@ val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map show ta
                                         [] => loop nextDay items ((day, timef "%b %e" day, List.rev acc') :: acc)
                                       | item :: items' =>
                                         if item.1 < nextDay then
-                                            loop' items' ((timef "%I:%M" item.1, item.2) :: acc')
+                                            loop' items' ((timef "%l:%M" item.1, item.2) :: acc')
                                         else
                                             loop nextDay items ((day, timef "%b %e" day, List.rev acc') :: acc)
                             in
@@ -201,9 +204,10 @@ val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map show ta
                         None => <xml/>
                       | Some r => <xml>
                         <tr>{List.mapX (fn (_, tmS, items) => <xml><td>
-                          {[tmS]}
-                          {List.mapX (fn (tmS, d) => <xml><div>{[tmS]}: {[@Record.select [show] [ident] fl
-                                                                           (fn [t] (_ : show t) (x : t) => show x) sh d]}</div></xml>) items}
+                          <div class={date}>{[tmS]}</div>
+                          {List.mapX (fn (tmS, d) => <xml><div><span class={time}>{[tmS]}</span>:
+                            <span class={item}>{[@Record.select [show] [ident] fl
+                               (fn [t] (_ : show t) (x : t) => show x) sh d]}</span></div></xml>) items}
                         </td></xml>) r.ThisWeek}</tr>
                         {render' r.LaterWeeks}
                       </xml>
