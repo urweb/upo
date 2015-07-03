@@ -39,3 +39,7 @@ table.Calendar_calendar tr td {
 .Calendar_time {
     font-style: italic;
 }
+
+button.Calendar_add {
+    float: right;
+}

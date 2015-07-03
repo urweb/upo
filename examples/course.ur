@@ -26,7 +26,14 @@ val psetRead = mkRead' (fn s => case read s : option int of
                                     None => None
                                   | Some n => Some {PsetNum = n}) "pset"
 
-val psetCal = Calendar.fromTable [#Pset] [[PsetNum = _]] [#Due] pset
+structure PsetCal = Calendar.FromTable(struct
+                                           con tag = #Pset
+                                           con key = [PsetNum = _]
+                                           con when = #Due
+                                           val tab = pset
+                                           val labels = {PsetNum = "Pset#",
+                                                         Due = "Due"}
+                                       end)
 
 table exam : { ExamNum : int, When : time }
   PRIMARY KEY ExamNum
@@ -36,9 +43,16 @@ val examRead = mkRead' (fn s => case read s : option int of
                                     None => None
                                   | Some n => Some {ExamNum = n}) "exam"
 
-val examCal = Calendar.fromTable [#Exam] [[ExamNum = _]] [#When] exam
+structure ExamCal = Calendar.FromTable(struct
+                                           con tag = #Exam
+                                           con key = [ExamNum = _]
+                                           con when = #When
+                                           val tab = exam
+                                           val labels = {ExamNum = "Exam#",
+                                                         When = "When"}
+                                       end)
 
-val cal = Calendar.compose psetCal examCal
+val cal = Calendar.compose PsetCal.cal ExamCal.cal
 
 cookie userC : string
 
@@ -136,7 +150,9 @@ val admin =
                                                </xml>}) stuff)),
                (Some "Fancy Calendar",
                 Calendar.calendar cal
-                                  {FromDay = readError "06/01/15 00:00:00",
+                                  {Labels = {Pset = "Pset",
+                                             Exam = "Exam"},
+                                   FromDay = readError "06/01/15 00:00:00",
                                    ToDay = readError "09/01/15 00:00:00"}))
 
 fun setIt v =
