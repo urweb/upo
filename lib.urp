@@ -12,6 +12,7 @@ $/list
 $/string
 $/monad
 $/option
+$/datetime
 record
 sql
 csv

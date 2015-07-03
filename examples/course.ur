@@ -108,6 +108,11 @@ structure EditExams = EditableTable.Make(struct
                                              fun onModify _ = return ()
                                          end)
 
+val cshow_pset = mkShow (fn {PsetNum = n : int, When = _ : time} =>
+                            "Pset #" ^ show n)
+val cshow_exam = mkShow (fn {ExamNum = n : int, When = _ : time} =>
+                            "Exam #" ^ show n)
+
 val admin =
     requireInstructor;
 
@@ -120,7 +125,7 @@ val admin =
                 EditPsets.ui),
                (Some "Exams",
                 EditExams.ui),
-               (Some "Calendar",
+               (Some "Raw Calendar",
                 Ui.const (List.mapX (fn v =>
                                         match v
                                               {Pset = fn r => <xml>
@@ -128,7 +133,11 @@ val admin =
                                               </xml>,
                                                Exam = fn r => <xml>
                                                  <li>Exam #{[r.ExamNum]} @ {[r.When]}</li>
-                                               </xml>}) stuff)))
+                                               </xml>}) stuff)),
+               (Some "Fancy Calendar",
+                Calendar.calendar cal
+                                  {FromDay = readError "06/01/15 00:00:00",
+                                   ToDay = readError "09/01/15 00:00:00"}))
 
 fun setIt v =
     setCookie userC {Value = v,

@@ -27,3 +27,8 @@ fun ord [ts ::: {Type}] (r : $(map ord ts)) (fl : folder ts) =
                            No => False
                          | _ => True}
     end
+
+fun select [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [r ::: {K}] (fl : folder r) [out ::: Type]
+           (f : t ::: K -> tf1 t -> tf2 t -> out)
+           (r : $(map tf1 r)) (v : variant (map tf2 r)) : out =
+    match v (@mp [tf1] [fn t => tf2 t -> out] @@f fl r)

@@ -18,3 +18,14 @@ body {
     cursor: move;
     background-color: red
 }
+
+table.Calendar_calendar {
+    width: 100%;
+}
+
+table.Calendar_calendar tr td {
+    border-style: solid;
+    width: 14%;
+    height: 5em;
+    vertical-align: top;
+}

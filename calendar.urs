@@ -38,3 +38,13 @@ val items : keys ::: {Type} -> tags ::: {Type}
             -> [[When] ~ keys]
             => t keys tags
             -> transaction (list (variant tags))
+
+con calendar :: {Type} -> Type
+val calendar : keys ::: {Type} -> tags ::: {Type}
+               -> [[When] ~ keys]
+               => t keys tags
+               -> $(map show tags)
+               -> folder tags
+               -> {FromDay : time,
+                   ToDay : time} (* inclusive *)
+               -> Ui.t (calendar tags)

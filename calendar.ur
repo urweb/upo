@@ -97,3 +97,132 @@ fun items [keys ::: {Type}] [tags ::: {Type}] [[When] ~ keys] (t : t keys tags) 
     (fn r => case t.Extract [[]] ! r.When (r -- #When) of
                  Some x => x
                | None => error <xml>Calendar: impossible: query result doesn't correspond to a tag</xml>)
+
+fun items' [keys ::: {Type}] [tags ::: {Type}] [[When] ~ keys] (t : t keys tags) =
+    List.mapQuery ({{{t.Query [[]] ! _ {}}}}
+                   ORDER BY When)
+    (fn r => case t.Extract [[]] ! r.When (r -- #When) of
+                 Some x => (r.When, x)
+               | None => error <xml>Calendar: impossible: query result doesn't correspond to a tag</xml>)
+
+con calendar (tags :: {Type}) = list (time * string * list (string * variant tags))
+(* We render the times to strings server-side to avoid time-zone hang-ups. *)
+
+fun dateify tm = Datetime.toTime (Datetime.fromTime tm -- #Hour -- #Minute -- #Second
+                                                    ++ {Hour = 0, Minute = 0, Second = 0})
+
+val oneDay = 24 * 60 * 60
+
+fun extractWeek [a] (ls : list (time * string * list a)) : option {ThisWeek : list (time * string * list a), LaterWeeks : list (time * string * list a)} =
+    case ls of
+        [] => None
+      | (tm, tmS, _) :: _ =>
+        let
+            val offsetStart = addSeconds tm (Datetime.dayOfWeekToInt (Datetime.dayOfWeek (Datetime.fromTime tm)) * (-oneDay))
+            (* The beginning of this week *)
+
+            fun getWeek daynum ls =
+                if daynum >= 7 then
+                    ([], ls)
+                else
+                    let
+                        val dow = Datetime.intToDayOfWeek daynum
+                        fun more ls' = getWeek (daynum + 1) ls'
+                    in
+                        case ls of
+                            [] =>
+                            let
+                                val (ls'', left) = more ls
+                                val tm' = addSeconds offsetStart (daynum * oneDay)
+                            in
+                                ((tm', timef "%b %e" tm', []) :: ls'', left)
+                            end
+                          | ent :: ls' =>
+                            if Datetime.dayOfWeek (Datetime.fromTime ent.1) = dow then
+                                let
+                                    val (ls'', left) = more ls'
+                                in
+                                    (ent :: ls'', left)
+                                end
+                            else
+                                let
+                                    val (ls'', left) = more ls
+                                    val tm' = addSeconds offsetStart (daynum * oneDay)
+                                in
+                                    ((tm', timef "%b %e" tm', []) :: ls'', left)
+                                end
+                    end
+
+            val (ls'', left) = getWeek 0 ls
+        in
+            Some {ThisWeek = ls'', LaterWeeks = left}
+        end
+
+style calendar
+
+val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map show tags)) (fl : folder tags) {FromDay = from, ToDay = to} : Ui.t (calendar tags) =
+    let
+        val from = dateify from
+        val to = dateify to
+
+        val create =
+            let
+                fun loop day items acc =
+                    let
+                        val nextDay = addSeconds day oneDay
+                    in
+                        if day > to then
+                            List.rev acc
+                        else
+                            let
+                                fun loop' items acc' =
+                                    case items of
+                                        [] => loop nextDay items ((day, timef "%b %e" day, List.rev acc') :: acc)
+                                      | item :: items' =>
+                                        if item.1 < nextDay then
+                                            loop' items' ((timef "%I:%M" item.1, item.2) :: acc')
+                                        else
+                                            loop nextDay items ((day, timef "%b %e" day, List.rev acc') :: acc)
+                            in
+                                loop' items []
+                            end
+                    end
+            in
+                items <- items' @t;
+                return (loop from items [])
+            end
+
+        fun onload _ = return ()
+
+        fun render ctx days =
+            let
+                fun render' days =
+                    case extractWeek days of
+                        None => <xml/>
+                      | Some r => <xml>
+                        <tr>{List.mapX (fn (_, tmS, items) => <xml><td>
+                          {[tmS]}
+                          {List.mapX (fn (tmS, d) => <xml><div>{[tmS]}: {[@Record.select [show] [ident] fl
+                                                                           (fn [t] (_ : show t) (x : t) => show x) sh d]}</div></xml>) items}
+                        </td></xml>) r.ThisWeek}</tr>
+                        {render' r.LaterWeeks}
+                      </xml>
+            in
+              <xml><table class={calendar}>
+                <tr>
+                  <th>Sunday</th>
+                  <th>Monday</th>
+                  <th>Tuesday</th>
+                  <th>Wednesday</th>
+                  <th>Thursday</th>
+                  <th>Friday</th>
+                  <th>Saturday</th>
+                </tr>
+                {render' days}
+              </table></xml>
+            end
+    in
+        {Create = create,
+         Onload = onload,
+         Render = render}
+    end
