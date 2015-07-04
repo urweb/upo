@@ -6,24 +6,6 @@ con t :: {Type}    (* Dictionary of all key fields used across all sources of ev
                              * and the way to encode it imperatively with client-side widgets *)
          -> Type
 
-val create : tag :: Name
-             -> key ::: {Type}
-             -> widget ::: Type
-             -> [[When] ~ key]
-             => folder key
-             -> (otherKeys :: {Type}
-                 -> [([When = time] ++ key) ~ otherKeys]
-                 => folder otherKeys
-                 -> $(map sql_injectable_prim otherKeys)
-                 -> sql_query1 [] [] [] [] ([When = time] ++ map option (key ++ otherKeys)))
-             -> {Fresh : string -> transaction widget,
-                 FromDb : $([When = time] ++ key) -> transaction widget,
-                 Render : widget -> xbody,
-                 Create : widget -> transaction unit,
-                 Save : $([When = time] ++ key) -> widget -> transaction unit,
-                 Delete : $([When = time] ++ key) -> transaction unit}
-             -> t key [tag = ($([When = time] ++ key), widget)]
-
 functor FromTable(M : sig
                       con tag :: Name
                       con key :: {(Type * Type)} (* Each 2nd component is a type of GUI widget private state. *)
@@ -40,6 +22,7 @@ functor FromTable(M : sig
                       val ws : $(map Widget.t' (key ++ other))
                       val tab : sql_table (map fst (key ++ other) ++ [when = time]) us
                       val labels : $([when = string] ++ map (fn _ => string) (key ++ other))
+                      val eqs : $(map (fn p => eq p.1) key)
                   end) : sig
     type private
     con tag = M.tag

@@ -10,3 +10,11 @@ val select : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> r ::: {K} -> fold
 val select2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type) -> r ::: {K} -> folder r -> out ::: Type
              -> (t ::: K -> tf1 t -> tf2 t -> tf3 t -> out)
              -> $(map tf1 r) -> $(map tf2 r) -> variant (map tf3 r) -> out
+
+val select' : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type) -> r ::: {K} -> folder r -> out ::: Type
+             -> (t ::: K -> tf1 t -> (tf2 t -> variant (map tf2 r)) -> tf3 t -> out)
+             -> $(map tf1 r) -> variant (map tf3 r) -> out
+
+val select2' : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type) -> tf4 :: (K -> Type) -> r ::: {K} -> folder r -> out ::: Type
+             -> (t ::: K -> tf1 t -> tf2 t -> (tf3 t -> variant (map tf3 r)) -> tf4 t -> out)
+             -> $(map tf1 r) -> $(map tf2 r) -> variant (map tf4 r) -> out
