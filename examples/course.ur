@@ -18,48 +18,6 @@ task initialize = fn () =>
       dml (INSERT INTO user(User, IsStudent, IsInstructor, IsStaff)
            VALUES ('prof', FALSE, TRUE, TRUE))
 
-table pset : { PsetNum : int, Due : time }
-  PRIMARY KEY PsetNum
-
-val psetShow = mkShow (fn {PsetNum = n : int} => "Pset " ^ show n)
-val psetRead = mkRead' (fn s => case read s : option int of
-                                    None => None
-                                  | Some n => Some {PsetNum = n}) "pset"
-
-structure PsetCal = Calendar.FromTable(struct
-                                           con tag = #Pset
-                                           con key = [PsetNum = _]
-                                           con when = #Due
-                                           val tab = pset
-                                           val title = "Pset"
-                                           val labels = {PsetNum = "Pset#",
-                                                         Due = "Due"}
-
-                                           fun display r = return <xml>Pset #{[r.PsetNum]}, due {[r.Due]}</xml>
-                                       end)
-
-table exam : { ExamNum : int, When : time }
-  PRIMARY KEY ExamNum
-
-val examShow = mkShow (fn {ExamNum = n : int} => "Exam " ^ show n)
-val examRead = mkRead' (fn s => case read s : option int of
-                                    None => None
-                                  | Some n => Some {ExamNum = n}) "exam"
-
-structure ExamCal = Calendar.FromTable(struct
-                                           con tag = #Exam
-                                           con key = [ExamNum = _]
-                                           con when = #When
-                                           val tab = exam
-                                           val title = "Exam"
-                                           val labels = {ExamNum = "Exam#",
-                                                         When = "When"}
-
-                                           fun display r = return <xml>Exam #{[r.ExamNum]}, at {[r.When]}</xml>
-                                       end)
-
-val cal = Calendar.compose PsetCal.cal ExamCal.cal
-
 cookie userC : string
 
 val auth =
@@ -70,7 +28,6 @@ val auth =
 
 val requireAuth = Monad.ignore auth
 
-(* Fail if not authenticated as an admin. *)
 val amInstructor =
     u <- auth;
     oneRowE1 (SELECT COUNT( * ) > 0
@@ -92,6 +49,87 @@ val instructorPermission =
     return {Add = ai,
             Delete = ai,
             Modify = ai}
+
+val profOnly =
+    b <- amInstructor;
+    return (if b then
+                Calendar.Write
+            else
+                Calendar.Read)
+
+val profPrivate =
+    b <- amInstructor;
+    return (if b then
+                Calendar.Write
+            else
+                Calendar.Forbidden)
+
+table pset : { PsetNum : int, Due : time }
+  PRIMARY KEY PsetNum
+
+val psetShow = mkShow (fn {PsetNum = n : int} => "Pset " ^ show n)
+val psetRead = mkRead' (fn s => case read s : option int of
+                                    None => None
+                                  | Some n => Some {PsetNum = n}) "pset"
+
+structure PsetCal = Calendar.FromTable(struct
+                                           con tag = #Pset
+                                           con key = [PsetNum = _]
+                                           con when = #Due
+                                           val tab = pset
+                                           val title = "Pset"
+                                           val labels = {PsetNum = "Pset#",
+                                                         Due = "Due"}
+
+                                           fun display r = return <xml>Pset #{[r.PsetNum]}, due {[r.Due]}</xml>
+                                           val auth = profOnly
+                                       end)
+
+table exam : { ExamNum : int, When : time }
+  PRIMARY KEY ExamNum
+
+val examShow = mkShow (fn {ExamNum = n : int} => "Exam " ^ show n)
+val examRead = mkRead' (fn s => case read s : option int of
+                                    None => None
+                                  | Some n => Some {ExamNum = n}) "exam"
+
+structure ExamCal = Calendar.FromTable(struct
+                                           con tag = #Exam
+                                           con key = [ExamNum = _]
+                                           con when = #When
+                                           val tab = exam
+                                           val title = "Exam"
+                                           val labels = {ExamNum = "Exam#",
+                                                         When = "When"}
+
+                                           fun display r = return <xml>Exam #{[r.ExamNum]}, at {[r.When]}</xml>
+                                           val auth = profOnly
+                                       end)
+
+table staffMeeting : { MeetingNum : int, When : time }
+  PRIMARY KEY MeetingNum
+
+val meetingShow = mkShow (fn {MeetingNum = n : int} => "Meeting " ^ show n)
+val meetingRead = mkRead' (fn s => case read s : option int of
+                                    None => None
+                                  | Some n => Some {MeetingNum = n}) "meeting"
+
+structure MeetingCal = Calendar.FromTable(struct
+                                           con tag = #Meeting
+                                           con key = [MeetingNum = _]
+                                           con when = #When
+                                           val tab = staffMeeting
+                                           val title = "Staff Meeting"
+                                           val labels = {MeetingNum = "Meeting#",
+                                                         When = "When"}
+
+                                           fun display r = return <xml>Staff Meeting #{[r.MeetingNum]}, at {[r.When]}</xml>
+                                           val auth = profPrivate
+                                       end)
+
+val cal = PsetCal.cal
+              |> Calendar.compose ExamCal.cal
+              |> Calendar.compose MeetingCal.cal
 
 structure EditUsers = EditableTable.Make(struct
                                              val tab = user
@@ -132,6 +170,8 @@ val cshow_pset = mkShow (fn {PsetNum = n : int, When = _ : time} =>
                             "Pset #" ^ show n)
 val cshow_exam = mkShow (fn {ExamNum = n : int, When = _ : time} =>
                             "Exam #" ^ show n)
+val cshow_meeting = mkShow (fn {MeetingNum = n : int, When = _ : time} =>
+                               "Meeting #" ^ show n)
 
 structure Cal = Calendar.Make(struct
                                   val t = cal
@@ -140,8 +180,6 @@ structure Cal = Calendar.Make(struct
 val admin =
     requireInstructor;
 
-    stuff <- Calendar.items cal;
-
     Ui.tabbed "Instructor Dashboard"
               ((Some "Users",
                 EditUsers.ui),
@@ -149,18 +187,15 @@ val admin =
                 EditPsets.ui),
                (Some "Exams",
                 EditExams.ui),
-               (Some "Raw Calendar",
-                Ui.const (List.mapX (fn v =>
-                                        match v
-                                              {Pset = fn r => <xml>
-                                                <li>Pset #{[r.PsetNum]} @ {[r.When]}</li>
-                                              </xml>,
-                                               Exam = fn r => <xml>
-                                                 <li>Exam #{[r.ExamNum]} @ {[r.When]}</li>
-                                               </xml>}) stuff)),
-               (Some "Fancy Calendar",
+               (Some "Calendar",
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
                         ToDay = readError "09/01/15 00:00:00"}))
+
+val main =
+    Ui.tabbed "Course Home Page"
+              {1 = (Some "Calendar",
+                    Cal.ui {FromDay = readError "06/01/15 00:00:00",
+                            ToDay = readError "09/01/15 00:00:00"})}
 
 fun setIt v =
     setCookie userC {Value = v,
@@ -181,4 +216,5 @@ val cookieSetup =
 val index = return <xml><body>
   <li><a link={cookieSetup}>Cookie set-up</a></li>
   <li><a link={admin}>Instructor</a></li>
+  <li><a link={main}>Student</a></li>
 </body></xml>

@@ -1,5 +1,17 @@
 open Bootstrap3
 
+datatype level = Forbidden | Read | Write
+
+fun levelToInt lv =
+    case lv of
+        Forbidden => 0
+      | Read => 1
+      | Write => 2
+
+val level_eq = mkEq (fn x y => levelToInt x = levelToInt y)
+val level_ord = mkOrd {Lt = fn x y => levelToInt x < levelToInt y,
+                       Le = fn x y => levelToInt x <= levelToInt y}
+
 type tag (p :: (Type * Type)) =
      {Label : string,
       Fresh : string -> transaction p.2,
@@ -9,7 +21,8 @@ type tag (p :: (Type * Type)) =
       Save : p.1 -> p.2 -> transaction (time * string * p.1),
       Delete : p.1 -> transaction unit,
       Eq : eq p.1,
-      Display : p.1 -> transaction xbody}
+      Display : p.1 -> transaction xbody,
+      MayModify : transaction bool}
 
 type t (keys :: {Type}) (tags :: {(Type * Type)}) =
      [[When] ~ keys]
@@ -17,7 +30,7 @@ type t (keys :: {Type}) (tags :: {(Type * Type)}) =
                  -> [([When = time] ++ keys) ~ otherKeys]
                  => folder otherKeys
                  -> $(map sql_injectable_prim otherKeys)
-                 -> sql_query1 [] [] [] [] ([When = time] ++ map option (keys ++ otherKeys)),
+                 -> transaction (sql_query1 [] [] [] [] ([When = time] ++ map option (keys ++ otherKeys))),
          Extract : otherTags :: {Type}
                    -> [otherTags ~ tags]
                    => time -> $(map option keys) -> option (variant (map fst tags ++ otherTags)),
@@ -39,7 +52,7 @@ fun create [tag :: Name] [key] [widget] [[When] ~ key] (fl : folder key)
                 -> [([When = time] ++ key) ~ otherKeys]
                 => folder otherKeys
                 -> $(map sql_injectable_prim otherKeys)
-                -> sql_query1 [] [] [] [] ([When = time] ++ map option (key ++ otherKeys))) r
+                -> transaction (sql_query1 [] [] [] [] ([When = time] ++ map option (key ++ otherKeys)))) r
     : t key [tag = ($([When = time] ++ key), widget)] =
     fn [[When] ~ key] =>
     {Query = f,
@@ -68,6 +81,7 @@ functor FromTable(M : sig
                       val eqs : $(map (fn p => eq p.1) key)
                       val title : string
                       val display : $([when = time] ++ map fst key) -> transaction xbody
+                      val auth : transaction level
                   end) = struct
     open M
 
@@ -80,10 +94,11 @@ functor FromTable(M : sig
         (fn [otherKeys :: {Type}] [([When = time] ++ map fst key) ~ otherKeys]
             (flo : folder otherKeys)
             (primo : $(map sql_injectable_prim otherKeys)) =>
-            sql_forget_tables (sql_query1 [[Tab]]
+            lv <- auth;
+            return (sql_forget_tables (sql_query1 [[Tab]]
                                           {Distinct = False,
                                            From = (FROM tab),
-                                           Where = (WHERE TRUE),
+                                           Where = (WHERE {[lv >= Read]}),
                                            GroupBy = sql_subset_all [_],
                                            Having = (WHERE TRUE),
                                            SelectFields = sql_subset [[Tab = ([], _)]],
@@ -113,7 +128,7 @@ functor FromTable(M : sig
                                                                 sql_window (SQL NULL)
                                                                 : sql_expw [Tab = [when = time] ++ map fst (key ++ other)]
                                                                            [Tab = [when = time] ++ map fst (key ++ other)] [] (option t))
-                                                            flo primo}))
+                                                            flo primo})))
       {Fresh = fn tmS =>
          w <- @Monad.mapR _ [Widget.t'] [fn p => id * p.2] (fn [nm ::_] [p ::_] (w : Widget.t' p) =>
                                                                id <- fresh;
@@ -124,11 +139,15 @@ functor FromTable(M : sig
          return {Widgets = w, Time = tm, TimeId = tmi},
        FromDb = let
            fun lookup r =
-               oneRow1 (SELECT tab.{when}, tab.{{map fst other}}
-                        FROM tab
-                        WHERE {@@Sql.easy_where [#Tab] [map fst key] [_] [_] [_] [_] ! !
-                          (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] fl) inj)
-                          (@Folder.mp fl) r})
+               lv <- auth;
+               if lv >= Read then
+                   oneRow1 (SELECT tab.{when}, tab.{{map fst other}}
+                            FROM tab
+                            WHERE {@@Sql.easy_where [#Tab] [map fst key] [_] [_] [_] [_] ! !
+                              (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] fl) inj)
+                              (@Folder.mp fl) r})
+               else
+                   error <xml>Not authorized</xml>
        in
         fn r =>
            r' <- rpc (lookup (r -- #When));
@@ -157,9 +176,13 @@ functor FromTable(M : sig
        </xml>,
        Create = let
            fun create r =
-               @Sql.easy_insert
-                ({when = _} ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] (@Folder.concat ! fl flO)) (inj ++ injO))
-                (@Folder.cons [when] [_] ! (@Folder.mp (@Folder.concat ! fl flO))) tab r
+               lv <- auth;
+               if lv >= Write then
+                   @Sql.easy_insert
+                    ({when = _} ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] (@Folder.concat ! fl flO)) (inj ++ injO))
+                    (@Folder.cons [when] [_] ! (@Folder.mp (@Folder.concat ! fl flO))) tab r
+               else
+                   error <xml>Not authorized</xml>
        in
            fn self =>
               tm <- get self.Time;
@@ -174,10 +197,14 @@ functor FromTable(M : sig
        end,
        Save = let
            fun save k r =
-               @@Sql.easy_update' [map fst key] [[when = _] ++ map fst other] [_] !
-                 (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] fl) inj)
-                 ({when = _} ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] flO) injO)
-                 (@Folder.mp fl) (@Folder.cons [when] [_] ! (@Folder.mp flO)) tab (k -- #When) r
+               lv <- auth;
+               if lv >= Write then
+                   @@Sql.easy_update' [map fst key] [[when = _] ++ map fst other] [_] !
+                     (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] fl) inj)
+                     ({when = _} ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] flO) injO)
+                     (@Folder.mp fl) (@Folder.cons [when] [_] ! (@Folder.mp flO)) tab (k -- #When) r
+               else
+                   error <xml>Not authorized</xml>
        in
            fn k self =>
               tm <- get self.Time;
@@ -192,17 +219,24 @@ functor FromTable(M : sig
        end,
        Delete = let
            fun delete k =
-               dml (DELETE FROM tab
-                    WHERE {@@Sql.easy_where [#T] [map fst key] [_] [_] [_] [_] ! !
-                          (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] fl) inj)
-                          (@Folder.mp fl) (k -- #When)})
+               lv <- auth;
+               if lv >= Write then
+                   dml (DELETE FROM tab
+                               WHERE {@@Sql.easy_where [#T] [map fst key] [_] [_] [_] [_] ! !
+                                 (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] fl) inj)
+                                 (@Folder.mp fl) (k -- #When)})
+               else
+                   error <xml>Not authorized</xml>
        in
            fn k =>
               rpc (delete k)
        end,
        Eq = @Record.eq ({When = _} ++ eqs) (@Folder.cons [#When] [_] ! (@Folder.mp fl)),
        Label = title,
-       Display = fn r => display (r -- #When ++ {when = r.When})
+       Display = fn r => display (r -- #When ++ {when = r.When}),
+       MayModify =
+         lv <- auth;
+         return (lv >= Write)
       }
 end
 
@@ -215,9 +249,9 @@ fun compose [keys1] [keys2] [tags1] [tags2] [keys1 ~ keys2] [tags1 ~ tags2]
        {Query = fn [otherKeys :: {Type}]
                    [([When = time] ++ keys1 ++ keys2) ~ otherKeys]
                    (flo : folder otherKeys) (primo : $(map sql_injectable_prim otherKeys)) =>
-                   sql_relop sql_union False
-                   (t1.Query [keys2 ++ otherKeys] ! (@Folder.concat ! fl2 flo) (prim2 ++ primo))
-                   (t2.Query [keys1 ++ otherKeys] ! (@Folder.concat ! fl1 flo) (prim1 ++ primo)),
+                   q1 <- t1.Query [keys2 ++ otherKeys] ! (@Folder.concat ! fl2 flo) (prim2 ++ primo);
+                   q2 <- t2.Query [keys1 ++ otherKeys] ! (@Folder.concat ! fl1 flo) (prim1 ++ primo);
+                   return (sql_relop sql_union False q1 q2),
         Extract = fn [otherTags ::_] [otherTags ~ tags1 ++ tags2] tm r =>
                      case t1.Extract [otherTags ++ map fst tags2] ! tm (r --- map option keys2) of
                          None => t2.Extract [otherTags ++ map fst tags1] ! tm (r --- map option keys1)
@@ -225,14 +259,16 @@ fun compose [keys1] [keys2] [tags1] [tags2] [keys1 ~ keys2] [tags1 ~ tags2]
         Tags = t1.Tags ++ t2.Tags}
 
 fun items [keys ::: {Type}] [tags ::: {(Type * Type)}] [[When] ~ keys] (t : t keys tags) =
-    List.mapQuery ({{{t.Query [[]] ! _ {}}}}
+    q <- t.Query [[]] ! _ {};
+    List.mapQuery ({{{q}}}
                    ORDER BY When)
     (fn r => case t.Extract [[]] ! r.When (r -- #When) of
                  Some x => x
                | None => error <xml>Calendar: impossible: query result doesn't correspond to a tag</xml>)
 
 fun items' [keys ::: {Type}] [tags ::: {(Type * Type)}] [[When] ~ keys] (t : t keys tags) =
-    List.mapQuery ({{{t.Query [[]] ! _ {}}}}
+    q <- t.Query [[]] ! _ {};
+    List.mapQuery ({{{q}}}
                    ORDER BY When)
     (fn r => case t.Extract [[]] ! r.When (r -- #When) of
                  Some x => (r.When, x)
@@ -318,8 +354,10 @@ datatype action =
 table listeners : { Kind : serialized (variant (map (fn _ => unit) tags)),
                     Channel : channel action }
 
-type a = channel action * source (list (time * string * string * list (time * string * variant (map fst tags))))
-(* We render the times to strings server-side to avoid time-zone hang-ups. *)
+type a = channel action
+         * source (list (time * string * string * list (time * string * variant (map fst tags))))
+           (* We render the times to strings server-side to avoid time-zone hang-ups. *)
+         * $(map (fn _ => bool) tags) (* Allowed to modify this kind of entry? *)
 
 fun ui {FromDay = from, ToDay = to} : Ui.t a =
     let
@@ -356,10 +394,13 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                 ch <- channel;
                 @Variant.withAll fl (fn k => dml (INSERT INTO listeners(Kind, Channel)
                                                   VALUES ({[serialize k]}, {[ch]})));
-                return (ch, ds)
+                mm <- @Monad.mapR _ [tag] [fn _ => bool]
+                       (fn [nm ::_] [p ::_] (t : tag p) => t.MayModify)
+                       fl t.Tags;
+                return (ch, ds, mm)
             end
 
-        fun onload (ch, ds) =
+        fun onload (ch, ds, _) =
             let
                 fun doAdd (tm, tmS, r) =
                     days <- get ds;
@@ -397,7 +438,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                      WHERE listeners.Kind = {[serialize (@Variant.erase (@Folder.mp fl) k)]})
                     (fn r => send r.Channel act)
 
-        fun render ctx (_, ds) =
+        fun render ctx (_, ds, mm) =
             let
                 fun render' days =
                     case extractWeek days of
@@ -405,99 +446,115 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                       | Some r => <xml>
                         <tr>{List.mapX (fn (_, tmS, longS, items) => <xml><td>
                           <span class={date}>{[tmS]}</span>
-                          {Ui.modalButton ctx (CLASS "buttn btn btn-default btn-xs glyphicon glyphicon-plus-sign")
-                                          <xml/>
-                                          (widgets <- @Monad.mapR _ [tag] [snd]
-                                                       (fn [nm ::_] [p ::_] (r : tag p) => r.Fresh longS)
-                                                       fl t.Tags;
-                                           (whichTab : source int) <- source (@fold [fn _ => int]
-                                                                (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (n : int) => n + 1)
-                                                                (-1) fl);
-                                           return (Ui.modal (wt <- get whichTab;
-                                                             (@foldR2 [tag] [snd]
-                                                               [fn r => o :: {Type} -> [o ~ r] => (variant (map fst r ++ o) -> variant (map fst tags))
-                                                                        -> int * transaction unit]
-                                                               (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (t : tag p) (x : p.2)
-                                                                            (acc : o :: {Type} -> [o ~ r] => (variant (map fst r ++ o) -> variant (map fst tags))
-                                                                                   -> int * transaction unit)
-                                                                            [o ::_] [o ~ [nm = p] ++ r]
-                                                                            (maker : variant (map fst ([nm = p] ++ r) ++ o) -> variant (map fst tags)) =>
-                                                                   let
-                                                                       val (n, xact) = acc [[nm = p.1] ++ o] maker
-                                                                   in
-                                                                       (n+1,
-                                                                        if n = wt then
-                                                                            (tm, tmS, k) <- t.Create x;
-                                                                            rpc (notify (maker (make [nm] k)) (Add (tm, tmS, maker (make [nm] k))))
-                                                                        else
-                                                                            xact)
-                                                                   end) (fn [o ::_] [o ~ []] _ => (0, alert "Impossible tab!")) fl t.Tags widgets [[]] ! (fn x => x)).2)
-                                                            <xml>Adding an item to the calendar</xml>
-                                                            <xml>
-                                                              <ul class="bs3-nav nav-tabs">
-                                                                {(@foldR [tag] [fn _ => int * xbody]
-                                                                   (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (t : tag p) (n, b) =>
-                                                                       (n+1,
-                                                                        <xml>
-                                                                          <li dynClass={wt <- signal whichTab;
-                                                                                        return (if n = wt then
-                                                                                                    CLASS "bs3-active"
-                                                                                                else
-                                                                                                    CLASS "")}><a onclick={fn _ => set whichTab n}>{[t.Label]}</a></li>
-                                                                          {b}
-                                                                        </xml>)) (0, <xml/>) fl t.Tags).2}
-                                                              </ul>
+                          {if @foldR [fn _ => bool] [fn _ => bool]
+                               (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (b : bool) (acc : bool) => not b && acc)
+                               True fl mm then
+                               <xml/>
+                           else
+                               Ui.modalButton ctx (CLASS "buttn btn btn-default btn-xs glyphicon glyphicon-plus-sign")
+                               <xml/>
+                               (widgets <- @Monad.mapR _ [tag] [snd]
+                                            (fn [nm ::_] [p ::_] (r : tag p) => r.Fresh longS)
+                                            fl t.Tags;
+                                (whichTab : source int) <- source (@fold [fn _ => int]
+                                                                    (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (n : int) => n + 1)
+                                                                    (-1) fl);
+                                return (Ui.modal (wt <- get whichTab;
+                                                  (@foldR2 [tag] [snd]
+                                                    [fn r => o :: {Type} -> [o ~ r] => (variant (map fst r ++ o) -> variant (map fst tags))
+                                                                                       -> int * transaction unit]
+                                                    (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (t : tag p) (x : p.2)
+                                                                 (acc : o :: {Type} -> [o ~ r] => (variant (map fst r ++ o) -> variant (map fst tags))
+                                                                                                  -> int * transaction unit)
+                                                                 [o ::_] [o ~ [nm = p] ++ r]
+                                                                 (maker : variant (map fst ([nm = p] ++ r) ++ o) -> variant (map fst tags)) =>
+                                                        let
+                                                            val (n, xact) = acc [[nm = p.1] ++ o] maker
+                                                        in
+                                                            (n+1,
+                                                             if n = wt then
+                                                                 (tm, tmS, k) <- t.Create x;
+                                                                 rpc (notify (maker (make [nm] k)) (Add (tm, tmS, maker (make [nm] k))))
+                                                             else
+                                                                 xact)
+                                                        end) (fn [o ::_] [o ~ []] _ => (0, alert "Impossible tab!")) fl t.Tags widgets [[]] ! (fn x => x)).2)
+                                                 <xml>Adding an item to the calendar</xml>
+                                                 <xml>
+                                                   <ul class="bs3-nav nav-tabs">
+                                                     {(@foldR [tag] [fn _ => int * xbody]
+                                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (t : tag p) (n, b) =>
+                                                            (n+1,
+                                                             <xml>
+                                                               <li dynClass={wt <- signal whichTab;
+                                                                             return (if n = wt then
+                                                                                         CLASS "bs3-active"
+                                                                                     else
+                                                                                         CLASS "")}><a onclick={fn _ => set whichTab n}>{[t.Label]}</a></li>
+                                                               {b}
+                                                             </xml>)) (0, <xml/>) fl t.Tags).2}
+                                                     </ul>
                                                               
-                                                              <div class={fields}>
-                                                                <dyn signal={wt <- signal whichTab;
-                                                                             return (@foldR2 [tag] [snd] [fn _ => int * xbody]
-                                                                                      (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (t : tag p) (x : p.2) (n, b) =>
-                                                                                          (n+1,
-                                                                                           if n = wt then
-                                                                                               t.Render x
-                                                                                           else
-                                                                                               b)) (0, <xml/>) fl t.Tags widgets).2}/>
-                                                              </div>
-                                                            </xml>
-                                                            <xml>Add to Calendar</xml>))}
-                          {List.mapX (fn (tm, tmS, d) => <xml><div class={item}><span class={time}>{[tmS]}</span>:
-                            <span class={item}>
-                              {Ui.modalButton ctx (CLASS "btn btn-link")
-                                              <xml>{[@Record.select [fn p => show p.1] [fst] fl
-                                                      (fn [p] (s : show p.1) => @show s) sh d]}</xml>
-                                              (@Record.select [tag] [fst] fl
-                                                (fn [p] (t : tag p) (x : p.1) =>
-                                                    xm <- t.Display x;
-                                                    return (Ui.simpleModal xm <xml>Close</xml>))
-                                                t.Tags d)}
-                              <span class={buttn}>
-                              {Ui.modalButton ctx (CLASS "btn btn-default btn-xs glyphicon glyphicon-edit")
-                                              <xml/>
-                                              (@Record.select' [tag] [fst] [fst] fl
-                                              (fn [p] (t : tag p) (maker : p.1 -> variant (map fst tags)) (x : p.1) =>
-                                                 widget <- t.FromDb x;
-                                                 return (Ui.modal ((tm, tmS, k2) <- t.Save x widget;
-                                                                   rpc (notify d (Mod (maker x, (tm, tmS, maker k2)))))
-                                                                  <xml>Editing a calendar item ({[t.Label]})</xml>
-                                                                  <xml>
-                                                                    <div class={fields}>
-                                                                      {t.Render widget}
-                                                                    </div>
-                                                                  </xml>
-                                                                  <xml>Save Calendar Entry</xml>))
-                                              t.Tags d)}
-                              {Ui.modalButton ctx (CLASS "btn btn-default btn-xs glyphicon glyphicon-trash")
-                                              <xml/>
-                                              (return (@Record.select2 [tag] [fn p => show p.1] [fst] fl
-                                               (fn [p] (t : tag p) (_ : show p.1) (x : p.1) =>
-                                               Ui.modal (t.Delete x;
-                                                         rpc (notify d (Del d)))
-                                               <xml>Deleting a calendar item ({[t.Label]})</xml>
-                                               <xml>Are you sure you want to delete <b>{[x]}</b>?</xml>
-                                               <xml>Yes, Delete It</xml>)
-                                               t.Tags sh d))}
-                              </span>
-                            </span></div></xml>) items}
+                                                     <div class={fields}>
+                                                       <dyn signal={wt <- signal whichTab;
+                                                                    return (@foldR2 [tag] [snd] [fn _ => int * xbody]
+                                                                             (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (t : tag p) (x : p.2) (n, b) =>
+                                                                                 (n+1,
+                                                                                  if n = wt then
+                                                                                      t.Render x
+                                                                                  else
+                                                                                      b)) (0, <xml/>) fl t.Tags widgets).2}/>
+                                                                                                                           </div>
+                                                     </xml>
+                                                     <xml>Add to Calendar</xml>))}
+                          {List.mapX (fn (tm, tmS, d) =>
+                                         let
+                                             val maymod = @Record.select [fn _ => bool] [fst] fl
+                                                           (fn [p] (b : bool) _ => b)
+                                                           mm d
+                                         in
+                                             <xml><div class={item}><span class={time}>{[tmS]}</span>:
+                                               <span class={item}>
+                                                 {Ui.modalButton ctx (CLASS "btn btn-link")
+                                                                 <xml>{[@Record.select [fn p => show p.1] [fst] fl
+                                                                         (fn [p] (s : show p.1) => @show s) sh d]}</xml>
+                                                                 (@Record.select [tag] [fst] fl
+                                                                   (fn [p] (t : tag p) (x : p.1) =>
+                                                                       xm <- t.Display x;
+                                                                       return (Ui.simpleModal xm <xml>Close</xml>))
+                                                                   t.Tags d)}
+                                                   {if not maymod then
+                                                        <xml/>
+                                                    else <xml>
+                                                      <span class={buttn}>
+                                                        {Ui.modalButton ctx (CLASS "btn btn-default btn-xs glyphicon glyphicon-edit")
+                                                        <xml/>
+                                                        (@Record.select' [tag] [fst] [fst] fl
+                                                        (fn [p] (t : tag p) (maker : p.1 -> variant (map fst tags)) (x : p.1) =>
+                                                            widget <- t.FromDb x;
+                                                            return (Ui.modal ((tm, tmS, k2) <- t.Save x widget;
+                                                                              rpc (notify d (Mod (maker x, (tm, tmS, maker k2)))))
+                                                                             <xml>Editing a calendar item ({[t.Label]})</xml>
+                                                                             <xml>
+                                                                               <div class={fields}>
+                                                                                 {t.Render widget}
+                                                                               </div>
+                                                                             </xml>
+                                                                             <xml>Save Calendar Entry</xml>))
+                                                        t.Tags d)}
+                                                        {Ui.modalButton ctx (CLASS "btn btn-default btn-xs glyphicon glyphicon-trash")
+                                                                        <xml/>
+                                                                        (return (@Record.select2 [tag] [fn p => show p.1] [fst] fl
+                                                                        (fn [p] (t : tag p) (_ : show p.1) (x : p.1) =>
+                                                                        Ui.modal (t.Delete x;
+                                                                        rpc (notify d (Del d)))
+                                                                        <xml>Deleting a calendar item ({[t.Label]})</xml>
+                                                                        <xml>Are you sure you want to delete <b>{[x]}</b>?</xml>
+                                                                        <xml>Yes, Delete It</xml>)
+                                                                        t.Tags sh d))}
+                                                        </span>
+                                                        </xml>}
+                                                   </span></div></xml>
+                                         end) items}
                         </td></xml>) r.ThisWeek}</tr>
                         {render' r.LaterWeeks}
                       </xml>

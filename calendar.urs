@@ -6,6 +6,9 @@ con t :: {Type}    (* Dictionary of all key fields used across all sources of ev
                              * and the way to encode it imperatively with client-side widgets *)
          -> Type
 
+(* Levels of access control *)
+datatype level = Forbidden | Read | Write
+
 functor FromTable(M : sig
                       con tag :: Name
                       con key :: {(Type * Type)} (* Each 2nd component is a type of GUI widget private state. *)
@@ -25,6 +28,7 @@ functor FromTable(M : sig
                       val eqs : $(map (fn p => eq p.1) key)
                       val title : string
                       val display : $([when = time] ++ map fst key) -> transaction xbody
+                      val auth : transaction level
                   end) : sig
     type private
     con tag = M.tag
