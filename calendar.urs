@@ -23,6 +23,7 @@ functor FromTable(M : sig
                       val tab : sql_table (map fst (key ++ other) ++ [when = time]) us
                       val labels : $([when = string] ++ map (fn _ => string) (key ++ other))
                       val eqs : $(map (fn p => eq p.1) key)
+                      val title : string
                   end) : sig
     type private
     con tag = M.tag
@@ -50,6 +51,5 @@ functor Make(M : sig
                  val t : t keys tags
                  val sh : $(map (fn p => show p.1) tags)
                  val fl : folder tags
-                 val labels : $(map (fn _ => string) tags)
              end) : Ui.S where type input = {FromDay : time,
                                              ToDay : time} (* inclusive *)

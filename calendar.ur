@@ -1,7 +1,8 @@
 open Bootstrap3
 
 type tag (p :: (Type * Type)) =
-     {Fresh : string -> transaction p.2,
+     {Label : string,
+      Fresh : string -> transaction p.2,
       FromDb : p.1 -> transaction p.2,
       Render : p.2 -> xbody,
       Create : p.2 -> transaction (time * string * p.1),
@@ -64,6 +65,7 @@ functor FromTable(M : sig
                       val tab : sql_table (map fst (key ++ other) ++ [when = time]) us
                       val labels : $([when = string] ++ map (fn _ => string) (key ++ other))
                       val eqs : $(map (fn p => eq p.1) key)
+                      val title : string
                   end) = struct
     open M
 
@@ -196,7 +198,8 @@ functor FromTable(M : sig
            fn k =>
               rpc (delete k)
        end,
-       Eq = @Record.eq ({When = _} ++ eqs) (@Folder.cons [#When] [_] ! (@Folder.mp fl))}
+       Eq = @Record.eq ({When = _} ++ eqs) (@Folder.cons [#When] [_] ! (@Folder.mp fl)),
+       Label = title}
 end
 
 fun compose [keys1] [keys2] [tags1] [tags2] [keys1 ~ keys2] [tags1 ~ tags2]
@@ -296,7 +299,6 @@ functor Make(M : sig
                  val t : t keys tags
                  val sh : $(map (fn p => show p.1) tags)
                  val fl : folder tags
-                 val labels : $(map (fn _ => string) tags)
              end) = struct
 open M
 type input = _
@@ -429,17 +431,17 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                             <xml>Adding an item to the calendar</xml>
                                                             <xml>
                                                               <ul class="bs3-nav nav-tabs">
-                                                                {(@foldR [fn _ => string] [fn _ => int * xbody]
-                                                                   (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (n, b) =>
+                                                                {(@foldR [tag] [fn _ => int * xbody]
+                                                                   (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (t : tag p) (n, b) =>
                                                                        (n+1,
                                                                         <xml>
                                                                           <li dynClass={wt <- signal whichTab;
                                                                                         return (if n = wt then
                                                                                                     CLASS "bs3-active"
                                                                                                 else
-                                                                                                    CLASS "")}><a onclick={fn _ => set whichTab n}>{[lab]}</a></li>
+                                                                                                    CLASS "")}><a onclick={fn _ => set whichTab n}>{[t.Label]}</a></li>
                                                                           {b}
-                                                                        </xml>)) (0, <xml/>) fl labels).2}
+                                                                        </xml>)) (0, <xml/>) fl t.Tags).2}
                                                               </ul>
                                                               
                                                               <div class={fields}>
@@ -465,7 +467,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                  widget <- t.FromDb x;
                                                  return (Ui.modal ((tm, tmS, k2) <- t.Save x widget;
                                                                    rpc (notify d (Mod (maker x, (tm, tmS, maker k2)))))
-                                                                  <xml>Editing a calendar item ({[@Record.select [fn _ => string] [fst] fl (fn [p] (lab : string) _ => lab) labels d]})</xml>
+                                                                  <xml>Editing a calendar item ({[t.Label]})</xml>
                                                                   <xml>
                                                                     <div class={fields}>
                                                                       {t.Render widget}
@@ -479,7 +481,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                (fn [p] (t : tag p) (_ : show p.1) (x : p.1) =>
                                                Ui.modal (t.Delete x;
                                                          rpc (notify d (Del d)))
-                                               <xml>Deleting a calendar item ({[@Record.select [fn _ => string] [fst] fl (fn [p] (lab : string) _ => lab) labels d]})</xml>
+                                               <xml>Deleting a calendar item ({[t.Label]})</xml>
                                                <xml>Are you sure you want to delete <b>{[x]}</b>?</xml>
                                                <xml>Yes, Delete It</xml>)
                                                t.Tags sh d))}

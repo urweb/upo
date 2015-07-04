@@ -31,6 +31,7 @@ structure PsetCal = Calendar.FromTable(struct
                                            con key = [PsetNum = _]
                                            con when = #Due
                                            val tab = pset
+                                           val title = "Pset"
                                            val labels = {PsetNum = "Pset#",
                                                          Due = "Due"}
                                        end)
@@ -48,6 +49,7 @@ structure ExamCal = Calendar.FromTable(struct
                                            con key = [ExamNum = _]
                                            con when = #When
                                            val tab = exam
+                                           val title = "Exam"
                                            val labels = {ExamNum = "Exam#",
                                                          When = "When"}
                                        end)
@@ -129,8 +131,6 @@ val cshow_exam = mkShow (fn {ExamNum = n : int, When = _ : time} =>
 
 structure Cal = Calendar.Make(struct
                                   val t = cal
-                                  val labels = {Pset = "Pset",
-                                                Exam = "Exam"}
                               end)
 
 val admin =
