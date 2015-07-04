@@ -16,7 +16,7 @@ val create : tag :: Name
                  => folder otherKeys
                  -> $(map sql_injectable_prim otherKeys)
                  -> sql_query1 [] [] [] [] ([When = time] ++ map option (key ++ otherKeys)))
-             -> {Fresh : time -> transaction widget,
+             -> {Fresh : string -> transaction widget,
                  Render : widget -> xbody,
                  Create : widget -> transaction unit}
              -> t key [tag = ($([When = time] ++ key), widget)]

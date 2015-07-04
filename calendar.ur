@@ -1,5 +1,10 @@
 open Bootstrap3
 
+type tag (p :: (Type * Type)) =
+     {Fresh : string -> transaction p.2,
+      Render : p.2 -> xbody,
+      Create : p.2 -> transaction unit}
+
 type t (keys :: {Type}) (tags :: {(Type * Type)}) =
      [[When] ~ keys]
      => {Query : otherKeys :: {Type}
@@ -10,9 +15,7 @@ type t (keys :: {Type}) (tags :: {(Type * Type)}) =
          Extract : otherTags :: {Type}
                    -> [otherTags ~ tags]
                    => time -> $(map option keys) -> option (variant (map fst tags ++ otherTags)),
-         Tags : $(map (fn p => {Fresh : time -> transaction p.2,
-                                Render : p.2 -> xbody,
-                                Create : p.2 -> transaction unit}) tags)}
+         Tags : $(map tag tags)}
 
 fun unopt [fs ::: {Type}] (fl : folder fs) (r : $(map option fs)) : option $fs =
     @foldR [option] [fn r => option $r]
@@ -31,7 +34,7 @@ fun create [tag :: Name] [key] [widget] [[When] ~ key] (fl : folder key)
                 => folder otherKeys
                 -> $(map sql_injectable_prim otherKeys)
                 -> sql_query1 [] [] [] [] ([When = time] ++ map option (key ++ otherKeys)))
-           (r : {Fresh : time -> transaction widget,
+           (r : {Fresh : string -> transaction widget,
                  Render : widget -> xbody,
                  Create : widget -> transaction unit})
     : t key [tag = ($([When = time] ++ key), widget)] =
@@ -105,12 +108,12 @@ functor FromTable(M : sig
                                                                 : sql_expw [Tab = [when = time] ++ map fst (key ++ other)]
                                                                            [Tab = [when = time] ++ map fst (key ++ other)] [] (option t))
                                                             flo primo}))
-      {Fresh = fn tm =>
+      {Fresh = fn tmS =>
          w <- @Monad.mapR _ [Widget.t'] [fn p => id * p.2] (fn [nm ::_] [p ::_] (w : Widget.t' p) =>
                                                                id <- fresh;
                                                                w <- @Widget.create w;
                                                                return (id, w)) (@Folder.concat ! fl flO) ws;
-         tm <- source (show tm);
+         tm <- source tmS;
          tmi <- fresh;
          return {Widgets = w, Time = tm, TimeId = tmi},
        Render = fn self => <xml>
@@ -176,7 +179,7 @@ fun items' [keys ::: {Type}] [tags ::: {(Type * Type)}] [[When] ~ keys] (t : t k
                  Some x => (r.When, x)
                | None => error <xml>Calendar: impossible: query result doesn't correspond to a tag</xml>)
 
-con calendar (tags :: {(Type * Type)}) = list (time * string * list (string * variant (map fst tags)))
+con calendar (tags :: {(Type * Type)}) = list (time * string * string * list (string * variant (map fst tags)))
 (* We render the times to strings server-side to avoid time-zone hang-ups. *)
 
 fun dateify tm = Datetime.toTime (Datetime.fromTime tm -- #Hour -- #Minute -- #Second
@@ -184,10 +187,10 @@ fun dateify tm = Datetime.toTime (Datetime.fromTime tm -- #Hour -- #Minute -- #S
 
 val oneDay = 24 * 60 * 60
 
-fun extractWeek [a] (ls : list (time * string * list a)) : option {ThisWeek : list (time * string * list a), LaterWeeks : list (time * string * list a)} =
+fun extractWeek [a] (ls : list (time * string * string * list a)) : option {ThisWeek : list (time * string * string * list a), LaterWeeks : list (time * string * string * list a)} =
     case ls of
         [] => None
-      | (tm, tmS, _) :: _ =>
+      | (tm, tmS, _, _) :: _ =>
         let
             val offsetStart = addSeconds tm (Datetime.dayOfWeekToInt (Datetime.dayOfWeek (Datetime.fromTime tm)) * (-oneDay))
             (* The beginning of this week *)
@@ -206,7 +209,7 @@ fun extractWeek [a] (ls : list (time * string * list a)) : option {ThisWeek : li
                                 val (ls'', left) = more ls
                                 val tm' = addSeconds offsetStart (daynum * oneDay)
                             in
-                                ((tm', timef "%b %e" tm', []) :: ls'', left)
+                                ((tm', timef "%b %e" tm', show (dateify tm'), []) :: ls'', left)
                             end
                           | ent :: ls' =>
                             if Datetime.dayOfWeek (Datetime.fromTime ent.1) = dow then
@@ -220,7 +223,7 @@ fun extractWeek [a] (ls : list (time * string * list a)) : option {ThisWeek : li
                                     val (ls'', left) = more ls
                                     val tm' = addSeconds offsetStart (daynum * oneDay)
                                 in
-                                    ((tm', timef "%b %e" tm', []) :: ls'', left)
+                                    ((tm', timef "%b %e" tm', show (dateify tm'), []) :: ls'', left)
                                 end
                     end
 
@@ -234,6 +237,7 @@ style calendar
 style time
 style item
 style add
+style fields
 
 val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map (fn p => show p.1) tags)) (fl : folder tags) {Labels = labels, FromDay = from, ToDay = to} : Ui.t (calendar tags) =
     let
@@ -252,14 +256,14 @@ val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map (fn p =
                             let
                                 fun loop' items acc' =
                                     case items of
-                                        [] => loop nextDay items ((day, timef "%b %e" day, List.rev acc') :: acc)
+                                        [] => loop nextDay items ((day, timef "%b %e" day, show (dateify day), List.rev acc') :: acc)
                                       | item :: items' =>
                                         if item.1 < from || item.1 > to then
                                             loop' items' acc'
                                         else if item.1 < nextDay then
                                             loop' items' ((timef "%l:%M" item.1, item.2) :: acc')
                                         else
-                                            loop nextDay items ((day, timef "%b %e" day, List.rev acc') :: acc)
+                                            loop nextDay items ((day, timef "%b %e" day, show (dateify day), List.rev acc') :: acc)
                             in
                                 loop' items []
                             end
@@ -277,19 +281,50 @@ val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map (fn p =
                     case extractWeek days of
                         None => <xml/>
                       | Some r => <xml>
-                        <tr>{List.mapX (fn (_, tmS, items) => <xml><td>
+                        <tr>{List.mapX (fn (_, tmS, longS, items) => <xml><td>
                           <span class={date}>{[tmS]}</span>
                           {Ui.modalButton ctx (CLASS "add btn btn-default btn-xs glyphicon glyphicon-plus-sign")
                                           <xml/>
-                                          (return (Ui.modal (alert "Good work!")
+                                          (widgets <- @Monad.mapR _ [tag] [snd]
+                                                       (fn [nm ::_] [p ::_] (r : tag p) => r.Fresh longS)
+                                                       fl t.Tags;
+                                           (whichTab : source int) <- source (@fold [fn _ => int]
+                                                                (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (n : int) => n + 1)
+                                                                (-1) fl);
+                                           return (Ui.modal (wt <- get whichTab;
+                                                             (@foldR2 [tag] [snd] [fn _ => int * transaction unit]
+                                                               (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (t : tag p) (x : p.2) (n, xact) =>
+                                                                       (n+1,
+                                                                        if n = wt then
+                                                                            t.Create x
+                                                                        else
+                                                                            xact)) (0, alert "Impossible tab!") fl t.Tags widgets).2)
                                                             <xml>Adding an item to the calendar</xml>
                                                             <xml>
                                                               <ul class="bs3-nav nav-tabs">
-                                                                {@mapX [fn _ => string] [body]
-                                                                  (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (lab : string) => <xml>
-                                                                    <li><a>{[lab]}</a></li>
-                                                                  </xml>) fl labels}
+                                                                {(@foldR [fn _ => string] [fn _ => int * xbody]
+                                                                   (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (n, b) =>
+                                                                       (n+1,
+                                                                        <xml>
+                                                                          <li dynClass={wt <- signal whichTab;
+                                                                                        return (if n = wt then
+                                                                                                    CLASS "bs3-active"
+                                                                                                else
+                                                                                                    CLASS "")}><a onclick={fn _ => set whichTab n}>{[lab]}</a></li>
+                                                                          {b}
+                                                                        </xml>)) (0, <xml/>) fl labels).2}
                                                               </ul>
+                                                              
+                                                              <div class={fields}>
+                                                                <dyn signal={wt <- signal whichTab;
+                                                                             return (@foldR2 [tag] [snd] [fn _ => int * xbody]
+                                                                                      (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (t : tag p) (x : p.2) (n, b) =>
+                                                                                          (n+1,
+                                                                                           if n = wt then
+                                                                                               t.Render x
+                                                                                           else
+                                                                                               b)) (0, <xml/>) fl t.Tags widgets).2}/>
+                                                              </div>
                                                             </xml>
                                                             <xml>Add to Calendar</xml>))}
                           {List.mapX (fn (tmS, d) => <xml><div><span class={time}>{[tmS]}</span>:

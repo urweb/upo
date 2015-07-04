@@ -43,3 +43,7 @@ table.Calendar_calendar tr td {
 button.Calendar_add {
     float: right;
 }
+
+div.Calendar_fields {
+    margin-top: 20px;
+}
