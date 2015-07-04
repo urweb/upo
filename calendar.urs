@@ -20,7 +20,8 @@ val create : tag :: Name
                  FromDb : $([When = time] ++ key) -> transaction widget,
                  Render : widget -> xbody,
                  Create : widget -> transaction unit,
-                 Save : $([When = time] ++ key) -> widget -> transaction unit}
+                 Save : $([When = time] ++ key) -> widget -> transaction unit,
+                 Delete : $([When = time] ++ key) -> transaction unit}
              -> t key [tag = ($([When = time] ++ key), widget)]
 
 functor FromTable(M : sig

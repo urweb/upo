@@ -5,7 +5,8 @@ type tag (p :: (Type * Type)) =
       FromDb : p.1 -> transaction p.2,
       Render : p.2 -> xbody,
       Create : p.2 -> transaction unit,
-      Save : p.1 -> p.2 -> transaction unit}
+      Save : p.1 -> p.2 -> transaction unit,
+      Delete : p.1 -> transaction unit}
 
 type t (keys :: {Type}) (tags :: {(Type * Type)}) =
      [[When] ~ keys]
@@ -40,7 +41,8 @@ fun create [tag :: Name] [key] [widget] [[When] ~ key] (fl : folder key)
                  FromDb : $([When = time] ++ key) -> transaction widget,
                  Render : widget -> xbody,
                  Create : widget -> transaction unit,
-                 Save : $([When = time] ++ key) -> widget -> transaction unit})
+                 Save : $([When = time] ++ key) -> widget -> transaction unit,
+                 Delete : $([When = time] ++ key) -> transaction unit})
     : t key [tag = ($([When = time] ++ key), widget)] =
     fn [[When] ~ key] =>
     {Query = f,
@@ -183,6 +185,16 @@ functor FromTable(M : sig
                         (fn [nm ::_] [p ::_] (w : Widget.t' p) (_, x) => current (@Widget.value w x))
                         (@Folder.concat ! fl flO) ws self.Widgets;
                   rpc (save (k -- #When) ({when = tm} ++ r))
+       end,
+       Delete = let
+           fun delete k =
+               dml (DELETE FROM tab
+                    WHERE {@@Sql.easy_where [#T] [map fst key] [_] [_] [_] [_] ! !
+                          (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] fl) inj)
+                          (@Folder.mp fl) k})
+       in
+           fn k =>
+              rpc (delete (k -- #When))
        end}
 end
 
@@ -276,6 +288,7 @@ style calendar
 style time
 style item
 style fields
+
 style buttn
 
 val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map (fn p => show p.1) tags)) (fl : folder tags) {Labels = labels, FromDay = from, ToDay = to} : Ui.t (calendar tags) =
@@ -366,10 +379,11 @@ val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map (fn p =
                                                               </div>
                                                             </xml>
                                                             <xml>Add to Calendar</xml>))}
-                          {List.mapX (fn (tmS, d) => <xml><div><span class={time}>{[tmS]}</span>:
+                          {List.mapX (fn (tmS, d) => <xml><div class={item}><span class={time}>{[tmS]}</span>:
                             <span class={item}>{[@Record.select [fn p => show p.1] [fst] fl
                                                   (fn [p] (s : show p.1) => @show s) sh d]}
-                              {Ui.modalButton ctx (CLASS "buttn btn btn-default btn-xs glyphicon glyphicon-edit")
+                              <span class={buttn}>
+                              {Ui.modalButton ctx (CLASS "btn btn-default btn-xs glyphicon glyphicon-edit")
                                               <xml/>
                                               (@Record.select [tag] [fst] fl
                                               (fn [p] (t : tag p) (x : p.1) =>
@@ -383,6 +397,16 @@ val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map (fn p =
                                                                   </xml>
                                                                   <xml>Save Calendar Entry</xml>))
                                               t.Tags d)}
+                              {Ui.modalButton ctx (CLASS "btn btn-default btn-xs glyphicon glyphicon-trash")
+                                              <xml/>
+                                              (return (@Record.select2 [tag] [fn p => show p.1] [fst] fl
+                                               (fn [p] (t : tag p) (_ : show p.1) (x : p.1) =>
+                                               Ui.modal (t.Delete x)
+                                               <xml>Deleting a calendar item ({[@Record.select [fn _ => string] [fst] fl (fn [p] (lab : string) _ => lab) labels d]})</xml>
+                                               <xml>Are you sure you want to delete <b>{[x]}</b>?</xml>
+                                               <xml>Yes, Delete It</xml>)
+                                               t.Tags sh d))}
+                              </span>
                             </span></div></xml>) items}
                         </td></xml>) r.ThisWeek}</tr>
                         {render' r.LaterWeeks}

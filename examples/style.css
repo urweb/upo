@@ -31,6 +31,7 @@ table.Calendar_calendar tr td {
     vertical-align: top;
     padding-left: 5px;
     padding-right: 5px;
+    padding-bottom: 10px;
 }
 
 .Calendar_date {
@@ -41,11 +42,17 @@ table.Calendar_calendar tr td {
     font-style: italic;
 }
 
-button.Calendar_buttn {
+.Calendar_buttn {
     float: right;
     clear: right;
 }
 
 div.Calendar_fields {
     margin-top: 20px;
+}
+
+div.Calendar_item {
+    margin-bottom: 5px;
+    display: inline-table;
+    width: 100%;
 }

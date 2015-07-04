@@ -32,3 +32,8 @@ fun select [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [r ::: {K}] (fl : folder r)
            (f : t ::: K -> tf1 t -> tf2 t -> out)
            (r : $(map tf1 r)) (v : variant (map tf2 r)) : out =
     match v (@mp [tf1] [fn t => tf2 t -> out] @@f fl r)
+
+fun select2 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [r ::: {K}] (fl : folder r) [out ::: Type]
+           (f : t ::: K -> tf1 t -> tf2 t -> tf3 t -> out)
+           (r1 : $(map tf1 r)) (r2 : $(map tf2 r)) (v : variant (map tf3 r)) : out =
+    match v (@map2 [tf1] [tf2] [fn t => tf3 t -> out] @@f fl r1 r2)
