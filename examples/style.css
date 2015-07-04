@@ -21,6 +21,7 @@ body {
 
 table.Calendar_calendar {
     width: 100%;
+    margin-bottom: 20px;
 }
 
 table.Calendar_calendar tr td {
@@ -40,8 +41,9 @@ table.Calendar_calendar tr td {
     font-style: italic;
 }
 
-button.Calendar_add {
+button.Calendar_buttn {
     float: right;
+    clear: right;
 }
 
 div.Calendar_fields {

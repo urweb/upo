@@ -17,8 +17,10 @@ val create : tag :: Name
                  -> $(map sql_injectable_prim otherKeys)
                  -> sql_query1 [] [] [] [] ([When = time] ++ map option (key ++ otherKeys)))
              -> {Fresh : string -> transaction widget,
+                 FromDb : $([When = time] ++ key) -> transaction widget,
                  Render : widget -> xbody,
-                 Create : widget -> transaction unit}
+                 Create : widget -> transaction unit,
+                 Save : $([When = time] ++ key) -> widget -> transaction unit}
              -> t key [tag = ($([When = time] ++ key), widget)]
 
 functor FromTable(M : sig

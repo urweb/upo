@@ -2,8 +2,10 @@ open Bootstrap3
 
 type tag (p :: (Type * Type)) =
      {Fresh : string -> transaction p.2,
+      FromDb : p.1 -> transaction p.2,
       Render : p.2 -> xbody,
-      Create : p.2 -> transaction unit}
+      Create : p.2 -> transaction unit,
+      Save : p.1 -> p.2 -> transaction unit}
 
 type t (keys :: {Type}) (tags :: {(Type * Type)}) =
      [[When] ~ keys]
@@ -35,8 +37,10 @@ fun create [tag :: Name] [key] [widget] [[When] ~ key] (fl : folder key)
                 -> $(map sql_injectable_prim otherKeys)
                 -> sql_query1 [] [] [] [] ([When = time] ++ map option (key ++ otherKeys)))
            (r : {Fresh : string -> transaction widget,
+                 FromDb : $([When = time] ++ key) -> transaction widget,
                  Render : widget -> xbody,
-                 Create : widget -> transaction unit})
+                 Create : widget -> transaction unit,
+                 Save : $([When = time] ++ key) -> widget -> transaction unit})
     : t key [tag = ($([When = time] ++ key), widget)] =
     fn [[When] ~ key] =>
     {Query = f,
@@ -116,6 +120,25 @@ functor FromTable(M : sig
          tm <- source tmS;
          tmi <- fresh;
          return {Widgets = w, Time = tm, TimeId = tmi},
+       FromDb = let
+           fun lookup r =
+               oneRow1 (SELECT tab.{when}, tab.{{map fst other}}
+                        FROM tab
+                        WHERE {@@Sql.easy_where [#Tab] [map fst key] [_] [_] [_] [_] ! !
+                          (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] fl) inj)
+                          (@Folder.mp fl) r})
+       in
+        fn r =>
+           r' <- rpc (lookup (r -- #When));
+           w <- @Monad.mapR2 _ [Widget.t'] [fst] [fn p => id * p.2]
+               (fn [nm ::_] [p ::_] (w : Widget.t' p) (x : p.1) =>
+                   id <- fresh;
+                   w <- @Widget.initialize w x;
+                   return (id, w)) (@Folder.concat ! fl flO) ws ((r -- #When) ++ (r' -- when));
+           tm <- source (show r'.when);
+           tmi <- fresh;
+           return {Widgets = w, Time = tm, TimeId = tmi}
+       end,
        Render = fn self => <xml>
          <div class="form-group">
            <label class="control-label" for={self.TimeId}>{[labels.when]}</label>
@@ -144,6 +167,22 @@ functor FromTable(M : sig
                         (fn [nm ::_] [p ::_] (w : Widget.t' p) (_, x) => current (@Widget.value w x))
                         (@Folder.concat ! fl flO) ws self.Widgets;
                   rpc (create ({when = tm} ++ r))
+       end,
+       Save = let
+           fun save k r = @@Sql.easy_update' [map fst key] [[when = _] ++ map fst other] [_] !
+                          (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] fl) inj)
+                          ({when = _} ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] flO) injO)
+                          (@Folder.mp fl) (@Folder.cons [when] [_] ! (@Folder.mp flO)) tab k r
+       in
+           fn k self =>
+              tm <- get self.Time;
+              case read tm of
+                  None => alert "Invalid time!"
+                | Some tm =>
+                  r <- @Monad.mapR2 _ [Widget.t'] [fn p => id * p.2] [fst]
+                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (_, x) => current (@Widget.value w x))
+                        (@Folder.concat ! fl flO) ws self.Widgets;
+                  rpc (save (k -- #When) ({when = tm} ++ r))
        end}
 end
 
@@ -236,8 +275,8 @@ style date
 style calendar
 style time
 style item
-style add
 style fields
+style buttn
 
 val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map (fn p => show p.1) tags)) (fl : folder tags) {Labels = labels, FromDay = from, ToDay = to} : Ui.t (calendar tags) =
     let
@@ -283,7 +322,7 @@ val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map (fn p =
                       | Some r => <xml>
                         <tr>{List.mapX (fn (_, tmS, longS, items) => <xml><td>
                           <span class={date}>{[tmS]}</span>
-                          {Ui.modalButton ctx (CLASS "add btn btn-default btn-xs glyphicon glyphicon-plus-sign")
+                          {Ui.modalButton ctx (CLASS "buttn btn btn-default btn-xs glyphicon glyphicon-plus-sign")
                                           <xml/>
                                           (widgets <- @Monad.mapR _ [tag] [snd]
                                                        (fn [nm ::_] [p ::_] (r : tag p) => r.Fresh longS)
@@ -329,7 +368,22 @@ val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map (fn p =
                                                             <xml>Add to Calendar</xml>))}
                           {List.mapX (fn (tmS, d) => <xml><div><span class={time}>{[tmS]}</span>:
                             <span class={item}>{[@Record.select [fn p => show p.1] [fst] fl
-                               (fn [p] (s : show p.1) => @show s) sh d]}</span></div></xml>) items}
+                                                  (fn [p] (s : show p.1) => @show s) sh d]}
+                              {Ui.modalButton ctx (CLASS "buttn btn btn-default btn-xs glyphicon glyphicon-edit")
+                                              <xml/>
+                                              (@Record.select [tag] [fst] fl
+                                              (fn [p] (t : tag p) (x : p.1) =>
+                                                 widget <- t.FromDb x;
+                                                 return (Ui.modal (t.Save x widget)
+                                                                  <xml>Editing a calendar item ({[@Record.select [fn _ => string] [fst] fl (fn [p] (lab : string) _ => lab) labels d]})</xml>
+                                                                  <xml>
+                                                                    <div class={fields}>
+                                                                      {t.Render widget}
+                                                                    </div>
+                                                                  </xml>
+                                                                  <xml>Save Calendar Entry</xml>))
+                                              t.Tags d)}
+                            </span></div></xml>) items}
                         </td></xml>) r.ThisWeek}</tr>
                         {render' r.LaterWeeks}
                       </xml>
