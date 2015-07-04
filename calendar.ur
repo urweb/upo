@@ -291,7 +291,19 @@ style fields
 
 style buttn
 
-val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map (fn p => show p.1) tags)) (fl : folder tags) {Labels = labels, FromDay = from, ToDay = to} : Ui.t (calendar tags) =
+functor Make(M : sig
+                 con keys :: {Type}
+                 con tags :: {(Type * Type)}
+                 constraint [When] ~ keys
+                 val t : t keys tags
+                 val sh : $(map (fn p => show p.1) tags)
+                 val fl : folder tags
+                 val labels : $(map (fn _ => string) tags)
+             end) = struct
+open M
+type input = _
+type a = _
+fun ui {FromDay = from, ToDay = to} : Ui.t (calendar tags) =
     let
         val from = dateify from
         val to = dateify to
@@ -430,3 +442,4 @@ val calendar [keys] [tags] [[When] ~ keys] (t : t keys tags) (sh : $(map (fn p =
          Onload = onload,
          Render = render}
     end
+end

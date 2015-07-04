@@ -60,13 +60,13 @@ val items : keys ::: {Type} -> tags ::: {(Type * Type)}
             => t keys tags
             -> transaction (list (variant (map fst tags)))
 
-con calendar :: {(Type * Type)} -> Type
-val calendar : keys ::: {Type} -> tags ::: {(Type * Type)}
-               -> [[When] ~ keys]
-               => t keys tags
-               -> $(map (fn p => show p.1) tags)
-               -> folder tags
-               -> {Labels : $(map (fn _ => string) tags),
-                   FromDay : time,
-                   ToDay : time} (* inclusive *)
-               -> Ui.t (calendar tags)
+functor Make(M : sig
+                 con keys :: {Type}
+                 con tags :: {(Type * Type)}
+                 constraint [When] ~ keys
+                 val t : t keys tags
+                 val sh : $(map (fn p => show p.1) tags)
+                 val fl : folder tags
+                 val labels : $(map (fn _ => string) tags)
+             end) : Ui.S where type input = {FromDay : time,
+                                             ToDay : time} (* inclusive *)

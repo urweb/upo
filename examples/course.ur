@@ -127,6 +127,12 @@ val cshow_pset = mkShow (fn {PsetNum = n : int, When = _ : time} =>
 val cshow_exam = mkShow (fn {ExamNum = n : int, When = _ : time} =>
                             "Exam #" ^ show n)
 
+structure Cal = Calendar.Make(struct
+                                  val t = cal
+                                  val labels = {Pset = "Pset",
+                                                Exam = "Exam"}
+                              end)
+
 val admin =
     requireInstructor;
 
@@ -149,11 +155,8 @@ val admin =
                                                  <li>Exam #{[r.ExamNum]} @ {[r.When]}</li>
                                                </xml>}) stuff)),
                (Some "Fancy Calendar",
-                Calendar.calendar cal
-                                  {Labels = {Pset = "Pset",
-                                             Exam = "Exam"},
-                                   FromDay = readError "06/01/15 00:00:00",
-                                   ToDay = readError "09/01/15 00:00:00"}))
+                Cal.ui {FromDay = readError "06/01/15 00:00:00",
+                        ToDay = readError "09/01/15 00:00:00"}))
 
 fun setIt v =
     setCookie userC {Value = v,
