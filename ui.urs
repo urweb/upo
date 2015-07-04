@@ -73,3 +73,8 @@ val modal : transaction unit     (* callback on clicking main button *)
             -> xbody             (* main GUI widgets *)
             -> xml [Body] [] []  (* label on main "OK" button *)
             -> xbody
+
+(* An even simpler version, meant for displaying some information that goes away upon a button click *)
+val simpleModal : xbody                (* main content *)
+                  -> xml [Body] [] []  (* label on dismissal button *)
+                  -> xbody

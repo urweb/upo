@@ -34,6 +34,8 @@ structure PsetCal = Calendar.FromTable(struct
                                            val title = "Pset"
                                            val labels = {PsetNum = "Pset#",
                                                          Due = "Due"}
+
+                                           fun display r = return <xml>Pset #{[r.PsetNum]}, due {[r.Due]}</xml>
                                        end)
 
 table exam : { ExamNum : int, When : time }
@@ -52,6 +54,8 @@ structure ExamCal = Calendar.FromTable(struct
                                            val title = "Exam"
                                            val labels = {ExamNum = "Exam#",
                                                          When = "When"}
+
+                                           fun display r = return <xml>Exam #{[r.ExamNum]}, at {[r.When]}</xml>
                                        end)
 
 val cal = Calendar.compose PsetCal.cal ExamCal.cal

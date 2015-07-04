@@ -24,6 +24,7 @@ functor FromTable(M : sig
                       val labels : $([when = string] ++ map (fn _ => string) (key ++ other))
                       val eqs : $(map (fn p => eq p.1) key)
                       val title : string
+                      val display : $([when = time] ++ map fst key) -> transaction xbody
                   end) : sig
     type private
     con tag = M.tag

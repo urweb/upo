@@ -8,7 +8,8 @@ type tag (p :: (Type * Type)) =
       Create : p.2 -> transaction (time * string * p.1),
       Save : p.1 -> p.2 -> transaction (time * string * p.1),
       Delete : p.1 -> transaction unit,
-      Eq : eq p.1}
+      Eq : eq p.1,
+      Display : p.1 -> transaction xbody}
 
 type t (keys :: {Type}) (tags :: {(Type * Type)}) =
      [[When] ~ keys]
@@ -66,6 +67,7 @@ functor FromTable(M : sig
                       val labels : $([when = string] ++ map (fn _ => string) (key ++ other))
                       val eqs : $(map (fn p => eq p.1) key)
                       val title : string
+                      val display : $([when = time] ++ map fst key) -> transaction xbody
                   end) = struct
     open M
 
@@ -199,7 +201,9 @@ functor FromTable(M : sig
               rpc (delete k)
        end,
        Eq = @Record.eq ({When = _} ++ eqs) (@Folder.cons [#When] [_] ! (@Folder.mp fl)),
-       Label = title}
+       Label = title,
+       Display = fn r => display (r -- #When ++ {when = r.When})
+      }
 end
 
 fun compose [keys1] [keys2] [tags1] [tags2] [keys1 ~ keys2] [tags1 ~ tags2]
@@ -457,8 +461,15 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                             </xml>
                                                             <xml>Add to Calendar</xml>))}
                           {List.mapX (fn (tm, tmS, d) => <xml><div class={item}><span class={time}>{[tmS]}</span>:
-                            <span class={item}>{[@Record.select [fn p => show p.1] [fst] fl
-                                                  (fn [p] (s : show p.1) => @show s) sh d]}
+                            <span class={item}>
+                              {Ui.modalButton ctx (CLASS "btn btn-link")
+                                              <xml>{[@Record.select [fn p => show p.1] [fst] fl
+                                                      (fn [p] (s : show p.1) => @show s) sh d]}</xml>
+                                              (@Record.select [tag] [fst] fl
+                                                (fn [p] (t : tag p) (x : p.1) =>
+                                                    xm <- t.Display x;
+                                                    return (Ui.simpleModal xm <xml>Close</xml>))
+                                                t.Tags d)}
                               <span class={buttn}>
                               {Ui.modalButton ctx (CLASS "btn btn-default btn-xs glyphicon glyphicon-edit")
                                               <xml/>
