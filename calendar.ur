@@ -583,8 +583,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                                          (fn [p] (t : tag p) => @show t.Show) t.Tags d]} {[k]}</xml>
                                                                  (@Record.select [tag] [fst] fl
                                                                    (fn [p] (t : tag p) (x : p.1) =>
-                                                                       xm <- t.Display x;
-                                                                       return (Ui.simpleModal xm <xml>Close</xml>))
+                                                                       t.Display x)
                                                                    t.Tags d)}
                                                    {if not maymod then
                                                         <xml/>

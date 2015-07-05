@@ -35,6 +35,13 @@ val amInstructor =
               WHERE user.User = {[u]}
                 AND user.IsInstructor)
 
+val amStudent =
+    u <- auth;
+    oneRowE1 (SELECT COUNT( * ) > 0
+              FROM user
+              WHERE user.User = {[u]}
+                AND user.IsStudent)
+
 val requireInstructor =
     isInstructor <- amInstructor;
     if isInstructor then
@@ -72,6 +79,16 @@ val psetRead = mkRead' (fn s => case read s : option int of
                                     None => None
                                   | Some n => Some {PsetNum = n}) "pset"
 
+structure PsetSub = Submission.Make(struct
+                                        val tab = pset
+                                        val user = user
+                                        val whoami = getCookie userC
+                                        con fs = [Confidence = (string, _),
+                                                  Aggravation = (int, _)]
+                                        val labels = {Confidence = "Confidence",
+                                                      Aggravation = "Aggravation"}
+                                    end)
+
 structure PsetCal = Calendar.FromTable(struct
                                            con tag = #Pset
                                            con key = [PsetNum = _]
@@ -84,7 +101,14 @@ structure PsetCal = Calendar.FromTable(struct
                                            val kinds = {Released = "released",
                                                         Due = "due"}
 
-                                           fun display r = return <xml>Pset #{[r.PsetNum]}</xml>
+                                           fun display r =
+                                               b <- rpc amStudent;
+                                               if b then
+                                                   PsetSub.render r
+                                               else
+                                                   return (Ui.simpleModal
+                                                               <xml>Pset #{[r.PsetNum]}</xml>
+                                                               <xml>Close</xml>)
                                            val auth = profOnly
                                        end)
 
@@ -106,7 +130,9 @@ structure ExamCal = Calendar.FromTable(struct
                                                          When = "When"}
                                            val kinds = {When = ""}
 
-                                           fun display r = return <xml>Exam #{[r.ExamNum]}</xml>
+                                           fun display r = return (Ui.simpleModal
+                                                                       <xml>Exam #{[r.ExamNum]}</xml>
+                                                                       <xml>Close</xml>)
                                            val auth = profOnly
                                        end)
 
@@ -128,7 +154,9 @@ structure MeetingCal = Calendar.FromTable(struct
                                                          When = "When"}
                                            val kinds = {When = ""}
 
-                                           fun display r = return <xml>Staff Meeting #{[r.MeetingNum]}</xml>
+                                           fun display r = return (Ui.simpleModal
+                                                                       <xml>Staff Meeting #{[r.MeetingNum]}</xml>
+                                                                       <xml>Close</xml>)
                                            val auth = profPrivate
                                        end)
 
