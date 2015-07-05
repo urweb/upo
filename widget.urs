@@ -26,6 +26,9 @@ type urlbox
 val urlbox : t string urlbox
 (* This one is earlier in the list so that [textbox] overrides it by default! *)
 
+type htmlbox
+val htmlbox : t string htmlbox
+
 type textbox
 val textbox : t string textbox
 

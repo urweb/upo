@@ -1,0 +1,5 @@
+library ..
+rewrite all Ckbasic/*
+database dbname=course
+
+ckbasic

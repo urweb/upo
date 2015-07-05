@@ -48,3 +48,42 @@ val urlbox = { Create = source "",
                            case checkUrl s of
                                None => <xml><b>[BLOCKED URL]</b></xml>
                              | Some url => <xml><a href={url}><tt>{[url]}</tt></a></xml> }
+
+val undoEtc = Ckeditor.Bar {Nam = Some "Undo, etc.",
+                            Buttons = Ckeditor.Cut
+                                          :: Ckeditor.Copy
+                                          :: Ckeditor.Paste
+                                          :: Ckeditor.PasteText
+                                          :: Ckeditor.PasteFromWord
+                                          :: Ckeditor.Undo
+                                          :: Ckeditor.Redo
+                                          :: []}
+
+val find = Ckeditor.Bar {Nam = Some "Find",
+                         Buttons = Ckeditor.Find
+                                       :: Ckeditor.Replace
+                                       :: Ckeditor.SelectAll
+                                       :: Ckeditor.Scayt
+                                       :: []}
+
+val basic = Ckeditor.Bar {Nam = Some "Basic Formatting",
+                          Buttons = Ckeditor.Bold
+                                        :: Ckeditor.Italic
+                                        :: Ckeditor.Underline
+                                        :: Ckeditor.RemoveFormat
+                                        :: []}
+
+val links = Ckeditor.Bar {Nam = Some "Links",
+                          Buttons = Ckeditor.Link
+                                        :: Ckeditor.Unlink
+                                        :: []}
+
+val ed = Ckeditor.editor {Width = Ckeditor.DefaultSize,
+                          Height = Ckeditor.DefaultSize,
+                          ToolbarSet = Ckeditor.Custom (undoEtc :: find :: basic :: links :: [])}
+
+val htmlbox = { Create = ed,
+                Initialize = fn s => me <- ed; Ckeditor.setContent me s; return me,
+                AsWidget = Ckeditor.show,
+                Value = Ckeditor.content,
+                AsValue = txt }

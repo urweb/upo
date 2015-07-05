@@ -1,0 +1,18 @@
+ffi ckeditorFfi
+jsFunc CkeditorFfi.editor=uw_ckeditor_editor
+jsFunc CkeditorFfi.replace=uw_ckeditor_replace
+jsFunc CkeditorFfi.content=uw_ckeditor_content
+jsFunc CkeditorFfi.setContent=uw_ckeditor_setContent
+clientOnly CkeditorFfi.editor
+clientOnly CkeditorFfi.replace
+clientOnly CkeditorFfi.content
+clientOnly CkeditorFfi.setContent
+benignEffectful CkeditorFfi.editor
+benignEffectful CkeditorFfi.replace
+benignEffectful CkeditorFfi.content
+benignEffectful CkeditorFfi.setContent
+file /ckeditor.js ckeditor.js
+script /ckeditor.js
+script http://ckeditor.com/apps/ckeditor/4.3/ckeditor.js
+
+ckeditor

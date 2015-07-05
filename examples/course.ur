@@ -71,7 +71,7 @@ val profPrivate =
             else
                 Calendar.Forbidden)
 
-table pset : { PsetNum : int, Released : time, Due : time }
+table pset : { PsetNum : int, Released : time, Due : time, Instructions : string }
   PRIMARY KEY PsetNum
 
 val psetShow = mkShow (fn {PsetNum = n : int} => "Pset " ^ show n)
@@ -100,9 +100,11 @@ structure PsetCal = Calendar.FromTable(struct
                                            val title = "Pset"
                                            val labels = {PsetNum = "Pset#",
                                                          Released = "Released",
-                                                         Due = "Due"}
+                                                         Due = "Due",
+                                                         Instructions = "Instructions"}
                                            val kinds = {Released = "released",
                                                         Due = "due"}
+                                           val ws = {Instructions = Widget.htmlbox} ++ _
 
                                            fun display r =
                                                b <- rpc amStudent;
