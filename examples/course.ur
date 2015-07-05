@@ -113,33 +113,40 @@ structure PsetCal = Calendar.FromTable(struct
 
                                            fun display ctx r =
                                                b <- rpc amStudent;
-                                               if b then
+                                               content <- source <xml/>;
+                                               (if b then
                                                    ps <- rpc (getPset r.PsetNum);
-                                                   return (Ui.simpleModal
-                                                               <xml>
-                                                                 <h2>Pset #{[r.PsetNum]}</h2>
+                                                   set content (Ui.simpleModal
+                                                                    <xml>
+                                                                      <h2>Pset #{[r.PsetNum]}</h2>
+                                                                      
+                                                                      <button class="btn btn-primary"
+                                                                              onclick={fn _ =>
+                                                                                          xm <- PsetSub.newUpload r;
+                                                                                          set content xm}>
+                                                                        New Submission
+                                                                              </button>
 
-                                                                 {Ui.modalButton ctx
-                                                                                 (CLASS "btn btn-primary")
-                                                                                 <xml>New Submission</xml>
-                                                                                 (PsetSub.newUpload r)}
+                                                                      <hr/>
 
-                                                                 <hr/>
+                                                                      <h2>Instructions</h2>
+                                                                      
+                                                                      {Widget.html ps.Instructions}
+                                                                    </xml>
+                                                                    <xml>Close</xml>)
+                                                else
+                                                    xm <- PsetSub.latests r;
+                                                    set content (Ui.simpleModal
+                                                                     <xml>
+                                                                       <h2>Pset #{[r.PsetNum]}</h2>
+                                                                       
+                                                                       {xm}
+                                                                     </xml>
+                                                                     <xml>Close</xml>));
+                                               return <xml>
+                                                 <dyn signal={signal content}/>
+                                               </xml>
 
-                                                                 <h2>Instructions</h2>
-
-                                                                 {Widget.html ps.Instructions}
-                                                               </xml>
-                                                               <xml>Close</xml>)
-                                               else
-                                                   xm <- PsetSub.latests r;
-                                                   return (Ui.simpleModal
-                                                               <xml>
-                                                                 <h2>Pset #{[r.PsetNum]}</h2>
-
-                                                                 {xm}
-                                                               </xml>
-                                                               <xml>Close</xml>)
                                            val auth = profOnly
                                        end)
 
