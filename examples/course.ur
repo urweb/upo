@@ -64,7 +64,7 @@ val profPrivate =
             else
                 Calendar.Forbidden)
 
-table pset : { PsetNum : int, Due : time }
+table pset : { PsetNum : int, Released : time, Due : time }
   PRIMARY KEY PsetNum
 
 val psetShow = mkShow (fn {PsetNum = n : int} => "Pset " ^ show n)
@@ -75,13 +75,16 @@ val psetRead = mkRead' (fn s => case read s : option int of
 structure PsetCal = Calendar.FromTable(struct
                                            con tag = #Pset
                                            con key = [PsetNum = _]
-                                           con when = #Due
+                                           con times = [Released, Due]
                                            val tab = pset
                                            val title = "Pset"
                                            val labels = {PsetNum = "Pset#",
+                                                         Released = "Released",
                                                          Due = "Due"}
+                                           val kinds = {Released = "released",
+                                                        Due = "due"}
 
-                                           fun display r = return <xml>Pset #{[r.PsetNum]}, due {[r.Due]}</xml>
+                                           fun display r = return <xml>Pset #{[r.PsetNum]}</xml>
                                            val auth = profOnly
                                        end)
 
@@ -96,13 +99,14 @@ val examRead = mkRead' (fn s => case read s : option int of
 structure ExamCal = Calendar.FromTable(struct
                                            con tag = #Exam
                                            con key = [ExamNum = _]
-                                           con when = #When
+                                           con times = [When]
                                            val tab = exam
                                            val title = "Exam"
                                            val labels = {ExamNum = "Exam#",
                                                          When = "When"}
+                                           val kinds = {When = ""}
 
-                                           fun display r = return <xml>Exam #{[r.ExamNum]}, at {[r.When]}</xml>
+                                           fun display r = return <xml>Exam #{[r.ExamNum]}</xml>
                                            val auth = profOnly
                                        end)
 
@@ -117,19 +121,20 @@ val meetingRead = mkRead' (fn s => case read s : option int of
 structure MeetingCal = Calendar.FromTable(struct
                                            con tag = #Meeting
                                            con key = [MeetingNum = _]
-                                           con when = #When
+                                           con times = [When]
                                            val tab = staffMeeting
                                            val title = "Staff Meeting"
                                            val labels = {MeetingNum = "Meeting#",
                                                          When = "When"}
+                                           val kinds = {When = ""}
 
-                                           fun display r = return <xml>Staff Meeting #{[r.MeetingNum]}, at {[r.When]}</xml>
+                                           fun display r = return <xml>Staff Meeting #{[r.MeetingNum]}</xml>
                                            val auth = profPrivate
                                        end)
 
-val cal = PsetCal.cal
+val cal = MeetingCal.cal
               |> Calendar.compose ExamCal.cal
-              |> Calendar.compose MeetingCal.cal
+              |> Calendar.compose PsetCal.cal
 
 structure EditUsers = EditableTable.Make(struct
                                              val tab = user
@@ -144,35 +149,6 @@ structure EditUsers = EditableTable.Make(struct
                                              fun onModify _ = return ()
                                          end)
 
-structure EditPsets = EditableTable.Make(struct
-                                             val tab = pset
-                                             val labels = {PsetNum = "#",
-                                                           Due = "Due"}
-                                             val permission = instructorPermission
-
-                                             fun onAdd _ = return ()
-                                             fun onDelete _ = return ()
-                                             fun onModify _ = return ()
-                                         end)
-
-structure EditExams = EditableTable.Make(struct
-                                             val tab = exam
-                                             val labels = {ExamNum = "#",
-                                                           When = "When"}
-                                             val permission = instructorPermission
-
-                                             fun onAdd _ = return ()
-                                             fun onDelete _ = return ()
-                                             fun onModify _ = return ()
-                                         end)
-
-val cshow_pset = mkShow (fn {PsetNum = n : int, When = _ : time} =>
-                            "Pset #" ^ show n)
-val cshow_exam = mkShow (fn {ExamNum = n : int, When = _ : time} =>
-                            "Exam #" ^ show n)
-val cshow_meeting = mkShow (fn {MeetingNum = n : int, When = _ : time} =>
-                               "Meeting #" ^ show n)
-
 structure Cal = Calendar.Make(struct
                                   val t = cal
                               end)
@@ -183,10 +159,6 @@ val admin =
     Ui.tabbed "Instructor Dashboard"
               ((Some "Users",
                 EditUsers.ui),
-               (Some "Psets",
-                EditPsets.ui),
-               (Some "Exams",
-                EditExams.ui),
                (Some "Calendar",
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
                         ToDay = readError "09/01/15 00:00:00"}))

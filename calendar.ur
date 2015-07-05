@@ -17,23 +17,25 @@ type tag (p :: (Type * Type)) =
       Fresh : string -> transaction p.2,
       FromDb : p.1 -> transaction p.2,
       Render : p.2 -> xbody,
-      Create : p.2 -> transaction (time * string * p.1),
-      Save : p.1 -> p.2 -> transaction (time * string * p.1),
+      Create : p.2 -> transaction (list (time * string * string) * p.1),
+      Save : p.1 -> p.2 -> transaction (list (time * string * string) * p.1),
       Delete : p.1 -> transaction unit,
       Eq : eq p.1,
+      Show : show p.1,
       Display : p.1 -> transaction xbody,
+      MaySee : transaction bool,
       MayModify : transaction bool}
 
 type t (keys :: {Type}) (tags :: {(Type * Type)}) =
-     [[When] ~ keys]
+     [[When, Kind] ~ keys]
      => {Query : otherKeys :: {Type}
-                 -> [([When = time] ++ keys) ~ otherKeys]
+                 -> [([When = time, Kind = string] ++ keys) ~ otherKeys]
                  => folder otherKeys
                  -> $(map sql_injectable_prim otherKeys)
-                 -> transaction (sql_query1 [] [] [] [] ([When = time] ++ map option (keys ++ otherKeys))),
+                 -> transaction (sql_query1 [] [] [] [] ([When = time, Kind = string] ++ map option (keys ++ otherKeys))),
          Extract : otherTags :: {Type}
                    -> [otherTags ~ tags]
-                   => time -> $(map option keys) -> option (variant (map fst tags ++ otherTags)),
+                   => $(map option keys) -> option (variant (map fst tags ++ otherTags)),
          Tags : $(map tag tags)}
 
 fun unopt [fs ::: {Type}] (fl : folder fs) (r : $(map option fs)) : option $fs =
@@ -47,124 +49,165 @@ fun unopt [fs ::: {Type}] (fl : folder fs) (r : $(map option fs)) : option $fs =
               | Some acc => Some ({nm = x} ++ acc))
     (Some {}) fl r
 
-fun create [tag :: Name] [key] [widget] [[When] ~ key] (fl : folder key)
+fun create [tag :: Name] [key] [widget] [[When, Kind] ~ key] (fl : folder key)
            (f : otherKeys :: {Type}
-                -> [([When = time] ++ key) ~ otherKeys]
+                -> [([When = time, Kind = string] ++ key) ~ otherKeys]
                 => folder otherKeys
                 -> $(map sql_injectable_prim otherKeys)
-                -> transaction (sql_query1 [] [] [] [] ([When = time] ++ map option (key ++ otherKeys)))) r
-    : t key [tag = ($([When = time] ++ key), widget)] =
-    fn [[When] ~ key] =>
+                -> transaction (sql_query1 [] [] [] [] ([When = time, Kind = string] ++ map option (key ++ otherKeys)))) r
+    : t key [tag = ($key, widget)] =
+    fn [[When, Kind] ~ key] =>
     {Query = f,
-     Extract = fn [otherTags ::_] [otherTags ~ [tag = _]]
-                  tm r => case @unopt fl r of
-                              None => None
-                            | Some v => Some (make [tag] ({When = tm} ++ v)),
+     Extract = fn [otherTags ::_] [otherTags ~ [tag = _]] r =>
+                  case @unopt fl r of
+                      None => None
+                    | Some v => Some (make [tag] v),
      Tags = {tag = r}}
 
 functor FromTable(M : sig
                       con tag :: Name
                       con key :: {(Type * Type)} (* Each 2nd component is a type of GUI widget private state. *)
-                      con when :: Name
+                      con times :: {Unit}
                       con other :: {(Type * Type)}
                       con us :: {{Unit}}
+                      constraint key ~ times
                       constraint key ~ other
-                      constraint [when] ~ (key ++ other)
-                      constraint [When] ~ (key ++ other)
+                      constraint times ~ other
+                      constraint [When, Kind] ~ key
                       val fl : folder key
                       val flO : folder other
+                      val flT : folder times
                       val inj : $(map (fn p => sql_injectable_prim p.1) key)
                       val injO : $(map (fn p => sql_injectable_prim p.1) other)
                       val ws : $(map Widget.t' (key ++ other))
-                      val tab : sql_table (map fst (key ++ other) ++ [when = time]) us
-                      val labels : $([when = string] ++ map (fn _ => string) (key ++ other))
+                      val tab : sql_table (map fst (key ++ other) ++ mapU time times) us
+                      val labels : $(map (fn _ => string) (key ++ other) ++ mapU string times)
                       val eqs : $(map (fn p => eq p.1) key)
                       val title : string
-                      val display : $([when = time] ++ map fst key) -> transaction xbody
+                      val display : $(map fst key) -> transaction xbody
                       val auth : transaction level
+                      val kinds : $(mapU string times)
+                      val sh : show $(map fst key)
                   end) = struct
     open M
 
-    type private = {Widgets : $(map (fn p => id * p.2) (key ++ other)),
-                    Time : source string,
-                    TimeId : id}
+    type private1 = {Widgets : $(map (fn p => id * p.2) (key ++ other)),
+                     Times : $(map (fn _ => id * source string) times)}
+    con private = ($(map fst key), private1)
 
-    val cal : t (map fst key) [tag = ($([When = time] ++ map fst key), private)] =
-        @@create [tag] [map fst key] [private] ! (@Folder.mp fl)
-        (fn [otherKeys :: {Type}] [([When = time] ++ map fst key) ~ otherKeys]
+    val cal : t (map fst key) [tag = private] =
+        @@create [tag] [map fst key] [private1] ! (@Folder.mp fl)
+        (fn [otherKeys :: {Type}] [([When = time, Kind = string] ++ map fst key) ~ otherKeys]
             (flo : folder otherKeys)
             (primo : $(map sql_injectable_prim otherKeys)) =>
             lv <- auth;
-            return (sql_forget_tables (sql_query1 [[Tab]]
-                                          {Distinct = False,
-                                           From = (FROM tab),
-                                           Where = (WHERE {[lv >= Read]}),
-                                           GroupBy = sql_subset_all [_],
-                                           Having = (WHERE TRUE),
-                                           SelectFields = sql_subset [[Tab = ([], _)]],
-                                           SelectExps = {When = (sql_window (SQL tab.{when})
-                                                                 : sql_expw
-                                                                       [Tab = [when = _] ++ map fst (key ++ other)]
-                                                                       [Tab = [when = _] ++ map fst (key ++ other)] []
-                                                                       time)}
-                                                            ++ @map2 [sql_injectable_prim]
-                                                            [sql_exp [Tab = [when = _] ++ map fst (key ++ other)]
-                                                                     [Tab = [when = _] ++ map fst (key ++ other)] []]
-                                                            [fn t => sql_expw
-                                                                         [Tab = [when = _] ++ map fst (key ++ other)]
-                                                                         [Tab = [when = _] ++ map fst (key ++ other)] []
-                                                                         (option t)]
-                                                            (fn [t] prim e => sql_window (@sql_nullable prim e)
-                                                                              : sql_expw [Tab = [when = time] ++ map fst (key ++ other)]
-                                                                                         [Tab = [when = time] ++ map fst (key ++ other)] [] (option t))
-                                                            (@@Folder.mp [fst] [_] fl) inj
-                                                            (@@Sql.some_fields [#Tab] [map fst key]
-                                                               [[when = _] ++ map fst other]
-                                                               [[]] [[Tab = [when = _] ++ map fst (key ++ other)]] [[]] ! ! (@Folder.mp fl))
-                                                            ++ @mp [sql_injectable_prim]
-                                                            [fn t => sql_expw [Tab = [when = time] ++ map fst (key ++ other)]
-                                                                              [Tab = [when = time] ++ map fst (key ++ other)] [] (option t)]
-                                                            (fn [t] (pr : sql_injectable_prim t) =>
-                                                                sql_window (SQL NULL)
-                                                                : sql_expw [Tab = [when = time] ++ map fst (key ++ other)]
-                                                                           [Tab = [when = time] ++ map fst (key ++ other)] [] (option t))
-                                                            flo primo})))
+            ao <- return (@fold [fn r => $(mapU string r) -> o :: {Unit} -> [o ~ r] => [o ~ key] => [o ~ other] => [r ~ key] => [r ~ other]
+                              => sql_table (map fst (key ++ other) ++ mapU time (r ++ o)) us
+                              -> option (sql_query1 [] [] [] [] ([When = time, Kind = string]
+                                                                     ++ map (fn p => option p.1) key ++ map option otherKeys))]
+                     (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r]
+                                  (acc : $(mapU string r) -> o :: {Unit} -> [o ~ r] => [o ~ key] => [o ~ other] => [r ~ key] => [r ~ other]
+                                   => sql_table (map fst (key ++ other) ++ mapU time (r ++ o)) us
+                                   -> option (sql_query1 [] [] [] [] ([When = time, Kind = string]
+                                                                          ++ map (fn p => option p.1) key ++ map option otherKeys)))
+                                  (ks : $(mapU string ([nm] ++ r))) [o ::_] [o ~ [nm] ++ r] [o ~ key] [o ~ other] [[nm] ++ r ~ key] [[nm] ++ r ~ other]
+                                  (tab : sql_table (map fst (key ++ other) ++ mapU time ([nm] ++ r ++ o)) us) =>
+                         let
+                             val q =
+                                 sql_forget_tables (sql_query1 [[Tab]]
+                                                               {Distinct = False,
+                                                                From = (FROM tab),
+                                                                Where = (WHERE {[lv >= Read]}),
+                                                                GroupBy = sql_subset_all [_],
+                                                                Having = (WHERE TRUE),
+                                                                SelectFields = sql_subset [[Tab = ([], _)]],
+                                                                SelectExps = {When = (sql_window (SQL tab.{nm})
+                                                                                      : sql_expw
+                                                                                            [Tab = [nm = _] ++ map fst (key ++ other) ++ mapU time (r ++ o)]
+                                                                                            [Tab = [nm = _] ++ map fst (key ++ other) ++ mapU time (r ++ o)] []
+                                                                                            time),
+                                                                              Kind = (sql_window (SQL {[ks.nm]})
+                                                                                      : sql_expw
+                                                                                            [Tab = [nm = _] ++ map fst (key ++ other) ++ mapU time (r ++ o)]
+                                                                                            [Tab = [nm = _] ++ map fst (key ++ other) ++ mapU time (r ++ o)] []
+                                                                                            string)}
+                                                                             ++ @map2 [sql_injectable_prim]
+                                                                             [sql_exp [Tab = [nm = _] ++ map fst (key ++ other) ++ mapU time (r ++ o)]
+                                                                                      [Tab = [nm = _] ++ map fst (key ++ other) ++ mapU time (r ++ o)] []]
+                                                                             [fn t => sql_expw
+                                                                                          [Tab = [nm = _] ++ map fst (key ++ other) ++ mapU time (r ++ o)]
+                                                                                          [Tab = [nm = _] ++ map fst (key ++ other) ++ mapU time (r ++ o)] []
+                                                                                          (option t)]
+                                                                             (fn [t] prim e => sql_window (@sql_nullable prim e)
+                                                                                               : sql_expw [Tab = [nm = time] ++ map fst (key ++ other) ++ mapU time (r ++ o)]
+                                                                                                          [Tab = [nm = time] ++ map fst (key ++ other) ++ mapU time (r ++ o)] [] (option t))
+                                                                             (@@Folder.mp [fst] [_] fl) inj
+                                                                             (@@Sql.some_fields [#Tab] [map fst key]
+                                                                                [[nm = _] ++ map fst other ++ mapU time (r ++ o)]
+                                                                                [[]] [[Tab = [nm = _] ++ map fst (key ++ other) ++ mapU time (r ++ o)]] [[]] ! ! (@Folder.mp fl))
+                                                                             ++ @mp [sql_injectable_prim]
+                                                                             [fn t => sql_expw [Tab = [nm = time] ++ map fst (key ++ other) ++ mapU time (r ++ o)]
+                                                                                               [Tab = [nm = time] ++ map fst (key ++ other) ++ mapU time (r ++ o)] [] (option t)]
+                                                                             (fn [t] (pr : sql_injectable_prim t) =>
+                                                                                 sql_window (SQL NULL)
+                                                                                 : sql_expw [Tab = [nm = time] ++ map fst (key ++ other) ++ mapU time (r ++ o)]
+                                                                                            [Tab = [nm = time] ++ map fst (key ++ other) ++ mapU time (r ++ o)] [] (option t))
+                                                                             flo primo})
+                         in
+                             Some (case acc (ks -- nm) [[nm] ++ o] tab of
+                                       None => q
+                                     | Some acc' => sql_relop sql_union False q acc')
+                         end)
+                     (fn _ [o ::_] [o ~ []] [o ~ key] [o ~ other] [[] ~ key] [[] ~ other] _ => None) flT kinds [[]] ! ! ! ! ! tab);
+            case ao of
+                None => error <xml>Calendar.FromTable: empty times</xml>
+              | Some a => return a)
       {Fresh = fn tmS =>
          w <- @Monad.mapR _ [Widget.t'] [fn p => id * p.2] (fn [nm ::_] [p ::_] (w : Widget.t' p) =>
                                                                id <- fresh;
                                                                w <- @Widget.create w;
                                                                return (id, w)) (@Folder.concat ! fl flO) ws;
-         tm <- source tmS;
-         tmi <- fresh;
-         return {Widgets = w, Time = tm, TimeId = tmi},
+         tms <- @Monad.mapR0 _ [fn _ => id * source string]
+                 (fn [nm ::_] [u ::_] =>
+                     id <- fresh;
+                     s <- source tmS;
+                     return (id, s)) flT;
+         return {Widgets = w, Times = tms},
        FromDb = let
-           fun lookup r =
+           fun lookup k =
                lv <- auth;
                if lv >= Read then
-                   oneRow1 (SELECT tab.{when}, tab.{{map fst other}}
+                   oneRow1 (SELECT tab.{{mapU time times}}, tab.{{map fst other}}
                             FROM tab
                             WHERE {@@Sql.easy_where [#Tab] [map fst key] [_] [_] [_] [_] ! !
                               (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] fl) inj)
-                              (@Folder.mp fl) r})
+                              (@Folder.mp fl) k})
                else
                    error <xml>Not authorized</xml>
        in
         fn r =>
-           r' <- rpc (lookup (r -- #When));
+           r' <- rpc (lookup r);
            w <- @Monad.mapR2 _ [Widget.t'] [fst] [fn p => id * p.2]
                (fn [nm ::_] [p ::_] (w : Widget.t' p) (x : p.1) =>
                    id <- fresh;
                    w <- @Widget.initialize w x;
-                   return (id, w)) (@Folder.concat ! fl flO) ws ((r -- #When) ++ (r' -- when));
-           tm <- source (show r'.when);
-           tmi <- fresh;
-           return {Widgets = w, Time = tm, TimeId = tmi}
+                   return (id, w)) (@Folder.concat ! fl flO) ws (r ++ (r' --- mapU time times));
+           tms <- @Monad.mapR _ [fn _ => time] [fn _ => id * source string]
+                 (fn [nm ::_] [u ::_] (tm : time) =>
+                     id <- fresh;
+                     s <- source (show tm);
+                     return (id, s)) flT (r' --- _);
+           return {Widgets = w, Times = tms}
        end,
        Render = fn self => <xml>
-         <div class="form-group">
-           <label class="control-label" for={self.TimeId}>{[labels.when]}</label>
-           <ctextbox id={self.TimeId} class="form-control" source={self.Time}/>
-         </div>
+         {@mapX2 [fn _ => string] [fn _ => id * source string] [body]
+           (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] (lab : string) (id, s) => <xml>
+             <div class="form-group">
+               <label class="control-label" for={id}>{[lab]}</label>
+               <ctextbox id={id} class="form-control" source={s}/>
+             </div>
+           </xml>)
+           flT (labels --- map (fn _ => string) (key ++ other)) self.Times}
          {@mapX3 [fn _ => string] [Widget.t'] [fn p => id * p.2] [body]
            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, x) => <xml>
              <div class="form-group">
@@ -172,50 +215,66 @@ functor FromTable(M : sig
                <span id={id}>{@Widget.asWidget w x}</span>
              </div>
            </xml>)
-           (@Folder.concat ! fl flO) (labels -- when) ws self.Widgets}
+           (@Folder.concat ! fl flO) (labels --- mapU string times) ws self.Widgets}
        </xml>,
        Create = let
            fun create r =
                lv <- auth;
                if lv >= Write then
                    @Sql.easy_insert
-                    ({when = _} ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] (@Folder.concat ! fl flO)) (inj ++ injO))
-                    (@Folder.cons [when] [_] ! (@Folder.mp (@Folder.concat ! fl flO))) tab r
+                    (@map0 [fn _ => sql_injectable time] (fn [u ::_] => _ : sql_injectable time) flT
+                      ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] (@Folder.concat ! fl flO)) (inj ++ injO))
+                    (@Folder.concat ! (@Folder.mp flT) (@Folder.mp (@Folder.concat ! fl flO))) tab r
                else
                    error <xml>Not authorized</xml>
        in
            fn self =>
-              tm <- get self.Time;
-              case read tm of
+              tms <- @Monad.foldR2 _ [fn _ => string] [fn _ => id * source string]
+                      [fn r => option ($(mapU time r) * list (time * string * string))]
+                      (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] k (_, s) acc =>
+                          tmS <- get s;
+                          return (case (read tmS, acc) of
+                                      (Some tm, Some (r, l)) => Some ({nm = tm} ++ r, (tm, timef "%l:%M" tm, k) :: l)
+                                    | _ => None))
+                      (Some ({}, [])) flT kinds self.Times;
+              case tms of
                   None => error <xml>Invalid time!</xml>
-                | Some tm =>
+                | Some (tms, tml) =>
                   r <- @Monad.mapR2 _ [Widget.t'] [fn p => id * p.2] [fst]
                         (fn [nm ::_] [p ::_] (w : Widget.t' p) (_, x) => current (@Widget.value w x))
                         (@Folder.concat ! fl flO) ws self.Widgets;
-                  rpc (create ({when = tm} ++ r));
-                  return (tm, timef "%l:%M" tm, r --- (map fst other) ++ {When = tm})
+                  rpc (create (tms ++ r));
+                  return (tml, r --- map fst other)
        end,
        Save = let
            fun save k r =
                lv <- auth;
                if lv >= Write then
-                   @@Sql.easy_update' [map fst key] [[when = _] ++ map fst other] [_] !
+                   @@Sql.easy_update' [map fst key] [mapU time times ++ map fst other] [_] !
                      (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] fl) inj)
-                     ({when = _} ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] flO) injO)
-                     (@Folder.mp fl) (@Folder.cons [when] [_] ! (@Folder.mp flO)) tab (k -- #When) r
+                     (@map0 [fn _ => sql_injectable time] (fn [u ::_] => _ : sql_injectable time) flT
+                       ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] flO) injO)
+                     (@Folder.mp fl) (@Folder.concat ! (@Folder.mp flT) (@Folder.mp flO)) tab k r
                else
                    error <xml>Not authorized</xml>
        in
            fn k self =>
-              tm <- get self.Time;
-              case read tm of
+              tms <- @Monad.foldR2 _ [fn _ => string] [fn _ => id * source string]
+                      [fn r => option ($(mapU time r) * list (time * string * string))]
+                      (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] k (_, s) acc =>
+                          tmS <- get s;
+                          return (case (read tmS, acc) of
+                                      (Some tm, Some (r, l)) => Some ({nm = tm} ++ r, (tm, timef "%l:%M" tm, k) :: l)
+                                    | _ => None))
+                      (Some ({}, [])) flT kinds self.Times;
+              case tms of
                   None => error <xml>Invalid time!</xml>
-                | Some tm =>
+                | Some (tms, tml) =>
                   r <- @Monad.mapR2 _ [Widget.t'] [fn p => id * p.2] [fst]
                         (fn [nm ::_] [p ::_] (w : Widget.t' p) (_, x) => current (@Widget.value w x))
                         (@Folder.concat ! fl flO) ws self.Widgets;
-                  rpc (save k ({when = tm} ++ r));
-                  return (tm, timef "%l:%M" tm, r --- (map fst other) ++ {When = tm})
+                  rpc (save k (tms ++ r));
+                  return (tml, r --- map fst other)
        end,
        Delete = let
            fun delete k =
@@ -224,16 +283,20 @@ functor FromTable(M : sig
                    dml (DELETE FROM tab
                                WHERE {@@Sql.easy_where [#T] [map fst key] [_] [_] [_] [_] ! !
                                  (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst] [_] fl) inj)
-                                 (@Folder.mp fl) (k -- #When)})
+                                 (@Folder.mp fl) k})
                else
                    error <xml>Not authorized</xml>
        in
            fn k =>
               rpc (delete k)
        end,
-       Eq = @Record.eq ({When = _} ++ eqs) (@Folder.cons [#When] [_] ! (@Folder.mp fl)),
+       Eq = @@Record.eq [map fst key] eqs (@Folder.mp fl),
+       Show = sh,
        Label = title,
-       Display = fn r => display (r -- #When ++ {when = r.When}),
+       Display = display,
+       MaySee =
+         lv <- auth;
+         return (lv >= Read),
        MayModify =
          lv <- auth;
          return (lv >= Write)
@@ -245,33 +308,26 @@ fun compose [keys1] [keys2] [tags1] [tags2] [keys1 ~ keys2] [tags1 ~ tags2]
             (prim1 : $(map sql_injectable_prim keys1))
             (prim2 : $(map sql_injectable_prim keys2))
             (t1 : t keys1 tags1) (t2 : t keys2 tags2) : t (keys1 ++ keys2) (tags1 ++ tags2) =
-    fn [[When] ~ (keys1 ++ keys2)] =>
+    fn [[When, Kind] ~ (keys1 ++ keys2)] =>
        {Query = fn [otherKeys :: {Type}]
-                   [([When = time] ++ keys1 ++ keys2) ~ otherKeys]
+                   [([When = time, Kind = string] ++ keys1 ++ keys2) ~ otherKeys]
                    (flo : folder otherKeys) (primo : $(map sql_injectable_prim otherKeys)) =>
                    q1 <- t1.Query [keys2 ++ otherKeys] ! (@Folder.concat ! fl2 flo) (prim2 ++ primo);
                    q2 <- t2.Query [keys1 ++ otherKeys] ! (@Folder.concat ! fl1 flo) (prim1 ++ primo);
                    return (sql_relop sql_union False q1 q2),
-        Extract = fn [otherTags ::_] [otherTags ~ tags1 ++ tags2] tm r =>
-                     case t1.Extract [otherTags ++ map fst tags2] ! tm (r --- map option keys2) of
-                         None => t2.Extract [otherTags ++ map fst tags1] ! tm (r --- map option keys1)
+        Extract = fn [otherTags ::_] [otherTags ~ tags1 ++ tags2] r =>
+                     case t1.Extract [otherTags ++ map fst tags2] ! (r --- map option keys2) of
+                         None => t2.Extract [otherTags ++ map fst tags1] ! (r --- map option keys1)
                        | x => x,
         Tags = t1.Tags ++ t2.Tags}
 
-fun items [keys ::: {Type}] [tags ::: {(Type * Type)}] [[When] ~ keys] (t : t keys tags) =
+fun items [keys ::: {Type}] [tags ::: {(Type * Type)}] [[When, Kind] ~ keys] (t : t keys tags)
+    : transaction (list (time * string * variant (map fst tags))) =
     q <- t.Query [[]] ! _ {};
     List.mapQuery ({{{q}}}
                    ORDER BY When)
-    (fn r => case t.Extract [[]] ! r.When (r -- #When) of
-                 Some x => x
-               | None => error <xml>Calendar: impossible: query result doesn't correspond to a tag</xml>)
-
-fun items' [keys ::: {Type}] [tags ::: {(Type * Type)}] [[When] ~ keys] (t : t keys tags) =
-    q <- t.Query [[]] ! _ {};
-    List.mapQuery ({{{q}}}
-                   ORDER BY When)
-    (fn r => case t.Extract [[]] ! r.When (r -- #When) of
-                 Some x => (r.When, x)
+    (fn r => case t.Extract [[]] ! (r -- #When -- #Kind) of
+                 Some x => (r.When, r.Kind, x)
                | None => error <xml>Calendar: impossible: query result doesn't correspond to a tag</xml>)
 
 fun dateify tm = Datetime.toTime (Datetime.fromTime tm -- #Hour -- #Minute -- #Second
@@ -335,15 +391,14 @@ style buttn
 functor Make(M : sig
                  con keys :: {Type}
                  con tags :: {(Type * Type)}
-                 constraint [When] ~ keys
+                 constraint [When, Kind] ~ keys
                  val t : t keys tags
-                 val sh : $(map (fn p => show p.1) tags)
                  val fl : folder tags
              end) = struct
 open M
 type input = _
 
-type add = time * string * variant (map fst tags)
+type add = list (time * string * string) * variant (map fst tags)
 type del = variant (map fst tags)
 
 datatype action =
@@ -355,7 +410,7 @@ table listeners : { Kind : serialized (variant (map (fn _ => unit) tags)),
                     Channel : channel action }
 
 type a = channel action
-         * source (list (time * string * string * list (time * string * variant (map fst tags))))
+         * source (list (time * string * string * list (time * string * string * variant (map fst tags))))
            (* We render the times to strings server-side to avoid time-zone hang-ups. *)
          * $(map (fn _ => bool) tags) (* Allowed to modify this kind of entry? *)
 
@@ -377,11 +432,11 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                 fun loop' items acc' =
                                     case items of
                                         [] => loop nextDay items ((day, timef "%b %e" day, show (dateify day), List.rev acc') :: acc)
-                                      | item :: items' =>
-                                        if item.1 < from || item.1 > to then
+                                      | (tm, k, item) :: items' =>
+                                        if tm < from || tm > to then
                                             loop' items' acc'
-                                        else if item.1 < nextDay then
-                                            loop' items' ((item.1, timef "%l:%M" item.1, item.2) :: acc')
+                                        else if tm < nextDay then
+                                            loop' items' ((tm, timef "%l:%M" tm, k, item) :: acc')
                                         else
                                             loop nextDay items ((day, timef "%b %e" day, show (dateify day), List.rev acc') :: acc)
                             in
@@ -389,33 +444,42 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                             end
                     end
             in
-                items <- items' @t;
+                items <- items @t;
                 ds <- source (loop from items []);
                 ch <- channel;
-                @Variant.withAll fl (fn k => dml (INSERT INTO listeners(Kind, Channel)
-                                                  VALUES ({[serialize k]}, {[ch]})));
                 mm <- @Monad.mapR _ [tag] [fn _ => bool]
                        (fn [nm ::_] [p ::_] (t : tag p) => t.MayModify)
                        fl t.Tags;
+                @Variant.withAll fl (fn k =>
+                                        b <- @Record.select [tag] [fn _ => unit] fl
+                                            (fn [p] (t : tag p) _ => t.MaySee)
+                                            t.Tags k;
+                                        if b then
+                                            dml (INSERT INTO listeners(Kind, Channel)
+                                                 VALUES ({[serialize k]}, {[ch]}))
+                                        else
+                                            return ());
                 return (ch, ds, mm)
             end
 
         fun onload (ch, ds, _) =
             let
-                fun doAdd (tm, tmS, r) =
+                fun doAdd (tml, r) =
                     days <- get ds;
-                    set ds (List.mp (fn (tm', tmS', longS, items) =>
-                                        (tm', tmS', longS,
-                                         if tm' <= tm && tm < addSeconds tm' oneDay then
-                                             List.sort (fn (tm1, _, _) (tm2, _, _) => tm1 > tm2) ((tm, tmS, r) :: items)
-                                         else
-                                             items)) days)
+                    set ds (List.foldl (fn (tm, tmS, k) days =>
+                                           List.mp (fn (tm', tmS', longS, items) =>
+                                                       (tm', tmS', longS,
+                                                        if tm' <= tm && tm < addSeconds tm' oneDay then
+                                                            List.sort (fn (tm1, _, _, _) (tm2, _, _, _) => tm1 > tm2)
+                                                                      ((tm, tmS, k, r) ::items)
+                                                        else
+                                                            items)) days) days tml)
 
                 fun doDel r =
                     days <- get ds;
                     set ds (List.mp (fn (tm', tmS', longS, items) =>
                                         (tm', tmS', longS,
-                                         List.filter (fn (_, _, r') =>
+                                         List.filter (fn (_, _, _, r') =>
                                                          not (@eq (@@Variant.eq [map fst tags]
                                                                      (@mp [tag] [fn p => eq p.1]
                                                                        (fn [p] (t : tag p) => t.Eq)
@@ -473,8 +537,8 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                         in
                                                             (n+1,
                                                              if n = wt then
-                                                                 (tm, tmS, k) <- t.Create x;
-                                                                 rpc (notify (maker (make [nm] k)) (Add (tm, tmS, maker (make [nm] k))))
+                                                                 (tml, k) <- t.Create x;
+                                                                 rpc (notify (maker (make [nm] k)) (Add (tml, maker (make [nm] k))))
                                                              else
                                                                  xact)
                                                         end) (fn [o ::_] [o ~ []] _ => (0, alert "Impossible tab!")) fl t.Tags widgets [[]] ! (fn x => x)).2)
@@ -503,10 +567,10 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                                                       t.Render x
                                                                                   else
                                                                                       b)) (0, <xml/>) fl t.Tags widgets).2}/>
-                                                                                                                           </div>
+                                                     </div>
                                                      </xml>
                                                      <xml>Add to Calendar</xml>))}
-                          {List.mapX (fn (tm, tmS, d) =>
+                          {List.mapX (fn (tm, tmS, k, d) =>
                                          let
                                              val maymod = @Record.select [fn _ => bool] [fst] fl
                                                            (fn [p] (b : bool) _ => b)
@@ -515,8 +579,8 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                              <xml><div class={item}><span class={time}>{[tmS]}</span>:
                                                <span class={item}>
                                                  {Ui.modalButton ctx (CLASS "btn btn-link")
-                                                                 <xml>{[@Record.select [fn p => show p.1] [fst] fl
-                                                                         (fn [p] (s : show p.1) => @show s) sh d]}</xml>
+                                                                 <xml>{[@Record.select [tag] [fst] fl
+                                                                         (fn [p] (t : tag p) => @show t.Show) t.Tags d]} {[k]}</xml>
                                                                  (@Record.select [tag] [fst] fl
                                                                    (fn [p] (t : tag p) (x : p.1) =>
                                                                        xm <- t.Display x;
@@ -531,8 +595,8 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                         (@Record.select' [tag] [fst] [fst] fl
                                                         (fn [p] (t : tag p) (maker : p.1 -> variant (map fst tags)) (x : p.1) =>
                                                             widget <- t.FromDb x;
-                                                            return (Ui.modal ((tm, tmS, k2) <- t.Save x widget;
-                                                                              rpc (notify d (Mod (maker x, (tm, tmS, maker k2)))))
+                                                            return (Ui.modal ((tml, k2) <- t.Save x widget;
+                                                                              rpc (notify d (Mod (maker x, (tml, maker k2)))))
                                                                              <xml>Editing a calendar item ({[t.Label]})</xml>
                                                                              <xml>
                                                                                <div class={fields}>
@@ -543,14 +607,14 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                         t.Tags d)}
                                                         {Ui.modalButton ctx (CLASS "btn btn-default btn-xs glyphicon glyphicon-trash")
                                                                         <xml/>
-                                                                        (return (@Record.select2 [tag] [fn p => show p.1] [fst] fl
-                                                                        (fn [p] (t : tag p) (_ : show p.1) (x : p.1) =>
+                                                                        (return (@Record.select [tag] [fst] fl
+                                                                        (fn [p] (t : tag p) (x : p.1) =>
                                                                         Ui.modal (t.Delete x;
                                                                         rpc (notify d (Del d)))
                                                                         <xml>Deleting a calendar item ({[t.Label]})</xml>
-                                                                        <xml>Are you sure you want to delete <b>{[x]}</b>?</xml>
+                                                                        <xml>Are you sure you want to delete <b>{[@show t.Show x]}</b>?</xml>
                                                                         <xml>Yes, Delete It</xml>)
-                                                                        t.Tags sh d))}
+                                                                        t.Tags d))}
                                                         </span>
                                                         </xml>}
                                                    </span></div></xml>

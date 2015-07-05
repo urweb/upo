@@ -12,28 +12,31 @@ datatype level = Forbidden | Read | Write
 functor FromTable(M : sig
                       con tag :: Name
                       con key :: {(Type * Type)} (* Each 2nd component is a type of GUI widget private state. *)
-                      con when :: Name
+                      con times :: {Unit}
                       con other :: {(Type * Type)}
                       con us :: {{Unit}}
+                      constraint key ~ times
                       constraint key ~ other
-                      constraint [when] ~ (key ++ other)
-                      constraint [When] ~ (key ++ other)
+                      constraint times ~ other
+                      constraint [When, Kind] ~ key
                       val fl : folder key
                       val flO : folder other
+                      val flT : folder times
                       val inj : $(map (fn p => sql_injectable_prim p.1) key)
                       val injO : $(map (fn p => sql_injectable_prim p.1) other)
                       val ws : $(map Widget.t' (key ++ other))
-                      val tab : sql_table (map fst (key ++ other) ++ [when = time]) us
-                      val labels : $([when = string] ++ map (fn _ => string) (key ++ other))
+                      val tab : sql_table (map fst (key ++ other) ++ mapU time times) us
+                      val labels : $(map (fn _ => string) (key ++ other) ++ mapU string times)
                       val eqs : $(map (fn p => eq p.1) key)
                       val title : string
-                      val display : $([when = time] ++ map fst key) -> transaction xbody
+                      val display : $(map fst key) -> transaction xbody
                       val auth : transaction level
+                      val kinds : $(mapU string times)
+                      val sh : show $(map fst key)
                   end) : sig
-    type private
+    con private
     con tag = M.tag
-    con when = M.when
-    val cal : t (map fst M.key) [tag = ($([When = time] ++ map fst M.key), private)]
+    val cal : t (map fst M.key) [tag = private]
 end
 
 val compose : keys1 ::: {Type} -> keys2 ::: {Type}
@@ -44,17 +47,11 @@ val compose : keys1 ::: {Type} -> keys2 ::: {Type}
               -> $(map sql_injectable_prim keys2)
               -> t keys1 tags1 -> t keys2 tags2 -> t (keys1 ++ keys2) (tags1 ++ tags2)
 
-val items : keys ::: {Type} -> tags ::: {(Type * Type)}
-            -> [[When] ~ keys]
-            => t keys tags
-            -> transaction (list (variant (map fst tags)))
-
 functor Make(M : sig
                  con keys :: {Type}
                  con tags :: {(Type * Type)}
-                 constraint [When] ~ keys
+                 constraint [When, Kind] ~ keys
                  val t : t keys tags
-                 val sh : $(map (fn p => show p.1) tags)
                  val fl : folder tags
              end) : Ui.S where type input = {FromDay : time,
                                              ToDay : time} (* inclusive *)
