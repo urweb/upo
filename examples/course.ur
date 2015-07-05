@@ -92,6 +92,11 @@ structure PsetSub = Submission.Make(struct
                                         val mayInspect = amInstructor
                                     end)
 
+fun getPset id =
+    oneRow1 (SELECT pset.Instructions
+             FROM pset
+             WHERE pset.PsetNum = {[id]})
+
 structure PsetCal = Calendar.FromTable(struct
                                            con tag = #Pset
                                            con key = [PsetNum = _]
@@ -106,10 +111,26 @@ structure PsetCal = Calendar.FromTable(struct
                                                         Due = "due"}
                                            val ws = {Instructions = Widget.htmlbox} ++ _
 
-                                           fun display r =
+                                           fun display ctx r =
                                                b <- rpc amStudent;
                                                if b then
-                                                   PsetSub.newUpload r
+                                                   ps <- rpc (getPset r.PsetNum);
+                                                   return (Ui.simpleModal
+                                                               <xml>
+                                                                 <h2>Pset #{[r.PsetNum]}</h2>
+
+                                                                 {Ui.modalButton ctx
+                                                                                 (CLASS "btn btn-primary")
+                                                                                 <xml>New Submission</xml>
+                                                                                 (PsetSub.newUpload r)}
+
+                                                                 <hr/>
+
+                                                                 <h2>Instructions</h2>
+
+                                                                 {Widget.html ps.Instructions}
+                                                               </xml>
+                                                               <xml>Close</xml>)
                                                else
                                                    xm <- PsetSub.latests r;
                                                    return (Ui.simpleModal
@@ -140,9 +161,9 @@ structure ExamCal = Calendar.FromTable(struct
                                                          When = "When"}
                                            val kinds = {When = ""}
 
-                                           fun display r = return (Ui.simpleModal
-                                                                       <xml>Exam #{[r.ExamNum]}</xml>
-                                                                       <xml>Close</xml>)
+                                           fun display _ r = return (Ui.simpleModal
+                                                                         <xml>Exam #{[r.ExamNum]}</xml>
+                                                                         <xml>Close</xml>)
                                            val auth = profOnly
                                        end)
 
@@ -164,9 +185,9 @@ structure MeetingCal = Calendar.FromTable(struct
                                                          When = "When"}
                                            val kinds = {When = ""}
 
-                                           fun display r = return (Ui.simpleModal
-                                                                       <xml>Staff Meeting #{[r.MeetingNum]}</xml>
-                                                                       <xml>Close</xml>)
+                                           fun display _ r = return (Ui.simpleModal
+                                                                         <xml>Staff Meeting #{[r.MeetingNum]}</xml>
+                                                                         <xml>Close</xml>)
                                            val auth = profPrivate
                                        end)
 

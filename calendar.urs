@@ -29,7 +29,7 @@ functor FromTable(M : sig
                       val labels : $(map (fn _ => string) (key ++ other) ++ mapU string times)
                       val eqs : $(map (fn p => eq p.1) key)
                       val title : string
-                      val display : $(map fst key) -> transaction xbody
+                      val display : Ui.context -> $(map fst key) -> transaction xbody
                       val auth : transaction level
                       val kinds : $(mapU string times)
                       val sh : show $(map fst key)

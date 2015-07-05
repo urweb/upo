@@ -28,6 +28,7 @@ val urlbox : t string urlbox
 
 type htmlbox
 val htmlbox : t string htmlbox
+val html : string -> xbody (* Use this one to parse result of [htmlbox] into real HTML. *)
 
 type textbox
 val textbox : t string textbox

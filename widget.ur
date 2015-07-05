@@ -82,8 +82,13 @@ val ed = Ckeditor.editor {Width = Ckeditor.DefaultSize,
                           Height = Ckeditor.DefaultSize,
                           ToolbarSet = Ckeditor.Custom (undoEtc :: find :: basic :: links :: [])}
 
+fun html s =
+    case Html.format (Html.b, Html.i, Html.a, Html.strong, Html.em, Html.p) s of
+        Html.Failure msg => <xml><b>HTML error: {[msg]}</b></xml>
+      | Html.Success xm => xm
+
 val htmlbox = { Create = ed,
                 Initialize = fn s => me <- ed; Ckeditor.setContent me s; return me,
                 AsWidget = Ckeditor.show,
                 Value = Ckeditor.content,
-                AsValue = txt }
+                AsValue = html }

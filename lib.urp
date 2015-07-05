@@ -12,6 +12,7 @@ alwaysInline Theme/page
 allow env SSL_CLIENT_S_DN
 
 $/list
+$/char
 $/string
 $/monad
 $/option
@@ -20,6 +21,7 @@ record
 variant
 sql
 csv
+html
 clientCert
 ui
 widget

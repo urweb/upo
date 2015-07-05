@@ -22,7 +22,7 @@ type tag (p :: (Type * Type)) =
       Delete : p.1 -> transaction unit,
       Eq : eq p.1,
       Show : show p.1,
-      Display : p.1 -> transaction xbody,
+      Display : Ui.context -> p.1 -> transaction xbody,
       MaySee : transaction bool,
       MayModify : transaction bool}
 
@@ -84,7 +84,7 @@ functor FromTable(M : sig
                       val labels : $(map (fn _ => string) (key ++ other) ++ mapU string times)
                       val eqs : $(map (fn p => eq p.1) key)
                       val title : string
-                      val display : $(map fst key) -> transaction xbody
+                      val display : Ui.context -> $(map fst key) -> transaction xbody
                       val auth : transaction level
                       val kinds : $(mapU string times)
                       val sh : show $(map fst key)
@@ -583,7 +583,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                                          (fn [p] (t : tag p) => @show t.Show) t.Tags d]} {[k]}</xml>
                                                                  (@Record.select [tag] [fst] fl
                                                                    (fn [p] (t : tag p) (x : p.1) =>
-                                                                       t.Display x)
+                                                                       t.Display ctx x)
                                                                    t.Tags d)}
                                                    {if not maymod then
                                                         <xml/>
