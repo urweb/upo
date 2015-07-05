@@ -2,6 +2,7 @@ html5
 library $/bootstrap/bootstrap3
 library $/ajaxUpload
 allow url https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css
+allow responseHeader Content-Disposition
 script https://code.jquery.com/jquery-2.1.3.min.js
 script https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js
 script /navbar.js

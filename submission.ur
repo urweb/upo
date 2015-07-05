@@ -35,6 +35,9 @@ functor Make(M : sig
                  val fl : folder fs
                  val injs : $(map sql_injectable (map fst fs))
                  val labels : $(map (fn _ => string) fs)
+
+                 val makeFilename : $key -> string (* username *) -> string
+                 val mayInspect : transaction bool
              end) = struct
 
     open M
@@ -46,6 +49,8 @@ functor Make(M : sig
       {{one_constraint [#User] (@Sql.easy_foreign ! ! ! ! ! ! (_ : folder [ukey = _]) user)}}
 
     datatype status = Idle | Uploading | Uploaded of AjaxUpload.handle | Error
+
+    val keyInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim keyFl keyInj
 
     fun upload k h vs =
         cl <- AjaxUpload.claim h;
@@ -59,11 +64,11 @@ functor Make(M : sig
                 tm <- now;
                 @@Sql.easy_insert
                   [key ++ map fst fs ++ [Filename = _, Content = _, MimeType = _, When = _, ukey = _]] [_]
-                  (_ ++ injs ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim keyFl keyInj)
+                  (_ ++ injs ++ keyInj')
                   (@Folder.concat ! _ (@Folder.concat ! keyFl (@Folder.mp fl))) submission
                   (k ++ up ++ {When = tm, ukey = u} ++ vs)
 
-    fun render k =
+    fun newUpload k =
         id <- fresh;
         st <- source Idle;
         ws <- @Monad.mapR _ [Widget.t'] [fn p => id * p.2]
@@ -111,5 +116,47 @@ functor Make(M : sig
                     fl labels widgets ws}
                 </xml>
                 <xml>Submit</xml>)
+
+    fun latests k =
+        let
+            fun retrieve u =
+                b <- mayInspect;
+                if not b then
+                    error <xml>Submission: not authorized to retrieve submissions</xml>
+                else
+                    r <- oneRow1 (SELECT submission.Content, submission.MimeType
+                                  FROM submission
+                                  WHERE {@@Sql.easy_where [#Submission] [[ukey = _] ++ key] [_] [_] [_] [_] ! !
+                                    ({ukey = _} ++ keyInj')
+                                    (@Folder.cons [ukey] [_] ! keyFl) (k ++ {ukey = u})}
+                                  ORDER BY submission.When DESC
+                                  LIMIT 1);
+                    case checkMime r.MimeType of
+                        None => error <xml>Submission: bad MIME type on retrieve</xml>
+                      | Some mt =>
+                        setHeader (blessResponseHeader "Content-Disposition")
+                                  ("attachment; filename=" ^ makeFilename k u);
+                        returnBlob r.Content mt
+
+            val listLatest =
+                b <- mayInspect;
+                if not b then
+                    error <xml>Submission: not authorized to list submissions</xml>
+                else
+                    xm <- queryX1 (SELECT DISTINCT submission.{ukey}
+                                   FROM submission
+                                   WHERE {@@Sql.easy_where [#Submission] [key] [_] [_] [_] [_] ! ! keyInj' keyFl k}
+                                   ORDER BY submission.{ukey})
+                                  (fn r => <xml>
+                                    <li><a link={retrieve r.ukey}>{[r.ukey]}</a></li>
+                                  </xml>);
+                    return <xml>
+                      <ul>
+                        {xm}
+                      </ul>
+                    </xml>
+        in
+            rpc listLatest
+        end
 
 end

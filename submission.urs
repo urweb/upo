@@ -38,6 +38,13 @@ functor Make(M : sig
                  val fl : folder fs
                  val injs : $(map sql_injectable (map fst fs))
                  val labels : $(map (fn _ => string) fs)
+
+                 val makeFilename : $key -> string (* username *) -> string
+                 val mayInspect : transaction bool
              end) : sig
-    val render : $M.key -> transaction xbody
+    val newUpload : $M.key -> transaction xbody
+    (* Form to upload a new submission for a key *)
+
+    val latests : $M.key -> transaction xbody
+    (* List latest upload for each user who has made at least one, with link to view it. *)
 end

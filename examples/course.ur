@@ -87,6 +87,9 @@ structure PsetSub = Submission.Make(struct
                                                   Aggravation = (int, _)]
                                         val labels = {Confidence = "Confidence",
                                                       Aggravation = "Aggravation"}
+
+                                        fun makeFilename k u = "ps" ^ show k.PsetNum ^ "_" ^ u ^ ".pdf"
+                                        val mayInspect = amInstructor
                                     end)
 
 structure PsetCal = Calendar.FromTable(struct
@@ -104,10 +107,15 @@ structure PsetCal = Calendar.FromTable(struct
                                            fun display r =
                                                b <- rpc amStudent;
                                                if b then
-                                                   PsetSub.render r
+                                                   PsetSub.newUpload r
                                                else
+                                                   xm <- PsetSub.latests r;
                                                    return (Ui.simpleModal
-                                                               <xml>Pset #{[r.PsetNum]}</xml>
+                                                               <xml>
+                                                                 <h2>Pset #{[r.PsetNum]}</h2>
+
+                                                                 {xm}
+                                                               </xml>
                                                                <xml>Close</xml>)
                                            val auth = profOnly
                                        end)
