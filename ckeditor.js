@@ -55,12 +55,12 @@ function uw_ckeditor_editor(r) {
     if (toolbarSet != null)
         config.toolbar = toolbar_set(toolbarSet.v);
     
-    return {config: config, name: fresh()};
+    return {config: config, name: fresh(), source: sc("")};
 }
 
 function uw_ckeditor_replace(t, id) {
     t.editor = CKEDITOR.replace(id, t.config);
-    t.source = sc("");
+    t.editor.setData(sg(t.source));
     t.editor.on('saveSnapshot', function(e) { sv(t.source, t.editor.getData()); });
 }
 
@@ -69,8 +69,7 @@ function uw_ckeditor_content(t) {
 }
 
 function uw_ckeditor_setContent(t, s) {
-    if (t.editor != undefined) {
-        sv(t.source, s);
+    sv(t.source, s);
+    if (t.editor != undefined)
         t.editor.setData(s);
-    }
 }
