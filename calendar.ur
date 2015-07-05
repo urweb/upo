@@ -163,7 +163,7 @@ functor FromTable(M : sig
        Render = fn self => <xml>
          <div class="form-group">
            <label class="control-label" for={self.TimeId}>{[labels.when]}</label>
-           <ctextbox id={self.TimeId} source={self.Time}/>
+           <ctextbox id={self.TimeId} class="form-control" source={self.Time}/>
          </div>
          {@mapX3 [fn _ => string] [Widget.t'] [fn p => id * p.2] [body]
            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, x) => <xml>

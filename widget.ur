@@ -18,31 +18,31 @@ fun make [value] [state] r = r
 
 val textbox = { Create = source "",
                 Initialize = source,
-                AsWidget = fn s => <xml><ctextbox source={s}/></xml>,
+                AsWidget = fn s => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>,
                 Value = signal,
                 AsValue = txt }
 
 val checkbox = { Create = source False,
                  Initialize = source,
-                 AsWidget = fn s => <xml><ccheckbox source={s}/></xml>,
+                 AsWidget = fn s => <xml><ccheckbox class={Bootstrap3.form_control} source={s}/></xml>,
                  Value = signal,
                  AsValue = txt }
 
 val intbox = { Create = source "",
                Initialize = fn n => source (show n),
-               AsWidget = fn s => <xml><ctextbox source={s}/></xml>,
+               AsWidget = fn s => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>,
                Value = fn s => v <- signal s; return (Option.get 0 (read v)),
                AsValue = txt }
 
 val timebox = { Create = source "",
                 Initialize = fn n => source (show n),
-                AsWidget = fn s => <xml><ctextbox source={s}/></xml>,
+                AsWidget = fn s => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>,
                 Value = fn s => v <- signal s; return (Option.get minTime (read v)),
                 AsValue = fn t => if t = minTime then <xml><b>INVALID</b></xml> else txt t }
 
 val urlbox = { Create = source "",
                Initialize = source,
-               AsWidget = fn s => <xml><ctextbox source={s}/></xml>,
+               AsWidget = fn s => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>,
                Value = signal,
                AsValue = fn s =>
                            case checkUrl s of
