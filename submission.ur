@@ -117,7 +117,7 @@ functor Make(M : sig
                 </xml>
                 <xml>Submit</xml>)
 
-    fun latests k =
+    fun latests f k =
         let
             fun retrieve u =
                 b <- mayInspect;
@@ -148,7 +148,7 @@ functor Make(M : sig
                                    WHERE {@@Sql.easy_where [#Submission] [key] [_] [_] [_] [_] ! ! keyInj' keyFl k}
                                    ORDER BY submission.{ukey})
                                   (fn r => <xml>
-                                    <li><a link={retrieve r.ukey}>{[r.ukey]}</a></li>
+                                    <li><a link={retrieve r.ukey}>{[r.ukey]}</a> {f r.ukey}</li>
                                   </xml>);
                     return <xml>
                       <ul>

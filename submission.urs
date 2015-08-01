@@ -45,6 +45,7 @@ functor Make(M : sig
     val newUpload : $M.key -> transaction xbody
     (* Form to upload a new submission for a key *)
 
-    val latests : $M.key -> transaction xbody
-    (* List latest upload for each user who has made at least one, with link to view it. *)
+    val latests : (string -> xbody) -> $M.key -> transaction xbody
+    (* List latest upload for each user who has made at least one, with link to view it.
+     * Passed a function to generate some extra content for each row (username). *)
 end

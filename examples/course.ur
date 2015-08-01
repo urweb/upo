@@ -97,6 +97,28 @@ fun getPset id =
              FROM pset
              WHERE pset.PsetNum = {[id]})
 
+table psetGrade : { PsetNum : int, Student : string, Grader : string, When : time, Grade : int, Comment : string }
+  PRIMARY KEY (PsetNum, Student, Grader),
+  CONSTRAINT PsetNum FOREIGN KEY PsetNum REFERENCES pset(PsetNum) ON UPDATE CASCADE,
+  CONSTRAINT Student FOREIGN KEY Student REFERENCES user(User) ON UPDATE CASCADE,
+  CONSTRAINT Grader FOREIGN KEY Grader REFERENCES user(User) ON UPDATE CASCADE
+
+val psetGradeShow : show {PsetNum : int, Student : string}
+  = mkShow (fn r => "#" ^ show r.PsetNum ^ ", " ^ r.Student)
+
+structure PsetGrade = Review.Make(struct
+                                      con reviewer = #Grader
+                                      con reviewed = [PsetNum = _, Student = _]
+                                      val tab = psetGrade
+                                      val labels = {Grade = "Grade",
+                                                    Comment = "Comment"}
+                                      fun summarize r = txt r.Grade
+                                  end)
+
+fun psetGrades n u =
+    Ui.simple ("Grading Pset #" ^ show n ^ ", " ^ u)
+    (PsetGrade.One.ui {PsetNum = n, Student = u})
+
 structure PsetCal = Calendar.FromTable(struct
                                            con tag = #Pset
                                            con key = [PsetNum = _]
@@ -135,7 +157,7 @@ structure PsetCal = Calendar.FromTable(struct
                                                                     </xml>
                                                                     <xml>Close</xml>)
                                                 else
-                                                    xm <- PsetSub.latests r;
+                                                    xm <- PsetSub.latests (fn u => <xml><a link={psetGrades r.PsetNum u}>[grade it]</a></xml>) r;
                                                     set content (Ui.simpleModal
                                                                      <xml>
                                                                        <h2>Pset #{[r.PsetNum]}</h2>
