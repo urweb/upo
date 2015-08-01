@@ -1,7 +1,7 @@
 con t (value :: Type) (state :: Type) =
       { Create : transaction state,
         Initialize : value -> transaction state,
-        AsWidget : state -> xbody,
+        AsWidget : state -> option id -> xbody,
         Value : state -> signal value,
         AsValue : value -> xbody }
 
@@ -18,31 +18,46 @@ fun make [value] [state] r = r
 
 val textbox = { Create = source "",
                 Initialize = source,
-                AsWidget = fn s => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>,
+                AsWidget = fn s ido =>
+                              case ido of
+                                  None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
+                                | Some id => <xml><ctextbox class={Bootstrap3.form_control} source={s} id={id}/></xml>,
                 Value = signal,
                 AsValue = txt }
 
 val checkbox = { Create = source False,
                  Initialize = source,
-                 AsWidget = fn s => <xml><ccheckbox class={Bootstrap3.form_control} source={s}/></xml>,
+                 AsWidget = fn s ido =>
+                               case ido of
+                                   None => <xml><ccheckbox class={Bootstrap3.form_control} source={s}/></xml>
+                                 | Some id => <xml><ccheckbox class={Bootstrap3.form_control} source={s} id={id}/></xml>,
                  Value = signal,
                  AsValue = txt }
 
 val intbox = { Create = source "",
                Initialize = fn n => source (show n),
-               AsWidget = fn s => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>,
+               AsWidget = fn s ido =>
+                             case ido of
+                                 None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
+                               | Some id => <xml><ctextbox class={Bootstrap3.form_control} source={s} id={id}/></xml>,
                Value = fn s => v <- signal s; return (Option.get 0 (read v)),
                AsValue = txt }
 
 val timebox = { Create = source "",
                 Initialize = fn n => source (show n),
-                AsWidget = fn s => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>,
+                AsWidget = fn s ido =>
+                              case ido of
+                                  None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
+                                | Some id => <xml><ctextbox class={Bootstrap3.form_control} source={s} id={id}/></xml>,
                 Value = fn s => v <- signal s; return (Option.get minTime (read v)),
                 AsValue = fn t => if t = minTime then <xml><b>INVALID</b></xml> else txt t }
 
 val urlbox = { Create = source "",
                Initialize = source,
-               AsWidget = fn s => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>,
+               AsWidget = fn s ido =>
+                             case ido of
+                                 None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
+                               | Some id => <xml><ctextbox class={Bootstrap3.form_control} source={s} id={id}/></xml>,
                Value = signal,
                AsValue = fn s =>
                            case checkUrl s of
@@ -89,6 +104,6 @@ fun html s =
 
 val htmlbox = { Create = ed,
                 Initialize = fn s => me <- ed; Ckeditor.setContent me s; return me,
-                AsWidget = Ckeditor.show,
+                AsWidget = fn x _ => Ckeditor.show x,
                 Value = Ckeditor.content,
                 AsValue = html }

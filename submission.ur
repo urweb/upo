@@ -110,7 +110,7 @@ functor Make(M : sig
                     (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] lab (w : Widget.t' p) (id, x) => <xml>
                       <div class="form-group">
                         <label class="control-label" for={id}>{[lab]}</label>
-                        <span id={id}>{@Widget.asWidget w x}</span>
+                        {@Widget.asWidget w x (Some id)}
                       </div>
                     </xml>)
                     fl labels widgets ws}

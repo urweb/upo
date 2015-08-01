@@ -113,6 +113,7 @@ structure PsetGrade = Review.Make(struct
                                       val labels = {Grade = "Grade",
                                                     Comment = "Comment"}
                                       fun summarize r = txt r.Grade
+                                      val whoami = getCookie userC
                                   end)
 
 fun psetGrades n u =

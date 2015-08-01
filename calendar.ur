@@ -212,7 +212,7 @@ functor FromTable(M : sig
            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, x) => <xml>
              <div class="form-group">
                <label class="control-label" for={id}>{[lab]}</label>
-               <span id={id}>{@Widget.asWidget w x}</span>
+               {@Widget.asWidget w x (Some id)}
              </div>
            </xml>)
            (@Folder.concat ! fl flO) (labels --- mapU string times) ws self.Widgets}

@@ -56,3 +56,21 @@ div.Calendar_item {
     display: inline-table;
     width: 100%;
 }
+
+.PsetGrade_summary {
+    width: 100%;
+    border-style: solid;
+    cursor: pointer;
+}
+
+.PsetGrade_fullHeader {
+    width: 90%;
+    border-style: solid;
+    cursor: pointer;
+    margin: 5%;
+}
+
+.PsetGrade_full {
+    width: 100%;
+    border-style: solid;
+}

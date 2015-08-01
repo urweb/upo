@@ -8,14 +8,14 @@ con t' (value :: Type, state :: Type) = t value state
 
 val create : value ::: Type -> state ::: Type -> t value state -> transaction state
 val initialize : value ::: Type -> state ::: Type -> t value state -> value -> transaction state
-val asWidget : value ::: Type -> state ::: Type -> t value state -> state -> xbody
+val asWidget : value ::: Type -> state ::: Type -> t value state -> state -> option id (* Use this ID if you can, to help group with labels. *) -> xbody
 val value : value ::: Type -> state ::: Type -> t value state -> state -> signal value
 val asValue : value ::: Type -> state ::: Type -> t value state -> value -> xbody
 
 val make : value ::: Type -> state ::: Type
            -> { Create : transaction state,
                 Initialize : value -> transaction state,
-                AsWidget : state -> xbody,
+                AsWidget : state -> option id -> xbody,
                 Value : state -> signal value,
                 AsValue : value -> xbody }
            -> t value state

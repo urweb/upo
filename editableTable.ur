@@ -211,7 +211,7 @@ functor Make(M : sig
                                                 {@mapX2 [Widget.t'] [snd] [_]
                                                   (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
                                                                (w : Widget.t' p) (v : snd p) =>
-                                                      <xml><td>{@Widget.asWidget w v}</td></xml>)
+                                                      <xml><td>{@Widget.asWidget w v None}</td></xml>)
                                                   fl widgets ws}
                                               </xml>)}/>
                      </tr></xml>) rs)}/>
@@ -228,7 +228,7 @@ functor Make(M : sig
 
                  {@mapX2 [Widget.t'] [snd] [_]
                    (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : snd p) =>
-                       <xml><td>{@Widget.asWidget w v}</td></xml>)
+                       <xml><td>{@Widget.asWidget w v None}</td></xml>)
                    fl widgets a.ToAdd}
                </tr>
              </xml>
