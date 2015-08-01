@@ -1,7 +1,9 @@
 library ..
 rewrite all Course/*
 safeGet admin
+safeGet staff
 safeGet main
+safeGet psetGrades
 allow url http://*
 allow url https://*
 allow mime application/pdf

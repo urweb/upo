@@ -8,6 +8,7 @@ functor Make(M : sig
                  constraint [reviewer] ~ [When]
                  constraint [reviewer, When] ~ reviewed
                  constraint [reviewer, When] ~ other
+                 constraint [Channel] ~ reviewed
                  table tab : ([When = time, reviewer = string] ++ reviewed ++ map fst other)
 
                  val widgets : $(map Widget.t' other)

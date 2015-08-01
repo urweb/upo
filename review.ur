@@ -8,6 +8,7 @@ functor Make(M : sig
                  constraint [reviewer] ~ [When]
                  constraint [reviewer, When] ~ reviewed
                  constraint [reviewer, When] ~ other
+                 constraint [Channel] ~ reviewed
                  table tab : ([When = time, reviewer = string] ++ reviewed ++ map fst other)
 
                  val widgets : $(map Widget.t' other)
@@ -28,13 +29,18 @@ functor Make(M : sig
 
     open M
 
+    datatype action =
+             Add of {Reviewed : $reviewed, Reviewer : string, When : time, Other : $(map fst other)}
+
+    table specificListeners : (reviewed ++ [Channel = channel action])
+
     structure One = struct
         type input = _
 
         datatype review_state =
-                 Summary of $(map fst other)
-               | Full of $(map fst other)
-               | Editing of $(map snd other)
+                 Summary of $(map (fn p => id * p.1) other)
+               | Full of $(map (fn p => id * p.1) other)
+               | Editing of $(map (fn p => id * p.2) other)
 
         type review = {Reviewer : string,
                        When : time,
@@ -42,7 +48,8 @@ functor Make(M : sig
 
         type a = {Reviewed : $reviewed,
                   Reviews : source (list review),
-                  Widgets : $(map (fn p => id * p.2) other)}
+                  Widgets : $(map (fn p => id * p.2) other),
+                  Channel : channel action}
 
         fun create key =
             rs <- List.mapQueryM (SELECT tab.{reviewer}, tab.When, tab.{{map fst other}}
@@ -50,7 +57,12 @@ functor Make(M : sig
                                   WHERE {@Sql.easy_where [#Tab] ! ! reviewedInj reviewedFl key}
                                   ORDER BY tab.When)
                                  (fn {Tab = r} =>
-                                     rs <- source (Summary (r -- reviewer -- #When));
+                                     other <- @Monad.mapR _ [fst] [fn p => id * p.1]
+                                               (fn [nm ::_] [p ::_] (x : p.1) =>
+                                                   id <- fresh;
+                                                   return (id, x))
+                                               otherFl (r -- reviewer -- #When);
+                                     rs <- source (Summary other);
                                      return {Reviewer = r.reviewer,
                                              When = r.When,
                                              State = rs});
@@ -61,11 +73,36 @@ functor Make(M : sig
                        w <- @Widget.create w;
                        return (id, w))
                    otherFl widgets;
+            ch <- channel;
+            @@Sql.easy_insert [[Channel = _] ++ reviewed] [_]
+              ({Channel = _} ++ reviewedInj)
+              (@Folder.cons [#Channel] [_] ! reviewedFl)
+              specificListeners ({Channel = ch} ++ key);
             return {Reviewed = key,
                     Reviews = rs,
-                    Widgets = ws}
+                    Widgets = ws,
+                    Channel = ch}
 
-        fun onload _ = return ()
+        fun onload a =
+            let
+                fun loop () =
+                    act <- recv a.Channel;
+                    (case act of
+                         Add r =>
+                         rs <- get a.Reviews;
+                         other <- @Monad.mapR _ [fst] [fn p => id * p.1]
+                                   (fn [nm ::_] [p ::_] (x : p.1) =>
+                                       id <- fresh;
+                                       return (id, x))
+                                   otherFl r.Other;
+                         st <- source (Summary other);
+                         set a.Reviews (List.append rs ({Reviewer = r.Reviewer,
+                                                         When = r.When,
+                                                         State = st} :: [])));
+                    loop ()
+            in
+                spawn (loop ())
+            end
 
         fun add key other =
             u <- whoami;
@@ -77,7 +114,14 @@ functor Make(M : sig
                   ({When = _, reviewer = _} ++ reviewedInj ++ otherInj)
                   (@Folder.cons [#When] [_] ! (@Folder.cons [reviewer] [_] !
                     (@Folder.concat ! reviewedFl (@Folder.mp otherFl))))
-                  tab ({When = tm, reviewer = u} ++ key ++ other)
+                  tab ({When = tm, reviewer = u} ++ key ++ other);
+                queryI1 (SELECT specificListeners.Channel
+                         FROM specificListeners
+                         WHERE {@Sql.easy_where [#SpecificListeners] ! ! reviewedInj reviewedFl key})
+                (fn r => send r.Channel (Add {Reviewed = key,
+                                              Reviewer = u,
+                                              When = tm,
+                                              Other = other}))
 
         fun render _ a = <xml>
           <dyn signal={rs <- signal a.Reviews;
@@ -89,7 +133,9 @@ functor Make(M : sig
                                                          onclick={fn _ => set r.State (Full o)}>
                                                       {[r.Reviewer]}
                                                       ({[r.When]})
-                                                      {[summarize o]}
+                                                      {[summarize (@mp [fn p => id * p.1] [fst]
+                                                                    (fn [p] (_, x) => x)
+                                                                    otherFl o)]}
                                                     </div>
                                                   </xml>
                                                 | Full o => <xml>
@@ -100,11 +146,13 @@ functor Make(M : sig
                                                         ({[r.When]})
                                                       </div>
 
-                                                      {@mapX3 [fn _ => string] [Widget.t'] [fst] [body]
-                                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (v : p.1) => <xml>
+                                                      {@mapX3 [fn _ => string] [Widget.t'] [fn p => id * p.1] [body]
+                                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, v : p.1) => <xml>
                                                           <div class="form-group">
-                                                            <label class="control-label">{[lab]}</label>
-                                                            {@Widget.asValue w v}
+                                                            <label class="control-label" for={id}>{[lab]}</label>
+                                                            <span class="form-control" id={id}>
+                                                              {@Widget.asValue w v}
+                                                            </span>
                                                           </div>
                                                         </xml>)
                                                         otherFl labels widgets o}

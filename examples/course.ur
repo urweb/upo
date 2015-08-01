@@ -35,6 +35,13 @@ val amInstructor =
               WHERE user.User = {[u]}
                 AND user.IsInstructor)
 
+val amStaff =
+    u <- auth;
+    oneRowE1 (SELECT COUNT( * ) > 0
+              FROM user
+              WHERE user.User = {[u]}
+                AND (user.IsStaff OR user.IsInstructor))
+
 val amStudent =
     u <- auth;
     oneRowE1 (SELECT COUNT( * ) > 0
@@ -45,6 +52,13 @@ val amStudent =
 val requireInstructor =
     isInstructor <- amInstructor;
     if isInstructor then
+        return ()
+    else
+        error <xml>Access denied</xml>
+
+val requireStaff =
+    isStaff <- amStaff;
+    if isStaff then
         return ()
     else
         error <xml>Access denied</xml>
@@ -89,7 +103,7 @@ structure PsetSub = Submission.Make(struct
                                                       Aggravation = "Aggravation"}
 
                                         fun makeFilename k u = "ps" ^ show k.PsetNum ^ "_" ^ u ^ ".pdf"
-                                        val mayInspect = amInstructor
+                                        val mayInspect = amStaff
                                     end)
 
 fun getPset id =
@@ -98,7 +112,7 @@ fun getPset id =
              WHERE pset.PsetNum = {[id]})
 
 table psetGrade : { PsetNum : int, Student : string, Grader : string, When : time, Grade : int, Comment : string }
-  PRIMARY KEY (PsetNum, Student, Grader),
+  PRIMARY KEY (PsetNum, Student, Grader, When),
   CONSTRAINT PsetNum FOREIGN KEY PsetNum REFERENCES pset(PsetNum) ON UPDATE CASCADE,
   CONSTRAINT Student FOREIGN KEY Student REFERENCES user(User) ON UPDATE CASCADE,
   CONSTRAINT Grader FOREIGN KEY Grader REFERENCES user(User) ON UPDATE CASCADE
@@ -252,6 +266,14 @@ val admin =
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
                         ToDay = readError "09/01/15 00:00:00"}))
 
+val staff =
+    requireStaff;
+
+    Ui.tabbed "Staff Dashboard"
+              {1 = (Some "Calendar",
+                    Cal.ui {FromDay = readError "06/01/15 00:00:00",
+                            ToDay = readError "09/01/15 00:00:00"})}
+
 val main =
     Ui.tabbed "Course Home Page"
               {1 = (Some "Calendar",
@@ -277,5 +299,6 @@ val cookieSetup =
 val index = return <xml><body>
   <li><a link={cookieSetup}>Cookie set-up</a></li>
   <li><a link={admin}>Instructor</a></li>
+  <li><a link={staff}>Staff</a></li>
   <li><a link={main}>Student</a></li>
 </body></xml>
