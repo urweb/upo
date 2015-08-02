@@ -67,9 +67,21 @@ div.Calendar_item {
     width: 100%;
     border-style: solid;
     cursor: pointer;
+    margin-bottom: 10px;
 }
 
 .PsetGrade_full {
+    width: 100%;
+    border-style: solid;
+    padding: 10px;
+}
+
+.PsetGrade_editingHeader {
+    width: 100%;
+    border-style: solid;
+}
+
+.PsetGrade_editing {
     width: 100%;
     border-style: solid;
     padding: 10px;

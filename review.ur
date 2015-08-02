@@ -26,11 +26,16 @@ functor Make(M : sig
     style summary
     style full
     style fullHeader
+    style editing
+    style editingHeader
 
     open M
 
+    type fields = {Reviewed : $reviewed, Reviewer : string, When : time, Other : $(map fst other)}
+
     datatype action =
-             Add of {Reviewed : $reviewed, Reviewer : string, When : time, Other : $(map fst other)}
+             Add of fields
+           | Edit of fields
 
     table specificListeners : (reviewed ++ [Channel = channel action])
 
@@ -40,18 +45,46 @@ functor Make(M : sig
         datatype review_state =
                  Summary of $(map (fn p => id * p.1) other)
                | Full of $(map (fn p => id * p.1) other)
-               | Editing of $(map (fn p => id * p.2) other)
+               | Editing of $(map (fn p => id * p.1) other) * $(map (fn p => id * p.2) other)
 
         type review = {Reviewer : string,
                        When : time,
-                       State : source review_state}
+                       State : source review_state,
+                       WaitingForRpc : source bool}
 
-        type a = {Reviewed : $reviewed,
+        type a = {Whoami : string,
+                  Reviewed : $reviewed,
                   Reviews : source (list review),
                   Widgets : $(map (fn p => id * p.2) other),
                   Channel : channel action}
 
+        val freshWidgets =
+            @Monad.mapR _ [Widget.t'] [fn p => id * p.2]
+             (fn [nm ::_] [p ::_] (w : Widget.t' p) =>
+                 id <- fresh;
+                 w <- @Widget.create w;
+                 return (id, w))
+             otherFl widgets
+
+        val widgetsFrom =
+            @Monad.mapR2 _ [Widget.t'] [fn p => id * p.1] [fn p => id * p.2]
+             (fn [nm ::_] [p ::_] (w : Widget.t' p) (_, x : p.1) =>
+                 id <- fresh;
+                 w <- @Widget.initialize w x;
+                 return (id, w))
+             otherFl widgets
+
+        val readWidgets =
+            @Monad.mapR2 _ [Widget.t'] [fn p => id * p.2] [fst]
+             (fn [nm ::_] [p ::_] (w : Widget.t' p) (id, x : p.2) =>
+                 current (@Widget.value w x))
+             otherFl widgets
+
         fun create key =
+            u <- whoami;
+            u <- (case u of
+                      None => error <xml>Must be logged in</xml>
+                    | Some u => return u);
             rs <- List.mapQueryM (SELECT tab.{reviewer}, tab.When, tab.{{map fst other}}
                                   FROM tab
                                   WHERE {@Sql.easy_where [#Tab] ! ! reviewedInj reviewedFl key}
@@ -63,22 +96,20 @@ functor Make(M : sig
                                                    return (id, x))
                                                otherFl (r -- reviewer -- #When);
                                      rs <- source (Summary other);
+                                     waiting <- source False;
                                      return {Reviewer = r.reviewer,
                                              When = r.When,
-                                             State = rs});
+                                             State = rs,
+                                             WaitingForRpc = waiting});
             rs <- source rs;
-            ws <- @Monad.mapR _ [Widget.t'] [fn p => id * p.2]
-                   (fn [nm ::_] [p ::_] (w : Widget.t' p) =>
-                       id <- fresh;
-                       w <- @Widget.create w;
-                       return (id, w))
-                   otherFl widgets;
+            ws <- freshWidgets;
             ch <- channel;
             @@Sql.easy_insert [[Channel = _] ++ reviewed] [_]
               ({Channel = _} ++ reviewedInj)
               (@Folder.cons [#Channel] [_] ! reviewedFl)
               specificListeners ({Channel = ch} ++ key);
-            return {Reviewed = key,
+            return {Whoami = u,
+                    Reviewed = key,
                     Reviews = rs,
                     Widgets = ws,
                     Channel = ch}
@@ -96,13 +127,55 @@ functor Make(M : sig
                                        return (id, x))
                                    otherFl r.Other;
                          st <- source (Summary other);
+                         waiting <- source False;
                          set a.Reviews (List.append rs ({Reviewer = r.Reviewer,
                                                          When = r.When,
-                                                         State = st} :: [])));
+                                                         State = st,
+                                                         WaitingForRpc = waiting} :: []))
+                       | Edit r =>
+                         rs <- get a.Reviews;
+                         other <- @Monad.mapR _ [fst] [fn p => id * p.1]
+                                   (fn [nm ::_] [p ::_] (x : p.1) =>
+                                       id <- fresh;
+                                       return (id, x))
+                                   otherFl r.Other;
+                         st <- source (Summary other);
+                         rs <- List.mapM (fn r' =>
+                                             if r'.Reviewer = r.Reviewer then
+                                                 set r'.WaitingForRpc False;
+                                                 return {Reviewer = r.Reviewer,
+                                                         When = r.When,
+                                                         State = st,
+                                                         WaitingForRpc = r'.WaitingForRpc}
+                                             else
+                                                 return r') rs;
+                         set a.Reviews (List.sort (fn r1 r2 => r1.When > r2.When) rs));
                     loop ()
             in
                 spawn (loop ())
             end
+
+        fun edit key other =
+            u <- whoami;
+            case u of
+                None => error <xml>Must be logged in to edit a record</xml>
+              | Some u =>
+                tm <- now;
+                @@Sql.easy_update' [[reviewer = _] ++ reviewed]
+                  [[When = _] ++ map fst other] [_] !
+                  ({reviewer = _} ++ reviewedInj)
+                  ({When = _} ++ otherInj)
+                  (@Folder.cons [reviewer] [_] ! reviewedFl)
+                  (@Folder.cons [#When] [_] ! (@Folder.mp otherFl))
+                  tab ({reviewer = u} ++ key)
+                  ({When = tm, reviewer = u} ++ key ++ other);
+                queryI1 (SELECT specificListeners.Channel
+                         FROM specificListeners
+                         WHERE {@Sql.easy_where [#SpecificListeners] ! ! reviewedInj reviewedFl key})
+                (fn r => send r.Channel (Edit {Reviewed = key,
+                                               Reviewer = u,
+                                               When = tm,
+                                               Other = other}))
 
         fun add key other =
             u <- whoami;
@@ -146,6 +219,21 @@ functor Make(M : sig
                                                         ({[r.When]})
                                                       </div>
 
+                                                      {if r.Reviewer <> a.Whoami then
+                                                         <xml/>
+                                                       else <xml>
+                                                         <dyn signal={b <- signal r.WaitingForRpc;
+                                                                      return (if b then
+                                                                                <xml/>
+                                                                              else <xml>
+                                                                                <button class="btn btn-primary"
+                                                                                        value="Edit Review"
+                                                                                        onclick={fn _ =>
+                                                                                                    ws <- widgetsFrom o;
+                                                                                                    set r.State (Editing (o, ws))}/>
+                                                                              </xml>)}/>
+                                                       </xml>}
+
                                                       {@mapX3 [fn _ => string] [Widget.t'] [fn p => id * p.1] [body]
                                                         (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, v : p.1) => <xml>
                                                           <div class="form-group">
@@ -158,30 +246,59 @@ functor Make(M : sig
                                                         otherFl labels widgets o}
                                                     </div>
                                                   </xml>
-                                                | Editing _ => <xml>Editing not implemented yet</xml>)}/>
+                                                | Editing (o, ws) => <xml>
+                                                    <div class={editing}>
+                                                      <div class={editingHeader}>
+                                                        {[r.Reviewer]}
+                                                        ({[r.When]})
+                                                      </div>
+
+                                                      <button class="btn btn-primary"
+                                                              value="Save Review"
+                                                              onclick={fn _ =>
+                                                                          vs <- readWidgets ws;
+                                                                          set r.State (Full o);
+                                                                          set r.WaitingForRpc True;
+                                                                          rpc (edit a.Reviewed vs)}/>
+                                                      <button class="btn"
+                                                              value="Cancel Editing"
+                                                              onclick={fn _ => set r.State (Full o)}/>
+
+                                                      {@mapX3 [fn _ => string] [Widget.t'] [fn p => id * p.2] [body]
+                                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, v : p.2) => <xml>
+                                                          <div class="form-group">
+                                                            <label class="control-label" for={id}>{[lab]}</label>
+                                                            {@Widget.asWidget w v (Some id)}
+                                                          </div>
+                                                        </xml>)
+                                                        otherFl labels widgets ws}
+                                                    </div>
+                                                  </xml>)}/>
                        </xml>) rs)}/>
 
-          <hr/>
+          <dyn signal={rs <- signal a.Reviews;
+                       return (if List.exists (fn r => r.Reviewer = a.Whoami) rs then
+                                   <xml/>
+                               else <xml>
+                                 <hr/>
+          
+                                 <h2>Add Review</h2>
 
-          <h2>Add Review</h2>
+                                 {@mapX3 [fn _ => string] [Widget.t'] [fn p => id * p.2] [body]
+                                   (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, x : p.2) => <xml>
+                                     <div class="form-group">
+                                       <label class="control-label" for={id}>{[lab]}</label>
+                                       {@Widget.asWidget w x (Some id)}
+                                     </div>
+                                   </xml>)
+                                   otherFl labels widgets a.Widgets}
 
-          {@mapX3 [fn _ => string] [Widget.t'] [fn p => id * p.2] [body]
-           (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, x : p.2) => <xml>
-             <div class="form-group">
-               <label class="control-label" for={id}>{[lab]}</label>
-               {@Widget.asWidget w x (Some id)}
-             </div>
-           </xml>)
-           otherFl labels widgets a.Widgets}
-
-          <button class="btn btn-primary"
-                  value="Add Review"
-                  onclick={fn _ =>
-                              vs <- @Monad.mapR2 _ [Widget.t'] [fn p => id * p.2] [fst]
-                                     (fn [nm ::_] [p ::_] (w : Widget.t' p) (id, x : p.2) =>
-                                         current (@Widget.value w x))
-                                     otherFl widgets a.Widgets;
-                              rpc (add a.Reviewed vs)}/>
+                                 <button class="btn btn-primary"
+                                         value="Add Review"
+                                         onclick={fn _ =>
+                                                     vs <- readWidgets a.Widgets;
+                                                     rpc (add a.Reviewed vs)}/>
+                               </xml>)}/>
         </xml>
 
         fun ui inp = {Create = create inp,
