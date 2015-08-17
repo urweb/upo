@@ -134,6 +134,34 @@ fun psetGrades n u =
     Ui.simple ("Grading Pset #" ^ show n ^ ", " ^ u)
     (PsetGrade.One.ui {PsetNum = n, Student = u})
 
+table psetAssignedGrader : { PsetNum : int, Student : string, Grader : string }
+  PRIMARY KEY (PsetNum, Student, Grader),
+  CONSTRAINT PsetNum FOREIGN KEY PsetNum REFERENCES pset(PsetNum) ON UPDATE CASCADE,
+  CONSTRAINT Student FOREIGN KEY Student REFERENCES user(User) ON UPDATE CASCADE,
+  CONSTRAINT Grader FOREIGN KEY Grader REFERENCES user(User) ON UPDATE CASCADE
+
+structure PsetGraders = AssignTasks.Make(struct
+                                             con assignable = [PsetNum = int, Student = string]
+                                             con assigned = #Grader
+                                             val show_assignable = mkShow (fn r => "#" ^ show r.PsetNum ^ "/" ^ r.Student)
+                                             val assignments = psetAssignedGrader
+                                             val eligibleAssignees = List.mapQuery (SELECT user.User
+                                                                                    FROM user
+                                                                                    WHERE user.IsStaff
+                                                                                    ORDER BY user.User)
+                                                                     (fn r => r.User.User)
+
+                                             type filter = int
+                                             val allFilters = List.mapQuery (SELECT pset.PsetNum
+                                                                             FROM pset
+                                                                             ORDER BY pset.PsetNum)
+                                                                            (fn r => r.Pset.PsetNum)
+                                             fun filter n = (SELECT {[n]} AS PsetNum, user.User AS Student
+                                                             FROM user
+                                                             WHERE user.IsStudent
+                                                             ORDER BY user.User)
+                                         end)
+
 structure PsetCal = Calendar.FromTable(struct
                                            con tag = #Pset
                                            con key = [PsetNum = _]
@@ -264,7 +292,9 @@ val admin =
                 EditUsers.ui),
                (Some "Calendar",
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
-                        ToDay = readError "09/01/15 00:00:00"}))
+                        ToDay = readError "09/01/15 00:00:00"}),
+               (Some "Assign Pset Grading",
+                PsetGraders.MakeAssignments.ui))
 
 val staff =
     requireStaff;
