@@ -12,8 +12,9 @@ functor Make(M : sig
 
                  table assignments : (assignable ++ [assigned = string])
                  (* Table recording decisions of who should do what *)
-                 val eligibleAssignees : transaction (list string)
-                 (* Which users are eligible to be assigned these tasks? *)
+                 val eligibleAssignees : transaction (list (string * list string))
+                 (* Which users are eligible to be assigned these tasks?
+                  * Group them into named categories, where the first category should include all eligible users. *)
 
                  type filter
                  (* Search term used to narrow down the space of assignables *)

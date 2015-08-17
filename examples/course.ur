@@ -145,11 +145,23 @@ structure PsetGraders = AssignTasks.Make(struct
                                              con assigned = #Grader
                                              val show_assignable = mkShow (fn r => "#" ^ show r.PsetNum ^ "/" ^ r.Student)
                                              val assignments = psetAssignedGrader
-                                             val eligibleAssignees = List.mapQuery (SELECT user.User
-                                                                                    FROM user
-                                                                                    WHERE user.IsStaff
-                                                                                    ORDER BY user.User)
-                                                                     (fn r => r.User.User)
+                                             val eligibleAssignees =
+                                                 let
+                                                     val cat = fn e =>
+                                                         List.mapQuery (SELECT user.User
+                                                                        FROM user
+                                                                        WHERE {e}
+                                                                        ORDER BY user.User)
+                                                                       (fn r => r.User.User)
+                                                 in
+                                                     everybody <- cat (WHERE user.IsStaff);
+                                                     tas <- cat (WHERE user.IsStaff AND NOT user.IsInstructor);
+                                                     profs <- cat (WHERE user.IsInstructor);
+                                                     return (("Everybody", everybody)
+                                                                 :: ("TAs", tas)
+                                                                 :: ("Profs", profs)
+                                                                 :: [])
+                                                 end
 
                                              type filter = int
                                              val allFilters = List.mapQuery (SELECT pset.PsetNum

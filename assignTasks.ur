@@ -9,7 +9,7 @@ functor Make(M : sig
                  val inj_assignable : $(map sql_injectable_prim assignable)
 
                  table assignments : (assignable ++ [assigned = string])
-                 val eligibleAssignees : transaction (list string)
+                 val eligibleAssignees : transaction (list (string * list string))
 
                  type filter
                  val allFilters : transaction (list filter)
@@ -85,7 +85,7 @@ functor Make(M : sig
 
     structure MakeAssignments = struct
         type a = {AllFilters : list filter,
-                  Eligible : list string,
+                  Eligible : list (string * list string),
                   Filter : source string,
                   Assignables : source (list ($assignable * source string)),
                   RandomAssignees : source (option (list (string * source bool)))}
@@ -140,10 +140,13 @@ functor Make(M : sig
                                                               None => <xml>
                                                                 <button class="btn"
                                                                         onclick={fn _ =>
-                                                                                    us <- List.mapM (fn u =>
-                                                                                                        sel <- source False;
-                                                                                                        return (u, sel)) a.Eligible;
-                                                                                    set a.RandomAssignees (Some us)}>
+                                                                                    case a.Eligible of
+                                                                                        [] => error <xml>AssignTasks: no eligibility categories</xml>
+                                                                                      | (_, ls) :: _ =>
+                                                                                        us <- List.mapM (fn u =>
+                                                                                                            sel <- source False;
+                                                                                                            return (u, sel)) ls;
+                                                                                        set a.RandomAssignees (Some us)}>
                                                                   <span class="glyphicon glyphicon-menu-down"/> Random Assignment
                                                                 </button>
                                                               </xml>
@@ -152,6 +155,18 @@ functor Make(M : sig
                                                                         onclick={fn _ => set a.RandomAssignees None}>
                                                                   <span class="glyphicon glyphicon-menu-up"/> Close
                                                                 </button>
+
+                                                                <button class="btn"
+                                                                        onclick={fn _ => List.app (fn (_, sel) => set sel False) ls}>
+                                                                  Nobody
+                                                                </button>
+
+                                                                {List.mapX (fn (nm, ls') => <xml>
+                                                                  <button class="btn"
+                                                                          onclick={fn _ => List.app (fn (u, sel) => set sel (List.mem u ls')) ls}>
+                                                                    {[nm]}
+                                                                  </button>
+                                                                </xml>) a.Eligible}
 
                                                                 <button class="btn btn-default"
                                                                         onclick={fn _ => 
@@ -189,7 +204,9 @@ functor Make(M : sig
                                                         "" => rpc (remove k)
                                                       | _ => rpc (assign k u)}>
                                <coption/>
-                               {List.mapX (fn usr => <xml><coption>{[usr]}</coption></xml>) a.Eligible}
+                               {List.mapX (fn usr => <xml><coption>{[usr]}</coption></xml>) (case a.Eligible of
+                                                                                                 [] => error <xml>AssignTasks: no eligibility categories</xml>
+                                                                                               | (_, ls) :: _ => ls)}
                              </cselect></td>
                            </tr>
                          </xml>) asbls)}/>
