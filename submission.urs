@@ -49,6 +49,8 @@ functor Make(M : sig
     (* List latest upload for each user who has made at least one, with link to view it.
      * Passed a function to generate some extra content for each row (username). *)
 
+    structure AllFiles : Ui.S where type input = {Key : $M.key, User : string}
+
     con others :: {Type}
     con ukey = M.ukey
     constraint others ~ (M.key ++ [ukey = string])

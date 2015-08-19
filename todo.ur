@@ -3,7 +3,7 @@ open Bootstrap3
 type tag (t :: Type) =
      {Label : string,
       Eq : eq t,
-      Show : show t}
+      Render : t -> option string -> xbody}
 
 type t (keys :: {Type}) (tags :: {Type}) =
      [[Assignee, Due, Done, Kind] ~ keys]
@@ -56,7 +56,7 @@ functor WithDueDate(M : sig
                         table users : ([ukey = string] ++ uother)
                         val eqs : $(map eq key)
                         val title : string
-                        val sh : show $key
+                        val render : $key -> string -> xbody
                         val ucond : sql_exp [Users = [ukey = string] ++ uother] [] [] bool
                     end) = struct
     open M
@@ -101,7 +101,10 @@ functor WithDueDate(M : sig
                                                                sql_window (SQL NULL) : expw (option t))
                                                            flo primo}))
       {Eq = @@Record.eq [key] eqs fl,
-       Show = sh,
+       Render = fn r u =>
+                   case u of
+                       None => error <xml>Todo: impossible lack of user</xml>
+                     | Some u => render r u,
        Label = title}
 end
 
@@ -170,8 +173,8 @@ functor Make(M : sig
               <td>{[r.Due]}</td>
               <td>{[r.Assignee]}</td>
               <td>{[r.Done]}</td>
-              <td>{[@Record.select [tag] [ident] fl
-                     (fn [p] (t : tag p) => @show t.Show) t.Tags r.Tag]}</td>
+              <td>{@Record.select [tag] [ident] fl
+                    (fn [p] (t : tag p) (x : p) => t.Render x r.Assignee) t.Tags r.Tag}</td>
             </tr></xml>) a}
           </table>
         </xml>

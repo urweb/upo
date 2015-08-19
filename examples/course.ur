@@ -132,7 +132,9 @@ structure PsetGrade = Review.Make(struct
 
 fun psetGrades n u =
     Ui.simple ("Grading Pset #" ^ show n ^ ", " ^ u)
-    (PsetGrade.One.ui {PsetNum = n, Student = u})
+    (Ui.seq
+         (PsetSub.AllFiles.ui {Key = {PsetNum = n}, User = u},
+          PsetGrade.One.ui {PsetNum = n, Student = u}))
 
 table psetAssignedGrader : { PsetNum : int, Student : string, Grader : string }
   PRIMARY KEY (PsetNum, Student, Grader),
@@ -230,11 +232,14 @@ structure PsetCal = Calendar.FromTable(struct
 structure PsetTodo = Todo.WithDueDate(struct
                                           con tag = #Pset
                                           con due = #Due
+                                          con key = [PsetNum = int]
                                           val items = pset
                                           val done = PsetSub.submission
                                           val users = user
                                           val title = "Pset"
                                           val ucond = (WHERE Users.IsStudent)
+
+                                          fun render r u = <xml><a link={psetGrades r.PsetNum u}>{[r]}</a></xml>
                                       end)
 
 table exam : { ExamNum : int, When : time }

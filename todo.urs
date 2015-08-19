@@ -29,7 +29,7 @@ functor WithDueDate(M : sig
                         table users : ([ukey = string] ++ uother)
                         val eqs : $(map eq key)
                         val title : string
-                        val sh : show $key
+                        val render : $key -> string (* username *) -> xbody
                         val ucond : sql_exp [Users = [ukey = string] ++ uother] [] [] bool
                     end) : sig
     con private

@@ -86,3 +86,9 @@ div.Calendar_item {
     border-style: solid;
     padding: 10px;
 }
+
+.PsetSub_file {
+    width: 100%;
+    border-style: solid
+    padding: 10px;
+}

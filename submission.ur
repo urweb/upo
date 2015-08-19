@@ -124,9 +124,10 @@ functor Make(M : sig
                 </xml>
                 <xml>Submit</xml>)
 
+
     fun latests f k =
         let
-            fun retrieve u =
+            fun retrieveLatest u =
                 b <- mayInspect;
                 if not b then
                     error <xml>Submission: not authorized to retrieve submissions</xml>
@@ -155,7 +156,7 @@ functor Make(M : sig
                                    WHERE {@@Sql.easy_where [#Submission] [key] [_] [_] [_] [_] ! ! keyInj' keyFl k}
                                    ORDER BY submission.{ukey})
                                   (fn r => <xml>
-                                    <li><a link={retrieve r.ukey}>{[r.ukey]}</a> {f r.ukey}</li>
+                                    <li><a link={retrieveLatest r.ukey}>{[r.ukey]}</a> {f r.ukey}</li>
                                   </xml>);
                     return <xml>
                       <ul>
@@ -165,4 +166,57 @@ functor Make(M : sig
         in
             rpc listLatest
         end
+
+    style file
+
+    structure AllFiles = struct
+        type a = _
+        type input = _
+
+        fun create {Key = k, User = u} =
+            ls <- queryL1 (SELECT submission.Filename, submission.When
+                           FROM submission
+                           WHERE {@@Sql.easy_where [#Submission] [key] [_] [_] [_] [_] ! ! keyInj' keyFl k}
+                             AND submission.{ukey} = {[u]}
+                           ORDER BY submission.When);
+            return {Key = k,
+                    User = u,
+                    Files = ls}
+
+        fun onload _ = return ()
+
+        fun retrieve k u wh =
+            b <- mayInspect;
+            if not b then
+                error <xml>Submission: not authorized to retrieve submissions</xml>
+            else
+                r <- oneRow1 (SELECT submission.Content, submission.MimeType
+                              FROM submission
+                              WHERE {@@Sql.easy_where [#Submission] [[ukey = _] ++ key] [_] [_] [_] [_] ! !
+                                ({ukey = _} ++ keyInj')
+                                (@Folder.cons [ukey] [_] ! keyFl) (k ++ {ukey = u})}
+                                AND submission.When = {[wh]}
+                              LIMIT 1);
+                case checkMime r.MimeType of
+                    None => error <xml>Submission: bad MIME type on retrieve</xml>
+                  | Some mt =>
+                    setHeader (blessResponseHeader "Content-Disposition")
+                              ("attachment; filename=" ^ makeFilename k u);
+                    returnBlob r.Content mt
+
+        fun render _ me = <xml><div class="file">
+          <h2>Submissions</h2>
+
+          <table class="bs3-table table-striped">
+            {List.mapX (fn r => <xml><tr>
+              <td>{[r.When]}</td>
+              <td><a link={retrieve me.Key me.User r.When}><tt>{[r.Filename]}</tt></a></td>
+            </tr></xml>) me.Files}
+            </table>
+        </div></xml>
+
+        fun ui x = {Create = create x,
+                    Onload = onload,
+                    Render = render}
+    end
 end
