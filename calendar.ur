@@ -38,17 +38,6 @@ type t (keys :: {Type}) (tags :: {(Type * Type)}) =
                    => $(map option keys) -> option (variant (map fst tags ++ otherTags)),
          Tags : $(map tag tags)}
 
-fun unopt [fs ::: {Type}] (fl : folder fs) (r : $(map option fs)) : option $fs =
-    @foldR [option] [fn r => option $r]
-    (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (x : option t) (acc : option $r) =>
-        case x of
-            None => None
-          | Some x =>
-            case acc of
-                None => None
-              | Some acc => Some ({nm = x} ++ acc))
-    (Some {}) fl r
-
 fun create [tag :: Name] [key] [widget] [[When, Kind] ~ key] (fl : folder key)
            (f : otherKeys :: {Type}
                 -> [([When = time, Kind = string] ++ key) ~ otherKeys]
@@ -59,7 +48,7 @@ fun create [tag :: Name] [key] [widget] [[When, Kind] ~ key] (fl : folder key)
     fn [[When, Kind] ~ key] =>
     {Query = f,
      Extract = fn [otherTags ::_] [otherTags ~ [tag = _]] r =>
-                  case @unopt fl r of
+                  case @Sql.unopt fl r of
                       None => None
                     | Some v => Some (make [tag] v),
      Tags = {tag = r}}

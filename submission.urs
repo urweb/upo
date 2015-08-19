@@ -48,4 +48,9 @@ functor Make(M : sig
     val latests : (string -> xbody) -> $M.key -> transaction xbody
     (* List latest upload for each user who has made at least one, with link to view it.
      * Passed a function to generate some extra content for each row (username). *)
+
+    con others :: {Type}
+    con ukey = M.ukey
+    constraint others ~ (M.key ++ [ukey = string])
+    table submission : (M.key ++ [ukey = string] ++ others)
 end

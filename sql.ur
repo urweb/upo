@@ -130,3 +130,14 @@ fun unnull [fs] (fl : folder fs) (r : $(map option fs)) : option $fs =
             (Some v, Some acc) => Some ({nm = v} ++ acc)
           | _ => None)
     (Some {}) fl r
+
+fun unopt [fs ::: {Type}] (fl : folder fs) (r : $(map option fs)) : option $fs =
+    @foldR [option] [fn r => option $r]
+    (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (x : option t) (acc : option $r) =>
+        case x of
+            None => None
+          | Some x =>
+            case acc of
+                None => None
+              | Some acc => Some ({nm = x} ++ acc))
+    (Some {}) fl r

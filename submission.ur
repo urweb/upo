@@ -42,6 +42,13 @@ functor Make(M : sig
 
     open M
 
+    con others = map fst fs ++ [Filename = option string, Content = blob, MimeType = string, When = time]
+    constraint others ~ (key ++ [ukey = string])
+    con submission_hidden_constraints = [Pkey = [ukey, When] ++ map (fn _ => ()) key,
+                                         Key = [],
+                                         User = []]
+    con lame :: {{Unit}} = []
+    constraint lame ~ submission_hidden_constraints
     table submission : (key ++ [ukey = string] ++ map fst fs
                             ++ [Filename = option string, Content = blob, MimeType = string, When = time])
       PRIMARY KEY {{@primary_key [ukey] [key ++ [When = time]] ! ! (_ ++ keyInj)}},
@@ -158,5 +165,4 @@ functor Make(M : sig
         in
             rpc listLatest
         end
-
 end

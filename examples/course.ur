@@ -227,6 +227,16 @@ structure PsetCal = Calendar.FromTable(struct
                                            val auth = profOnly
                                        end)
 
+structure PsetTodo = Todo.WithDueDate(struct
+                                          con tag = #Pset
+                                          con due = #Due
+                                          val items = pset
+                                          val done = PsetSub.submission
+                                          val users = user
+                                          val title = "Pset"
+                                          val ucond = (WHERE Users.IsStudent)
+                                      end)
+
 table exam : { ExamNum : int, When : time }
   PRIMARY KEY ExamNum
 
@@ -275,10 +285,6 @@ structure MeetingCal = Calendar.FromTable(struct
                                            val auth = profPrivate
                                        end)
 
-val cal = MeetingCal.cal
-              |> Calendar.compose ExamCal.cal
-              |> Calendar.compose PsetCal.cal
-
 structure EditUsers = EditableTable.Make(struct
                                              val tab = user
                                              val labels = {User = "Username",
@@ -293,8 +299,14 @@ structure EditUsers = EditableTable.Make(struct
                                          end)
 
 structure Cal = Calendar.Make(struct
-                                  val t = cal
+                                  val t = MeetingCal.cal
+                                              |> Calendar.compose ExamCal.cal
+                                              |> Calendar.compose PsetCal.cal
                               end)
+
+structure Tod = Todo.Make(struct
+                              val t = PsetTodo.todo
+                          end)
 
 val admin =
     requireInstructor;
@@ -305,6 +317,8 @@ val admin =
                (Some "Calendar",
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
                         ToDay = readError "09/01/15 00:00:00"}),
+               (Some "Global TODO",
+                Tod.AllUsers.ui),
                (Some "Assign Pset Grading",
                 PsetGraders.MakeAssignments.ui))
 
