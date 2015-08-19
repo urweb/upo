@@ -284,9 +284,19 @@ functor Make(M : sig
             </tr>
 
             {List.mapX (fn r : todo tags => <xml><tr>
-              <td>{@Record.select [tag] [ident] fl
-                    (fn [p] (t : tag p) (x : p) => t.Render x r.Assignee) t.Tags r.Tag}</td>
-              <td>{[r.Due]}</td>
+              <td>{let
+                       val x = @Record.select [tag] [ident] fl
+                                (fn [p] (t : tag p) (x : p) => t.Render x r.Assignee) t.Tags r.Tag
+                   in
+                       if Option.isSome r.Assignee && r.Done <> Some True then
+                           <xml><b>{x}</b></xml>
+                       else
+                           x
+                   end}</td>
+              <td>{if Option.isSome r.Assignee && r.Done <> Some True then
+                       <xml><b>{[r.Due]}</b></xml>
+                   else
+                       <xml>{[r.Due]}</xml>}</td>
               <td>{case r.Done of
                        Some True => <xml><span class="glyphicon glyphicon-ok"/></xml>
                      | _ => <xml></xml>}</td>
