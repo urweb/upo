@@ -5,6 +5,7 @@ con t :: {Type}    (* Dictionary of all key fields used across all sources of ev
          -> {Type} (* Mapping user-meaningful tags (for event kinds) to associated data *)
          -> Type
 
+(* Every user in a certain set must submit something associated with every row of a certain table. *)
 functor WithDueDate(M : sig
                         con tag :: Name
                         con key :: {Type}
@@ -21,17 +22,51 @@ functor WithDueDate(M : sig
                         constraint [ukey] ~ uother
                         constraint [Assignee, Due, Done, Kind] ~ key
                         val fl : folder key
-                        val flO : folder other
                         val inj : $(map sql_injectable_prim key)
-                        val injO : $(map sql_injectable_prim other)
+
                         table items : (key ++ [due = time] ++ other)
+                        (* The set of items that must be done *)
                         table done : (key ++ [user = string] ++ dother)
+                        (* Recording which users have done which items *)
                         table users : ([ukey = string] ++ uother)
-                        val eqs : $(map eq key)
+                        (* Full set of users *)
+                        val ucond : sql_exp [Users = [ukey = string] ++ uother] [] [] bool
+                        (* Condition to narrow down to the ones who need to do these items *)
+
                         val title : string
                         val render : $key -> string (* username *) -> xbody
-                        val ucond : sql_exp [Users = [ukey = string] ++ uother] [] [] bool
+
                     end) : sig
+    con private
+    con tag = M.tag
+    val todo : t M.key [tag = private]
+end
+
+(* Every user in a certain set should be aware of the contents of a certain table, interpreted as todos. *)
+functor Happenings(M : sig
+                       con tag :: Name
+                       con key :: {Type}
+                       con when :: Name
+                       con other :: {Type}
+                       con ukey :: Name
+                       con uother :: {Type}
+                       constraint key ~ other
+                       constraint [when] ~ (key ++ other)
+                       constraint [ukey] ~ uother
+                       constraint [Assignee, Due, Done, Kind] ~ key
+                       val fl : folder key
+                       val inj : $(map sql_injectable_prim key)
+
+                       table items : (key ++ [when = time] ++ other)
+                       (* The set of items that must be done *)
+                       table users : ([ukey = string] ++ uother)
+                       (* Full set of users *)
+                       val ucond : sql_exp [Users = [ukey = string] ++ uother] [] [] bool
+                       (* Condition to narrow down to the ones who need to do these items *)
+
+                       val title : string
+                       val render : $key -> xbody
+                   end) : sig
     con private
     con tag = M.tag
     val todo : t M.key [tag = private]

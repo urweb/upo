@@ -131,6 +131,7 @@ structure PsetGrade = Review.Make(struct
                                   end)
 
 fun psetGrades n u =
+    requireStaff;
     Ui.simple ("Grading Pset #" ^ show n ^ ", " ^ u)
     (Ui.seq
          (PsetSub.AllFiles.ui {Key = {PsetNum = n}, User = u},
@@ -266,6 +267,17 @@ structure ExamCal = Calendar.FromTable(struct
                                            val auth = profOnly
                                        end)
 
+structure ExamTodo = Todo.Happenings(struct
+                                         con tag = #Exam
+                                         con key = [ExamNum = _]
+                                         con when = #When
+                                         val items = exam
+                                         val users = user
+                                         val ucond = (WHERE Users.IsStudent)
+                                         val title = "Exam"
+                                         fun render r = <xml>{[r]}</xml>
+                                     end)
+
 table staffMeeting : { MeetingNum : int, When : time }
   PRIMARY KEY MeetingNum
 
@@ -309,9 +321,10 @@ structure Cal = Calendar.Make(struct
                                               |> Calendar.compose PsetCal.cal
                               end)
 
-structure Tod = Todo.Make(struct
-                              val t = PsetTodo.todo
-                          end)
+structure ProfTod = Todo.Make(struct
+                                  val t = PsetTodo.todo
+                                              |> Todo.compose ExamTodo.todo
+                              end)
 
 val admin =
     requireInstructor;
@@ -323,7 +336,7 @@ val admin =
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
                         ToDay = readError "09/01/15 00:00:00"}),
                (Some "Global TODO",
-                Tod.AllUsers.ui),
+                ProfTod.AllUsers.ui),
                (Some "Assign Pset Grading",
                 PsetGraders.MakeAssignments.ui))
 
@@ -335,11 +348,22 @@ val staff =
                     Cal.ui {FromDay = readError "06/01/15 00:00:00",
                             ToDay = readError "09/01/15 00:00:00"})}
 
+structure StudentTod = Todo.Make(struct
+                                     val t = PsetTodo.todo
+                                                 |> Todo.compose ExamTodo.todo
+                                 end)
+
 val main =
+    c <- getCookie userC;
+    u <- return (case c of
+                     None => ""
+                   | Some u => u);
     Ui.tabbed "Course Home Page"
-              {1 = (Some "Calendar",
-                    Cal.ui {FromDay = readError "06/01/15 00:00:00",
-                            ToDay = readError "09/01/15 00:00:00"})}
+              ((Some "TODO",
+                StudentTod.OneUser.ui u),
+               (Some "Calendar",
+                Cal.ui {FromDay = readError "06/01/15 00:00:00",
+                        ToDay = readError "09/01/15 00:00:00"}))
 
 fun setIt v =
     setCookie userC {Value = v,
