@@ -108,6 +108,106 @@ functor WithDueDate(M : sig
        Label = title}
 end
 
+functor WithForeignDueDate(M : sig
+                               con tag :: Name
+                               con key :: {Type}
+                               con subkey :: {Type}
+                               con due :: Name
+                               con other :: {Type}
+                               con pother :: {Type}
+                               con user :: Name
+                               con dother :: {Type}
+                               con ukey :: Name
+                               con uother :: {Type}
+                               constraint key ~ other
+                               constraint key ~ dother
+                               constraint key ~ pother
+                               constraint (key ++ other) ~ subkey
+                               constraint [due] ~ (key ++ pother)
+                               constraint [user] ~ (key ++ dother)
+                               constraint [user] ~ other
+                               constraint [ukey] ~ uother
+                               constraint subkey ~ dother
+                               constraint subkey ~ [user]
+                               constraint [Assignee, Due, Done, Kind] ~ (key ++ subkey)
+                               constraint [user] ~ (key ++ subkey)
+                               val fl : folder key
+                               val sfl : folder subkey
+                               val inj : $(map sql_injectable_prim key)
+                               val sinj : $(map sql_injectable_prim subkey)
+
+                               table items : (key ++ [user = string] ++ subkey ++ other)
+                               (* The set of items that must be done *)
+                               table parent : (key ++ [due = time] ++ pother)
+                               (* Look here for due dates. *)
+                               table done : (key ++ subkey ++ [user = string] ++ dother)
+                               (* Recording which users have done which items *)
+                               table users : ([ukey = string] ++ uother)
+                               (* Full set of users *)
+                               val ucond : sql_exp [Users = [ukey = string] ++ uother] [] [] bool
+                               (* Condition to narrow down to the ones who need to do these items *)
+
+                               val title : string
+                               val render : $(key ++ subkey) -> string (* username *) -> xbody
+                    end) = struct
+    open M
+
+    con private = $(key ++ subkey)
+
+    type window_env = [Items = key ++ [user = string] ++ subkey ++ other,
+                       Parent = key ++ [due = time] ++ pother,
+                       Users = [ukey = string] ++ uother]
+
+    con expw = sql_expw window_env window_env []
+    con exp = sql_exp window_env window_env []
+
+    val todo : t (key ++ subkey) [tag = private] =
+        @@create [tag] [key ++ subkey] ! (@Folder.concat ! fl sfl)
+        (fn [otherKeys :: {Type}] [([Assignee = option string, Due = option time, Done = option bool, Kind = string] ++ key ++ subkey) ~ otherKeys]
+            (flo : folder otherKeys)
+            (primo : $(map sql_injectable_prim otherKeys)) uo =>
+            sql_forget_tables (sql_query1 [[Items, Parent, Users]]
+                                          {Distinct = False,
+                                           From = (FROM items, parent, users),
+                                           Where = let
+                                               val base = (WHERE {sql_exp_weaken ucond}
+                                                             AND {@@Sql.easy_join [#Parent] [#Items] [key] [_] [_] [_] [_] [_] ! ! ! ! fl}
+                                                             AND users.{ukey} = items.{user})
+                                           in
+                                               case uo of
+                                                   None => base
+                                                 | Some u => (WHERE users.{ukey} = {[u]}
+                                                                AND {base})
+                                           end,
+                                           GroupBy = sql_subset_all [_],
+                                           Having = (WHERE TRUE),
+                                           SelectFields = sql_subset [[Items = ([], _), Parent = ([], _), Users = ([], _)]],
+                                           SelectExps = {Assignee = (sql_window (sql_nullable (SQL users.{ukey})) : expw (option string)),
+                                                         Due = (sql_window (sql_nullable (SQL parent.{due})) : expw (option time)),
+                                                         Done = (sql_window (SQL (SELECT COUNT( * ) > 0
+                                                                                  FROM done
+                                                                                  WHERE done.{user} = users.{ukey}
+                                                                                    AND {@@Sql.easy_join [#Done] [#Items] [key ++ subkey] [_] [_] [_] [_] [_] ! ! ! ! (@Folder.concat ! fl sfl)}))
+                                                                 : expw (option bool)),
+                                                         Kind = (sql_window (SQL {[title]}) : expw string)}
+                                                         ++ @map2 [sql_injectable_prim] [exp] [fn t => expw (option t)]
+                                                           (fn [t] prim e => sql_window (@sql_nullable prim e) : expw (option t))
+                                                           (@Folder.concat ! fl sfl) (inj ++ sinj)
+                                                           (@@Sql.some_fields [#Items] [key ++ subkey] [[user = _] ++ other]
+                                                              [[Parent = key ++ [due = time] ++ pother,
+                                                                Users = [ukey = string] ++ uother]] [window_env] [[]] ! ! (@Folder.concat ! fl sfl))
+                                                         ++ @mp [sql_injectable_prim]
+                                                           [fn t => expw (option t)]
+                                                           (fn [t] (pr : sql_injectable_prim t) =>
+                                                               sql_window (SQL NULL) : expw (option t))
+                                                           flo primo}))
+      {Render = fn r u =>
+                   case u of
+                       None => error <xml>Todo: impossible lack of user [3]</xml>
+                     | Some u => render r u,
+       Label = title}
+end
+
 functor Happenings(M : sig
                        con tag :: Name
                        con key :: {Type}

@@ -42,6 +42,54 @@ functor WithDueDate(M : sig
     val todo : t M.key [tag = private]
 end
 
+(* Like above, but we need to follow a foreign-key link to find the due date. *)
+functor WithForeignDueDate(M : sig
+                               con tag :: Name
+                               con key :: {Type}
+                               con due :: Name
+                               con other :: {Type}
+                               con subkey :: {Type}
+                               con pother :: {Type}
+                               con user :: Name
+                               con dother :: {Type}
+                               con ukey :: Name
+                               con uother :: {Type}
+                               constraint key ~ other
+                               constraint key ~ dother
+                               constraint key ~ pother
+                               constraint (key ++ other) ~ subkey
+                               constraint [due] ~ (key ++ pother)
+                               constraint [user] ~ (key ++ dother)
+                               constraint [user] ~ other
+                               constraint [ukey] ~ uother
+                               constraint subkey ~ dother
+                               constraint subkey ~ [user]
+                               constraint [Assignee, Due, Done, Kind] ~ (key ++ subkey)
+                               constraint [user] ~ (key ++ subkey)
+                               val fl : folder key
+                               val sfl : folder subkey
+                               val inj : $(map sql_injectable_prim key)
+                               val sinj : $(map sql_injectable_prim subkey)
+
+                               table items : (key ++ [user = string] ++ subkey ++ other)
+                               (* The set of items that must be done *)
+                               table parent : (key ++ [due = time] ++ pother)
+                               (* Look here for due dates. *)
+                               table done : (key ++ subkey ++ [user = string] ++ dother)
+                               (* Recording which users have done which items *)
+                               table users : ([ukey = string] ++ uother)
+                               (* Full set of users *)
+                               val ucond : sql_exp [Users = [ukey = string] ++ uother] [] [] bool
+                               (* Condition to narrow down to the ones who need to do these items *)
+
+                               val title : string
+                               val render : $(key ++ subkey) -> string (* username *) -> xbody
+                           end) : sig
+    con private
+    con tag = M.tag
+    val todo : t (M.key ++ M.subkey) [tag = private]
+end
+
 (* Every user in a certain set should be aware of the contents of a certain table, interpreted as todos. *)
 functor Happenings(M : sig
                        con tag :: Name

@@ -63,6 +63,16 @@ val requireStaff =
     else
         error <xml>Access denied</xml>
 
+val getStaff =
+    isStaff <- amStaff;
+    if isStaff then
+        u <- getCookie userC;
+        case u of
+            None => error <xml>!</xml>
+          | Some u => return u
+    else
+        error <xml>Access denied</xml>
+
 val amUser = user <- auth; return (Some {User = user})
 
 val instructorPermission =
@@ -85,7 +95,7 @@ val profPrivate =
             else
                 Calendar.Forbidden)
 
-table pset : { PsetNum : int, Released : time, Due : time, Instructions : string }
+table pset : { PsetNum : int, Released : time, Due : time, GradesDue : time, Instructions : string }
   PRIMARY KEY PsetNum
 
 val psetShow = mkShow (fn {PsetNum = n : int} => "Pset " ^ show n)
@@ -186,6 +196,7 @@ structure PsetCal = Calendar.FromTable(struct
                                            val labels = {PsetNum = "Pset#",
                                                          Released = "Released",
                                                          Due = "Due",
+                                                         GradesDue = "Grades due",
                                                          Instructions = "Instructions"}
                                            val kinds = {Released = "released",
                                                         Due = "due"}
@@ -321,9 +332,27 @@ structure Cal = Calendar.Make(struct
                                               |> Calendar.compose PsetCal.cal
                               end)
 
+structure PsetGradingTodo = Todo.WithForeignDueDate(struct
+                                                        con tag = #GradePset
+                                                        con key = [PsetNum = _]
+                                                        con subkey = [Student = _]
+                                                        con due = #GradesDue
+                                                        con user = #Grader
+                                                        con ukey = #User
+
+                                                        val items = psetAssignedGrader
+                                                        val parent = pset
+                                                        val done = psetGrade
+                                                        val users = user
+                                                        val ucond = (WHERE TRUE)
+
+                                                        val title = "Pset Grading"
+                                                        fun render r _ = <xml><a link={psetGrades r.PsetNum r.Student}>Grade Pset #{[r.PsetNum]}, {[r.Student]}</a></xml>
+                                                    end)
+
 structure ProfTod = Todo.Make(struct
-                                  val t = PsetTodo.todo
-                                              |> Todo.compose ExamTodo.todo
+                                  val t = ExamTodo.todo
+                                              |> Todo.compose PsetGradingTodo.todo
                               end)
 
 val admin =
@@ -340,13 +369,32 @@ val admin =
                (Some "Assign Pset Grading",
                 PsetGraders.MakeAssignments.ui))
 
+structure StaffMeetingTodo = Todo.Happenings(struct
+                                                 con tag = #StaffMeeting
+                                                 con key = [MeetingNum = _]
+                                                 con when = #When
+                                                 val items = staffMeeting
+                                                 val users = user
+                                                 val ucond = (WHERE Users.IsStaff)
+                                                 val title = "Staff Meeting"
+                                                 fun render r = <xml>{[r]}</xml>
+                                             end)
+
+structure StaffTod = Todo.Make(struct
+                                   val t = PsetGradingTodo.todo
+                                               |> Todo.compose ExamTodo.todo
+                                               |> Todo.compose StaffMeetingTodo.todo
+                               end)
+
 val staff =
-    requireStaff;
+    u <- getStaff;
 
     Ui.tabbed "Staff Dashboard"
-              {1 = (Some "Calendar",
-                    Cal.ui {FromDay = readError "06/01/15 00:00:00",
-                            ToDay = readError "09/01/15 00:00:00"})}
+              ((Some "TODO",
+                StaffTod.OneUser.ui u),
+               (Some "Calendar",
+                Cal.ui {FromDay = readError "06/01/15 00:00:00",
+                        ToDay = readError "09/01/15 00:00:00"}))
 
 structure StudentTod = Todo.Make(struct
                                      val t = PsetTodo.todo
