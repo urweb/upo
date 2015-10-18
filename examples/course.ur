@@ -121,18 +121,18 @@ fun getPset id =
              FROM pset
              WHERE pset.PsetNum = {[id]})
 
-table psetGrade : { PsetNum : int, Student : string, Grader : string, When : time, Grade : int, Comment : string }
-  PRIMARY KEY (PsetNum, Student, Grader, When),
+table psetGrade : { PsetNum : int, PsetStudent : string, Grader : string, When : time, Grade : int, Comment : string }
+  PRIMARY KEY (PsetNum, PsetStudent, Grader, When),
   CONSTRAINT PsetNum FOREIGN KEY PsetNum REFERENCES pset(PsetNum) ON UPDATE CASCADE,
-  CONSTRAINT Student FOREIGN KEY Student REFERENCES user(User) ON UPDATE CASCADE,
+  CONSTRAINT Student FOREIGN KEY PsetStudent REFERENCES user(User) ON UPDATE CASCADE,
   CONSTRAINT Grader FOREIGN KEY Grader REFERENCES user(User) ON UPDATE CASCADE
 
-val psetGradeShow : show {PsetNum : int, Student : string}
-  = mkShow (fn r => "#" ^ show r.PsetNum ^ ", " ^ r.Student)
+val psetGradeShow : show {PsetNum : int, PsetStudent : string}
+  = mkShow (fn r => "#" ^ show r.PsetNum ^ ", " ^ r.PsetStudent)
 
 structure PsetGrade = Review.Make(struct
                                       con reviewer = #Grader
-                                      con reviewed = [PsetNum = _, Student = _]
+                                      con reviewed = [PsetNum = _, PsetStudent = _]
                                       val tab = psetGrade
                                       val labels = {Grade = "Grade",
                                                     Comment = "Comment"}
@@ -170,18 +170,18 @@ fun psetGrades n u =
     Ui.simple ("Grading Pset #" ^ show n ^ ", " ^ u)
     (Ui.seq
          (PsetSub.AllFiles.ui {Key = {PsetNum = n}, User = u},
-          PsetGrade.One.ui {PsetNum = n, Student = u}))
+          PsetGrade.One.ui {PsetNum = n, PsetStudent = u}))
 
-table psetAssignedGrader : { PsetNum : int, Student : string, Grader : string }
-  PRIMARY KEY (PsetNum, Student, Grader),
+table psetAssignedGrader : { PsetNum : int, PsetStudent : string, Grader : string }
+  PRIMARY KEY (PsetNum, PsetStudent, Grader),
   CONSTRAINT PsetNum FOREIGN KEY PsetNum REFERENCES pset(PsetNum) ON UPDATE CASCADE,
-  CONSTRAINT Student FOREIGN KEY Student REFERENCES user(User) ON UPDATE CASCADE,
+  CONSTRAINT Student FOREIGN KEY PsetStudent REFERENCES user(User) ON UPDATE CASCADE,
   CONSTRAINT Grader FOREIGN KEY Grader REFERENCES user(User) ON UPDATE CASCADE
 
 structure PsetGraders = AssignTasks.Make(struct
-                                             con assignable = [PsetNum = int, Student = string]
+                                             con assignable = [PsetNum = int, PsetStudent = string]
                                              con assigned = #Grader
-                                             val show_assignable = mkShow (fn r => "#" ^ show r.PsetNum ^ "/" ^ r.Student)
+                                             val show_assignable = mkShow (fn r => "#" ^ show r.PsetNum ^ "/" ^ r.PsetStudent)
                                              val assignments = psetAssignedGrader
                                              val eligibleAssignees =
                                                  let
@@ -206,7 +206,7 @@ structure PsetGraders = AssignTasks.Make(struct
                                                                              FROM pset
                                                                              ORDER BY pset.PsetNum)
                                                                             (fn r => r.Pset.PsetNum)
-                                             fun filter n = (SELECT {[n]} AS PsetNum, user.User AS Student
+                                             fun filter n = (SELECT {[n]} AS PsetNum, user.User AS PsetStudent
                                                              FROM user
                                                              WHERE user.IsStudent
                                                              ORDER BY user.User)
@@ -279,13 +279,32 @@ structure PsetTodo = Todo.WithDueDate(struct
                                           fun render r u = <xml><a link={psetGrades r.PsetNum u}>{[r]}</a></xml>
                                       end)
 
-table exam : { ExamNum : int, When : time }
+table exam : { ExamNum : int, When : time, GradesDue : time }
   PRIMARY KEY ExamNum
 
 val examShow = mkShow (fn {ExamNum = n : int} => "Exam " ^ show n)
 val examRead = mkRead' (fn s => case read s : option int of
                                     None => None
                                   | Some n => Some {ExamNum = n}) "exam"
+
+table examGrade : { ExamNum : int, ExamStudent : string, Grader : string, When : time, Grade : int, Comment : string }
+  PRIMARY KEY (ExamNum, ExamStudent, Grader, When),
+  CONSTRAINT ExamNum FOREIGN KEY ExamNum REFERENCES exam(ExamNum) ON UPDATE CASCADE,
+  CONSTRAINT Student FOREIGN KEY ExamStudent REFERENCES user(User) ON UPDATE CASCADE,
+  CONSTRAINT Grader FOREIGN KEY Grader REFERENCES user(User) ON UPDATE CASCADE
+
+val examGradeShow : show {ExamNum : int, ExamStudent : string}
+  = mkShow (fn r => "#" ^ show r.ExamNum ^ ", " ^ r.ExamStudent)
+
+structure ExamGrade = Review.Make(struct
+                                      con reviewer = #Grader
+                                      con reviewed = [ExamNum = _, ExamStudent = _]
+                                      val tab = examGrade
+                                      val labels = {Grade = "Grade",
+                                                    Comment = "Comment"}
+                                      fun summarize r = txt r.Grade
+                                      val whoami = getCookie userC
+                                  end)
 
 structure ExamCal = Calendar.FromTable(struct
                                            con tag = #Exam
@@ -294,7 +313,8 @@ structure ExamCal = Calendar.FromTable(struct
                                            val tab = exam
                                            val title = "Exam"
                                            val labels = {ExamNum = "Exam#",
-                                                         When = "When"}
+                                                         When = "When",
+                                                         GradesDue = "Grades due"}
                                            val kinds = {When = ""}
 
                                            fun display _ r = return (Ui.simpleModal
@@ -313,6 +333,51 @@ structure ExamTodo = Todo.Happenings(struct
                                          val title = "Exam"
                                          fun render r = <xml>{[r]}</xml>
                                      end)
+
+fun examGrades n u =
+    requireStaff;
+    Ui.simple ("Grading Exam #" ^ show n ^ ", " ^ u)
+    (ExamGrade.One.ui {ExamNum = n, ExamStudent = u})
+
+table examAssignedGrader : { ExamNum : int, ExamStudent : string, Grader : string }
+  PRIMARY KEY (ExamNum, ExamStudent, Grader),
+  CONSTRAINT ExamNum FOREIGN KEY ExamNum REFERENCES exam(ExamNum) ON UPDATE CASCADE,
+  CONSTRAINT Student FOREIGN KEY ExamStudent REFERENCES user(User) ON UPDATE CASCADE,
+  CONSTRAINT Grader FOREIGN KEY Grader REFERENCES user(User) ON UPDATE CASCADE
+
+structure ExamGraders = AssignTasks.Make(struct
+                                             con assignable = [ExamNum = int, ExamStudent = string]
+                                             con assigned = #Grader
+                                             val show_assignable = mkShow (fn r => "#" ^ show r.ExamNum ^ "/" ^ r.ExamStudent)
+                                             val assignments = examAssignedGrader
+                                             val eligibleAssignees =
+                                                 let
+                                                     val cat = fn e =>
+                                                         List.mapQuery (SELECT user.User
+                                                                        FROM user
+                                                                        WHERE {e}
+                                                                        ORDER BY user.User)
+                                                                       (fn r => r.User.User)
+                                                 in
+                                                     everybody <- cat (WHERE user.IsStaff);
+                                                     tas <- cat (WHERE user.IsStaff AND NOT user.IsInstructor);
+                                                     profs <- cat (WHERE user.IsInstructor);
+                                                     return (("Everybody", everybody)
+                                                                 :: ("TAs", tas)
+                                                                 :: ("Profs", profs)
+                                                                 :: [])
+                                                 end
+
+                                             type filter = int
+                                             val allFilters = List.mapQuery (SELECT exam.ExamNum
+                                                                             FROM exam
+                                                                             ORDER BY exam.ExamNum)
+                                                                            (fn r => r.Exam.ExamNum)
+                                             fun filter n = (SELECT {[n]} AS ExamNum, user.User AS ExamStudent
+                                                             FROM user
+                                                             WHERE user.IsStudent
+                                                             ORDER BY user.User)
+                                         end)
 
 table staffMeeting : { MeetingNum : int, When : time }
   PRIMARY KEY MeetingNum
@@ -360,7 +425,7 @@ structure Cal = Calendar.Make(struct
 structure PsetGradingTodo = Todo.WithForeignDueDate(struct
                                                         con tag = #GradePset
                                                         con key = [PsetNum = _]
-                                                        con subkey = [Student = _]
+                                                        con subkey = [PsetStudent = _]
                                                         con due = #GradesDue
                                                         con user = #Grader
                                                         con ukey = #User
@@ -372,12 +437,30 @@ structure PsetGradingTodo = Todo.WithForeignDueDate(struct
                                                         val ucond = (WHERE TRUE)
 
                                                         val title = "Pset Grading"
-                                                        fun render r _ = <xml><a link={psetGrades r.PsetNum r.Student}>Grade Pset #{[r.PsetNum]}, {[r.Student]}</a></xml>
+                                                        fun render r _ = <xml><a link={psetGrades r.PsetNum r.PsetStudent}>Grade Pset #{[r.PsetNum]}, {[r.PsetStudent]}</a></xml>
+                                                    end)
+
+structure ExamGradingTodo = Todo.WithForeignDueDate(struct
+                                                        con tag = #GradeExam
+                                                        con key = [ExamNum = _]
+                                                        con subkey = [ExamStudent = _]
+                                                        con due = #GradesDue
+                                                        con user = #Grader
+                                                        con ukey = #User
+
+                                                        val items = examAssignedGrader
+                                                        val parent = exam
+                                                        val done = examGrade
+                                                        val users = user
+                                                        val ucond = (WHERE TRUE)
+
+                                                        val title = "Exam Grading"
+                                                        fun render r _ = <xml><a link={examGrades r.ExamNum r.ExamStudent}>Grade Exam #{[r.ExamNum]}, {[r.ExamStudent]}</a></xml>
                                                     end)
 
 structure ProfTod = Todo.Make(struct
-                                  val t = ExamTodo.todo
-                                              |> Todo.compose PsetGradingTodo.todo
+                                  val t = PsetGradingTodo.todo
+                                              |> Todo.compose ExamGradingTodo.todo
                               end)
 
 val admin =
@@ -392,7 +475,9 @@ val admin =
                (Some "Global TODO",
                 ProfTod.AllUsers.ui),
                (Some "Assign Pset Grading",
-                PsetGraders.MakeAssignments.ui))
+                PsetGraders.MakeAssignments.ui),
+               (Some "Assign Exam Grading",
+                ExamGraders.MakeAssignments.ui))
 
 structure StaffMeetingTodo = Todo.Happenings(struct
                                                  con tag = #StaffMeeting
@@ -407,7 +492,7 @@ structure StaffMeetingTodo = Todo.Happenings(struct
 
 structure StaffTod = Todo.Make(struct
                                    val t = PsetGradingTodo.todo
-                                               |> Todo.compose ExamTodo.todo
+                                               |> Todo.compose ExamGradingTodo.todo
                                                |> Todo.compose StaffMeetingTodo.todo
                                end)
 
@@ -439,6 +524,33 @@ structure StudentTod = Todo.Make(struct
                                                  |> Todo.compose ExamTodo.todo
                                  end)
 
+structure StudentGrades = Grades.OneStudent(struct
+                                                val t = Grades.combine
+                                                            "Overall"
+                                                            ((60,
+                                                              Grades.assignments
+                                                                  [[PsetNum = _]]
+                                                                  [#PsetStudent]
+                                                                  [#When]
+                                                                  [#Grade]
+                                                                  [#User]
+                                                                  "Psets"
+                                                                  pset
+                                                                  user
+                                                                  psetGrade),
+                                                             (40,
+                                                              Grades.assignments
+                                                                  [[ExamNum = _]]
+                                                                  [#ExamStudent]
+                                                                  [#When]
+                                                                  [#Grade]
+                                                                  [#User]
+                                                                  "Exams"
+                                                                  exam
+                                                                  user
+                                                                  examGrade))
+                                            end)
+
 val main =
     c <- getCookie userC;
     u <- return (case c of
@@ -449,7 +561,9 @@ val main =
                 StudentTod.OneUser.ui u),
                (Some "Calendar",
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
-                        ToDay = readError "09/01/15 00:00:00"}))
+                        ToDay = readError "09/01/15 00:00:00"}),
+               (Some "Grades",
+                StudentGrades.ui u))
 
 fun setIt v =
     setCookie userC {Value = v,
