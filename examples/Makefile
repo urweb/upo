@@ -39,6 +39,7 @@ package: visit_production.exe jfac_production.exe
 	cp jfac.sql dist/
 	cp -d ${LIB}/liburweb.so* dist/
 	cp -d ${LIB}/liburweb_fastcgi.so* dist/
+	cp -d ${LIB}/liburweb_ajaxUpload.so* dist/
 	cp Makefile.prod dist/Makefile
 
 production: package
