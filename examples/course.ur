@@ -140,6 +140,31 @@ structure PsetGrade = Review.Make(struct
                                       val whoami = getCookie userC
                                   end)
 
+fun psetInfo n =
+    ps <- getPset n;
+    
+    Ui.simple ("Pset #" ^ show n)
+              (Ui.constM (fn ctx => <xml>
+                <active code={content <- source <xml/>;
+                              set content <xml>
+                                <h2>Pset #{[n]}</h2>
+
+                                {Ui.modalButton ctx
+                                                (CLASS "btn btn-primary")
+                                                <xml>New Submission</xml>
+                                                (PsetSub.newUpload {PsetNum = n})}
+
+                                <hr/>
+
+                                <h2>Instructions</h2>
+
+                                {Widget.html ps.Instructions}
+                              </xml>;
+                              return <xml>
+                                <dyn signal={signal content}/>
+                              </xml>}/>
+               </xml>))
+
 fun psetGrades n u =
     requireStaff;
     Ui.simple ("Grading Pset #" ^ show n ^ ", " ^ u)
@@ -396,8 +421,21 @@ val staff =
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
                         ToDay = readError "09/01/15 00:00:00"}))
 
+structure PsetTodoStudent = Todo.WithDueDate(struct
+                                                 con tag = #Pset
+                                                 con due = #Due
+                                                 con key = [PsetNum = int]
+                                                 val items = pset
+                                                 val done = PsetSub.submission
+                                                 val users = user
+                                                 val title = "Pset"
+                                                 val ucond = (WHERE Users.IsStudent)
+
+                                                 fun render r _ = <xml><a link={psetInfo r.PsetNum}>{[r]}</a></xml>
+                                             end)
+
 structure StudentTod = Todo.Make(struct
-                                     val t = PsetTodo.todo
+                                     val t = PsetTodoStudent.todo
                                                  |> Todo.compose ExamTodo.todo
                                  end)
 
