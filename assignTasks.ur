@@ -74,7 +74,7 @@ functor Make(M : sig
                              in
                                  case ls2 of
                                      [] => error <xml>AssignTasks: No users selected!</xml>
-                                   | u :: ls2 => (u, ls2, [])
+                                   | u :: ls2 => (u, ls2, u :: [])
                              end
                            | u :: ls1 => (u, ls1, u :: ls2)
                  in

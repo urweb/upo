@@ -1,24 +1,37 @@
 (* Extensible calculations of grades or other numeric evaluations assigned to users *)
 
 (* Grade calculation produces trees of categories, bottoming out in atomic assignments. *)
-datatype tree =
-         Atomic of string        (* textual description *)
-                   * option int  (* numeric grade, if set *)
-       | Category of string      (* textual description *)
-                     * int       (* lowest possible grade, depending on outcomes of pending assignments *)
-                     * int       (* highest possible grade *)
-                     * list tree (* constituent grades *)
+datatype single_student =
+         Atomic of string                  (* textual description *)
+                   * option int            (* numeric grade, if set *)
+       | Category of string                (* textual description *)
+                     * int                 (* lowest possible grade, depending on outcomes of pending assignments *)
+                     * int                 (* highest possible grade *)
+                     * list single_student (* constituent grades *)
+
+(* This other perspective gives grades for _all_ students who have completed assignments. *)
+datatype all_students =
+         AAtomic of string                  (* textual description *)
+                    * list (string * int)   (* (sorted) association list mapping student IDs to grades *)
+       | ACategory of string                (* textual description *)
+                      * list (string * int) (* average grades in this category for student IDs *)
+                      * list all_students   (* constituent grades *)
 
 (* Generators of grade entries *)
 type t
 
-(* Compute grades for one student. *)
-val oneStudent : t -> string -> transaction tree
+(* Compute the two views of grades. *)
+val oneStudent : t -> string -> transaction single_student
+val allStudents : t -> transaction all_students
 
-(* And now the functor version, with a UI *)
+(* And now the functor versions, with UIs *)
 functor OneStudent(M : sig
                        val t : t
                    end) : Ui.S where type input = string
+(* And now the functor versions, with UIs *)
+functor AllStudents(M : sig
+                        val t : t
+                    end) : Ui.S0
 
 (* The primitive grades construct: read grades out of a table.
  * This variant accepts, for each student-assignment pair, the grade with the latest timestamp.
@@ -42,6 +55,7 @@ val assignments : aks ::: {{Unit}}
                   => [assignment ~ aother]
                   => [[skey] ~ sother]
                   => show $assignment
+                  -> $(map eq assignment)
                   -> folder assignment
                   -> string                                    (* category label *)
                   -> sql_table (assignment ++ aother) aks      (* assignments *)

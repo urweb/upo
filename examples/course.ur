@@ -496,6 +496,35 @@ structure StaffTod = Todo.Make(struct
                                                |> Todo.compose StaffMeetingTodo.todo
                                end)
 
+structure GradeTree = struct
+    val t = Grades.combine
+                "Overall"
+                ((60,
+                  Grades.assignments
+                      [[PsetNum = _]]
+                      [#PsetStudent]
+                      [#When]
+                      [#Grade]
+                      [#User]
+                      "Psets"
+                      pset
+                      user
+                      psetGrade),
+                 (40,
+                  Grades.assignments
+                      [[ExamNum = _]]
+                      [#ExamStudent]
+                      [#When]
+                      [#Grade]
+                      [#User]
+                      "Exams"
+                      exam
+                      user
+                      examGrade))
+end
+
+structure AllGrades = Grades.AllStudents(GradeTree)
+
 val staff =
     u <- getStaff;
 
@@ -504,7 +533,9 @@ val staff =
                 StaffTod.OneUser.ui u),
                (Some "Calendar",
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
-                        ToDay = readError "09/01/15 00:00:00"}))
+                        ToDay = readError "09/01/15 00:00:00"}),
+               (Some "Grades",
+                AllGrades.ui))
 
 structure PsetTodoStudent = Todo.WithDueDate(struct
                                                  con tag = #Pset
@@ -524,32 +555,7 @@ structure StudentTod = Todo.Make(struct
                                                  |> Todo.compose ExamTodo.todo
                                  end)
 
-structure StudentGrades = Grades.OneStudent(struct
-                                                val t = Grades.combine
-                                                            "Overall"
-                                                            ((60,
-                                                              Grades.assignments
-                                                                  [[PsetNum = _]]
-                                                                  [#PsetStudent]
-                                                                  [#When]
-                                                                  [#Grade]
-                                                                  [#User]
-                                                                  "Psets"
-                                                                  pset
-                                                                  user
-                                                                  psetGrade),
-                                                             (40,
-                                                              Grades.assignments
-                                                                  [[ExamNum = _]]
-                                                                  [#ExamStudent]
-                                                                  [#When]
-                                                                  [#Grade]
-                                                                  [#User]
-                                                                  "Exams"
-                                                                  exam
-                                                                  user
-                                                                  examGrade))
-                                            end)
+structure StudentGrades = Grades.OneStudent(GradeTree)
 
 val main =
     c <- getCookie userC;
