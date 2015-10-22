@@ -9,6 +9,10 @@ datatype single_student =
                      * int                 (* highest possible grade *)
                      * list single_student (* constituent grades *)
 
+(* Minimum and maximum possible grades for a student, considering how unfinished assignments may turn out *)
+val minOf : single_student -> int
+val maxOf : single_student -> int
+
 (* This other perspective gives grades for _all_ students who have completed assignments. *)
 datatype all_students =
          AAtomic of string                  (* textual description *)
@@ -16,6 +20,9 @@ datatype all_students =
        | ACategory of string                (* textual description *)
                       * list (string * int) (* average grades in this category for student IDs *)
                       * list all_students   (* constituent grades *)
+
+(* Extract the top-level averages of a view of all students. *)
+val averagesOf : all_students -> list (string * int)
 
 (* Generators of grade entries *)
 type t
