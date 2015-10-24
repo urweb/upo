@@ -49,4 +49,6 @@ functor Make(M : sig
                  val access : transaction access
              end) : sig
     include Ui.S where type input = M.summaries
+
+    val grades : M.summaries -> transaction (list ($M.key * variant (mapU unit M.grades)))
 end

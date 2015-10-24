@@ -528,25 +528,22 @@ end
 
 structure AllGrades = Grades.AllStudents(GradeTree)
 
+val grades = {Aplus = "A+",
+              A = "A",
+              Aminus = "A-",
+              Bplus = "B+",
+              B = "B",
+              Bminus = "B-"}
+
 structure Final = FinalGrades.Make(struct
-                                       con key1 = #User
-                                       con keyR = []
-                                       con rest = [IsStudent = bool, IsInstructor = bool, IsStaff = bool]
                                        val tab = user
-                                       val filter = @@sql_field [_] [_]
-                                                      [_] [_] [_] [#Tab] [#IsStudent]
-                                           (*WHERE tab.IsStudent*)
+                                       val filter = (WHERE tab.IsStudent)
 
                                        type summaries = list (string * int)
                                        type summary = int
                                        fun summary sms u = Option.get 0 (List.assoc u.User sms)
 
-                                       val grades = {Aplus = "A+",
-                                                     A = "A",
-                                                     Aminus = "A-",
-                                                     Bplus = "B+",
-                                                     B = "B",
-                                                     Bminus = "B-"}
+                                       val grades = grades
 
                                        val keyLabel = "Student"
                                        val summaryLabel = "Average"
@@ -560,9 +557,18 @@ structure Final = FinalGrades.Make(struct
                                                        FinalGrades.Forbidden)
                                    end)
 
+val getGrades =
+    b <- amStaff;
+    if not b then
+        error <xml>Access denied</xml>
+    else
+        all_grades <- Grades.allStudents gradeTree;
+        Final.grades (Grades.averagesOf all_grades)
+
 val staff =
     u <- getStaff;
     all_grades <- Grades.allStudents gradeTree;
+    grs <- source [];
 
     Ui.tabbed "Staff Dashboard"
               ((Some "TODO",
@@ -573,7 +579,22 @@ val staff =
                (Some "Grades",
                 AllGrades.ui),
                (Some "Final Grades",
-                Final.ui (Grades.averagesOf all_grades)))
+                Ui.seq (Final.ui (Grades.averagesOf all_grades),
+                        Ui.const <xml>
+                          <button class="btn btn-primary"
+                                  value="Export"
+                                  onclick={fn _ =>
+                                              grsv <- rpc getGrades;
+                                              set grs grsv}/>
+                          <ul>
+                            <dyn signal={grsv <- signal grs;
+                                         return (List.mapX (fn (key, g) => <xml>
+                                           <li>{[key]}: {[Record.select [fn _ :: Unit => string] [fn _ :: Unit => unit]
+                                                                        (fn [t] (lab : string) () => lab)
+                                                                        grades g]}</li>
+                                         </xml>) grsv)}/>
+                          </ul>
+                        </xml>)))
 
 structure PsetTodoStudent = Todo.WithDueDate(struct
                                                  con tag = #Pset

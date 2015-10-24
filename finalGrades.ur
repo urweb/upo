@@ -406,4 +406,50 @@ functor Make(M : sig
                   Onload = onload,
                   Render = render}
 
+    fun grades sms =
+        ranges <- queryL1 (SELECT *
+                           FROM ranges
+                           ORDER BY ranges.Min DESC, ranges.Max DESC);
+
+        List.mapQuery ({{{sql_query1 [[]]
+                        {Distinct = False,
+                         From = @@sql_left_join [[]]
+                                  [[Tab = key ++ rest]]
+                                  [[SpecialCase = map (fn t => (t, option t)) (key ++ [Grade = serialized grade])]]
+                                  ! ! !
+                                  {SpecialCase = @Top.mp [sql_injectable_prim] [fn t => nullify t (option t)]
+                                    @@nullify_prim (@Folder.concat ! (_ : folder [Grade = _]) fl)
+                                    (_ ++ inj)}
+                                  (FROM tab) (FROM specialCase)
+                                  (WHERE {@@Sql.easy_join [#Tab] [#SpecialCase]
+                                     [key] [rest] [[Grade = _]]
+                                     [[]] [[]] [[]]
+                                     ! ! ! ! fl}),
+                         Where = sql_exp_weaken filter,
+                         GroupBy = sql_subset_all [_],
+                         Having = (WHERE TRUE),
+                         SelectFields = sql_subset [[Tab = (key, _),
+                                                     SpecialCase = ([Grade = _], _)]],
+                         SelectExps = {}} }}}
+                 ORDER BY {{{@Sql.order_by fl
+                                       (@Sql.some_fields [#Tab] [key] ! ! fl)
+                                       sql_asc}}})
+                 (fn r =>
+                     let
+                         val sm = summary sms r.Tab
+
+                         fun tryRanges ranges =
+                             case ranges of
+                                 [] => error <xml>No grade chosen yet for {[r.Tab]}</xml>
+                               | r :: ranges' =>
+                                 if r.Min <= sm && sm <= r.Max then
+                                     deserialize r.Grade
+                                 else
+                                     tryRanges ranges'
+                     in
+                         (r.Tab, case r.SpecialCase.Grade of
+                                     None => tryRanges ranges
+                                   | Some g => deserialize g)
+                     end)
+
 end
