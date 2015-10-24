@@ -551,6 +551,13 @@ structure Final = FinalGrades.Make(struct
                                        val keyLabel = "Student"
                                        val summaryLabel = "Average"
                                        val gradeLabel = "Grade"
+
+                                       val access =
+                                           b <- amStaff;
+                                           return (if b then
+                                                       FinalGrades.Write
+                                                   else
+                                                       FinalGrades.Forbidden)
                                    end)
 
 val staff =

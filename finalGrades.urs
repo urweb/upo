@@ -5,6 +5,8 @@
  * It is possible to assign values both with one-off rules for particular keys (e.g., "Bob gets an A")
  * and with range rules (e.g., "B+ for averages between 87 and 89"). *)
 
+datatype access = Forbidden | Read | Write
+
 functor Make(M : sig
                  con key1 :: Name
                  type keyT
@@ -42,6 +44,9 @@ functor Make(M : sig
                  val keyLabel : string
                  val summaryLabel : string
                  val gradeLabel : string
+
+                 (* What is the current user allowed to do within this assignment process? *)
+                 val access : transaction access
              end) : sig
     include Ui.S where type input = M.summaries
 end

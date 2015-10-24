@@ -1,5 +1,16 @@
 open Bootstrap3
 
+datatype access = Forbidden | Read | Write
+
+fun accessToInt x =
+    case x of
+        Forbidden => 0
+      | Read => 1
+      | Write => 2
+
+val access_ord : ord access = mkOrd {Lt = fn x y => accessToInt x < accessToInt y,
+                                     Le = fn x y => accessToInt x <= accessToInt y}
+
 functor Make(M : sig
                  con key1 :: Name
                  type keyT
@@ -34,6 +45,8 @@ functor Make(M : sig
                  val keyLabel : string
                  val summaryLabel : string
                  val gradeLabel : string
+
+                 val access : transaction access
              end) = struct
 
     open M
@@ -45,6 +58,8 @@ functor Make(M : sig
                                (@map0 [fn _ => eq unit] (fn [u ::_] => mkEq (fn () () => True)) gfl)
                                (@Folder.mp gfl)
 
+    val inj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim fl inj
+
     table specialCase : (key ++ [Grade = serialized grade])
       PRIMARY KEY {{@primary_key [key1] [keyR ] ! ! inj}},
       {{one_constraint [#Key] (@Sql.easy_foreign ! ! ! ! ! ! fl tab)}}
@@ -54,18 +69,27 @@ functor Make(M : sig
 
     type input = summaries
 
-    type a = {Entries : list ($key
-                              * summary
+    datatype change =
+             SpecialCase of $key * option grade
+           | Ranges of list (summary * summary * grade)
 
-                              * source (option (source string))
-                              (* A blank to solicit a new range boundary *)
+    type entry = $key
+                 * summary
 
-                              * source (option grade)
-                              (* Current special-case grade, if any *)
+                 * source (option (source string))
+                 (* A blank to solicit a new range boundary *)
 
-                              * source (option (source string))
-                              (* A blank to solicit a new special-case grade *)),
-              Ranges : source (list (summary * summary * grade))}
+                 * source (option grade)
+                 (* Current special-case grade, if any *)
+
+                 * source (option (source string))
+                 (* A blank to solicit a new special-case grade *)
+
+    type a = {Entries : list entry,
+              Ranges : source (list (summary * summary * grade)),
+              Channel : channel change}
+
+    table listeners : {Channel : channel change}
 
     fun create sms =
         keys <- List.mapQueryM ({{{sql_query1 [[]]
@@ -99,9 +123,29 @@ functor Make(M : sig
                                  ORDER BY ranges.Max DESC, ranges.Min DESC)
                   (fn {Ranges = r} => (r.Min, r.Max, deserialize r.Grade));
         ranges <- source ranges;
-        return {Entries = keys, Ranges = ranges}
+        ch <- channel;
+        dml (INSERT INTO listeners(Channel)
+             VALUES ({[ch]}));
+        return {Entries = keys, Ranges = ranges, Channel = ch}
 
-    fun onload _ = return ()
+    fun onload a =
+        let
+            fun loop () =
+                change <- recv a.Channel;
+                (case change of
+                     SpecialCase (key, g) =>
+                     List.app (fn (key', _, s1, sg, s2) =>
+                                  if key' = key then
+                                      set s1 None;
+                                      set sg g;
+                                      set s2 None
+                                  else
+                                      return ()) a.Entries
+                   | Ranges rs => set a.Ranges rs);
+                loop ()
+        in
+            spawn (loop ())
+        end
 
     fun skipRanges sm ranges =
         case ranges of
@@ -112,7 +156,34 @@ functor Make(M : sig
             else
                 ranges
 
-    fun render' allRanges lastSm ranges keys =
+    val checkAccess =
+        level <- access;
+        if level < Write then
+            error <xml>Access denied</xml>
+        else
+            return ()
+
+    fun setRanges rs =
+        checkAccess;
+        dml (DELETE FROM ranges
+             WHERE TRUE);
+        List.app (fn (min, max, g) => dml (INSERT INTO ranges(Min, Max, Grade)
+                                           VALUES ({[min]}, {[max]}, {[serialize g]}))) rs;
+        queryI1 (SELECT * FROM listeners)
+                (fn r => send r.Channel (Ranges rs))
+
+    fun setSpecialCase (key : $key) g =
+        checkAccess;
+        dml (DELETE FROM specialCase
+             WHERE {@@Sql.easy_where [#T] [key] [[Grade = _]] [[]] [[]] [[]] ! ! inj' fl key});
+        (case g of
+             None => return ()
+           | Some g => @@Sql.easy_insert [key ++ [Grade = _]] [_] (inj' ++ {Grade = _})
+                         (@Folder.cons [#Grade] [_] ! fl) specialCase (key ++ {Grade = serialize g}));
+        queryI1 (SELECT * FROM listeners)
+                (fn r => send r.Channel (SpecialCase (key, g)))
+        
+    fun render' allRanges lastSm ranges (keys : list entry) =
         case keys of
             [] => <xml></xml>
           | (key, sm, rb, gr, newgr) :: keys' =>
@@ -140,7 +211,12 @@ functor Make(M : sig
                                                                    case String.split rbv #" " of
                                                                        None =>
                                                                        grs <- get allRanges;
-                                                                       set allRanges (List.filter (fn (min, _, _) => min <> sm) grs)
+                                                                       let
+                                                                           val ars' = List.filter (fn (min, _, _) => min <> sm) grs
+                                                                       in
+                                                                           set allRanges ars';
+                                                                           rpc (setRanges ars')
+                                                                       end
                                                                      | Some (which, g) =>
                                                                        case @Variant.fromString gfl grades g of
                                                                            None => error <xml>FinalGrades: Unknown grade string</xml>
@@ -166,8 +242,11 @@ functor Make(M : sig
                                                                                                (sm, max, g) :: ranges'
                                                                                            else
                                                                                                (min, max, g') :: setFirst ranges'
+
+                                                                                   val ar' = setFirst ar
                                                                                in
-                                                                                   set allRanges (setFirst ar)
+                                                                                   set allRanges ar';
+                                                                                   rpc (setRanges ar')
                                                                                end
                                                                              | "First" =>
                                                                                ar <- get allRanges;
@@ -189,8 +268,11 @@ functor Make(M : sig
                                                                                                (min, sm, g) :: ranges'
                                                                                            else
                                                                                                (min, max, g') :: setLast ranges'
+
+                                                                                   val ar' = setLast ar
                                                                                in
-                                                                                   set allRanges (setLast ar)
+                                                                                   set allRanges ar';
+                                                                                   rpc (setRanges ar')
                                                                                end
                                                                              | _ => error <xml>FinalGrades: Unknown bound spec</xml>}/>
                                                <button class="btn btn-sm glyphicon glyphicon-remove"
@@ -293,7 +375,9 @@ functor Make(M : sig
                                                onclick={fn _ =>
                                                            set newgr None;
                                                            g <- get gs;
-                                                           set gr (@Variant.fromString gfl grades g)}/>
+                                                           g <- return (@Variant.fromString gfl grades g);
+                                                           set gr g;
+                                                           rpc (setSpecialCase key g)}/>
                                        <button class="btn btn-sm glyphicon glyphicon-remove"
                                                onclick={fn _ => set newgr None}/>
                                      </xml>}/>
@@ -304,7 +388,7 @@ functor Make(M : sig
                 </tr>{render' allRanges (Some sm) ranges keys'}</xml>
             end
 
-    fun render ctx a = <xml>
+    fun render ctx (a : a) = <xml>
       <table class="bs3-table table-striped">
         <tr>
           <th>Range?</th>
