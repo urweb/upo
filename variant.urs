@@ -13,3 +13,5 @@ val test : nm :: Name -> t ::: Type -> ts ::: {Type} -> [[nm] ~ ts] => folder ([
 
 val weaken : r1 ::: {Type} -> r2 ::: {Type} -> [r1 ~ r2] => folder r1
              -> variant r1 -> variant (r1 ++ r2)
+
+val fromString : r ::: {Unit} -> folder r -> $(mapU string r) -> string -> option (variant (mapU unit r))

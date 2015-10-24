@@ -496,37 +496,66 @@ structure StaffTod = Todo.Make(struct
                                                |> Todo.compose StaffMeetingTodo.todo
                                end)
 
+val gradeTree =
+    Grades.combine
+        "Overall"
+        ((60,
+          Grades.assignments
+              [[PsetNum = _]]
+              [#PsetStudent]
+              [#When]
+              [#Grade]
+              [#User]
+              "Psets"
+              pset
+              user
+              psetGrade),
+         (40,
+          Grades.assignments
+              [[ExamNum = _]]
+              [#ExamStudent]
+              [#When]
+              [#Grade]
+              [#User]
+              "Exams"
+              exam
+              user
+              examGrade))
+
 structure GradeTree = struct
-    val t = Grades.combine
-                "Overall"
-                ((60,
-                  Grades.assignments
-                      [[PsetNum = _]]
-                      [#PsetStudent]
-                      [#When]
-                      [#Grade]
-                      [#User]
-                      "Psets"
-                      pset
-                      user
-                      psetGrade),
-                 (40,
-                  Grades.assignments
-                      [[ExamNum = _]]
-                      [#ExamStudent]
-                      [#When]
-                      [#Grade]
-                      [#User]
-                      "Exams"
-                      exam
-                      user
-                      examGrade))
+    val t = gradeTree
 end
 
 structure AllGrades = Grades.AllStudents(GradeTree)
 
+structure Final = FinalGrades.Make(struct
+                                       con key1 = #User
+                                       con keyR = []
+                                       con rest = [IsStudent = bool, IsInstructor = bool, IsStaff = bool]
+                                       val tab = user
+                                       val filter = @@sql_field [_] [_]
+                                                      [_] [_] [_] [#Tab] [#IsStudent]
+                                           (*WHERE tab.IsStudent*)
+
+                                       type summaries = list (string * int)
+                                       type summary = int
+                                       fun summary sms u = Option.get 0 (List.assoc u.User sms)
+
+                                       val grades = {Aplus = "A+",
+                                                     A = "A",
+                                                     Aminus = "A-",
+                                                     Bplus = "B+",
+                                                     B = "B",
+                                                     Bminus = "B-"}
+
+                                       val keyLabel = "Student"
+                                       val summaryLabel = "Average"
+                                       val gradeLabel = "Grade"
+                                   end)
+
 val staff =
     u <- getStaff;
+    all_grades <- Grades.allStudents gradeTree;
 
     Ui.tabbed "Staff Dashboard"
               ((Some "TODO",
@@ -535,7 +564,9 @@ val staff =
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
                         ToDay = readError "09/01/15 00:00:00"}),
                (Some "Grades",
-                AllGrades.ui))
+                AllGrades.ui),
+               (Some "Final Grades",
+                Final.ui (Grades.averagesOf all_grades)))
 
 structure PsetTodoStudent = Todo.WithDueDate(struct
                                                  con tag = #Pset

@@ -700,7 +700,9 @@ functor Make(M : sig
             type themSet = list ($themKey * $themOffice)
             type timeMap = list ($timeKey * themSet)
             type input = $usKey
-            type a = _
+            type a = {Us : $usKey,
+                      Meetings : list ($timeKey * source themSet),
+                      Channel : channel usChannel}
 
             fun create us =
                 let
@@ -756,7 +758,9 @@ functor Make(M : sig
                     return {Us = us, Meetings = meetings, Channel = ch}
                 end
 
-            fun render t = <xml>
+            (* Note: with a new improvement to Ur/Web type inference, this annotation becomes necessary.
+             * Should probably look further into why, some day. *)
+            fun render (t : a) = <xml>
               <table class="bs3-table table-striped">
                 <tr>
                   <th>Time</th>

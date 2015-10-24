@@ -46,3 +46,13 @@ fun weaken [r1 ::: {Type}] [r2 ::: {Type}] [r1 ~ r2] (fl : folder r1) (v : varia
       (fn [nm :: Name] [t ::_] [r ::_] [[nm] ~ r] (acc : r' :: {Type} -> [r ~ r'] => $(map (fn t => t -> variant (r ++ r')) r)) [r'::_] [[nm = t] ++ r ~ r'] =>
           {nm = make [nm]} ++ acc [[nm = t] ++ r'])
       (fn [r'::_] [[] ~ r'] => {}) fl [r2] !)
+
+fun fromString [r ::: {Unit}] (fl : folder r) (ss : $(mapU string r)) (s : string) : option (variant (mapU unit r)) =
+    @foldUR [string] [fn r => r' :: {Unit} -> [r ~ r'] => option (variant (mapU unit (r ++ r')))]
+    (fn [nm ::_] [r ::_] [[nm] ~ r] (s' : string) (acc : r' :: {Unit} -> [r ~ r'] => option (variant (mapU unit (r ++ r'))))
+        [r' :: {Unit}] [[nm] ++ r ~ r'] =>
+        if s = s' then
+            Some (make [nm] ())
+        else
+            acc [[nm] ++ r'])
+    (fn [r' ::_] [[] ~ r'] => None) fl ss [[]] !
