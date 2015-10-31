@@ -5,29 +5,30 @@ type permission = {Add : bool,
                    Modify : bool}
 
 functor Make(M : sig
-                 con fs :: {(Type * Type)}
+                 con fs :: {(Type * Type * Type)}
                  val widgets : $(map Widget.t' fs)
-                 table tab : $(map fst fs)
+                 table tab : $(map fst3 fs)
                  val fl : folder fs
-                 val eqs : $(map eq (map fst fs))
-                 val ords : $(map ord (map fst fs))
-                 val injs : $(map sql_injectable (map fst fs))
+                 val eqs : $(map eq (map fst3 fs))
+                 val ords : $(map ord (map fst3 fs))
+                 val injs : $(map sql_injectable (map fst3 fs))
 
                  val labels : $(map (fn _ => string) fs)
                  val permission : transaction permission
 
-                 val onAdd : $(map fst fs) -> transaction unit
-                 val onDelete : $(map fst fs) -> transaction unit
-                 val onModify : {Old : $(map fst fs), New : $(map fst fs)} -> transaction unit
+                 val onAdd : $(map fst3 fs) -> transaction unit
+                 val onDelete : $(map fst3 fs) -> transaction unit
+                 val onModify : {Old : $(map fst3 fs), New : $(map fst3 fs)} -> transaction unit
              end) = struct
 
     open M
 
-    con data = $(map fst fs)
-    con state = $(map snd fs)
+    con data = $(map fst3 fs)
+    con state = $(map snd3 fs)
+    con config = $(map thd3 fs)
 
-    val eq_data : eq data = @@Record.eq [map fst fs] eqs (@@Folder.mp [fst] [_] fl)
-    val ord_data : ord data = @@Record.ord [map fst fs] ords (@@Folder.mp [fst] [_] fl)
+    val eq_data : eq data = @@Record.eq [map fst3 fs] eqs (@@Folder.mp [fst3] [_] fl)
+    val ord_data : ord data = @@Record.ord [map fst3 fs] ords (@@Folder.mp [fst3] [_] fl)
 
     datatype action =
              ADD of data
@@ -38,32 +39,35 @@ functor Make(M : sig
 
     type row = { Editing : source (option state),
                  Content : data }
-    type a = { Perm : permission,
+    type a = { Config : config,
+               Perm : permission,
                Rows : source (list row),
                ToAdd : state,
                Channel : channel action }
 
-    val freshRow = @Monad.mapR _ [Widget.t'] [snd]
+    val freshRow = @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
                     (fn [nm ::_] [p ::_] (w : Widget.t' p) => @Widget.create w) fl widgets
 
-    val initRow = @Monad.mapR2 _ [Widget.t'] [fst] [snd]
+    val initRow = @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
                     (fn [nm ::_] [p ::_] (w : Widget.t' p) => @Widget.initialize w)
                     fl widgets
 
-    val rowOut = @Monad.mapR2 _ [Widget.t'] [snd] [fst]
-                  (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : snd p) =>
+    val rowOut = @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                  (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : snd3 p) =>
                       current (@Widget.value w v))
                   fl widgets
 
     val create =
         perm <- permission;
-        toAdd <- freshRow;
+        config <- @Monad.mapR _ [Widget.t'] [thd3]
+                    (fn [nm ::_] [p ::_] (w : Widget.t' p) => @Widget.configure w) fl widgets;
+        toAdd <- freshRow config;
 
         rows <- List.mapQueryM (SELECT *
                                 FROM tab
-                                ORDER BY {{{@Sql.order_by (@@Folder.mp [fst] [_] fl)
-                                  (@@Sql.some_fields [#Tab] [map fst fs] [[]] [[]] [[]] [[]] ! !
-                                    (@@Folder.mp [fst] [_] fl)) sql_asc}}})
+                                ORDER BY {{{@Sql.order_by (@@Folder.mp [fst3] [_] fl)
+                                  (@@Sql.some_fields [#Tab] [map fst3 fs] [[]] [[]] [[]] [[]] ! !
+                                    (@@Folder.mp [fst3] [_] fl)) sql_asc}}})
                                (fn r =>
                                    editing <- source None;
                                    return {Editing = editing,
@@ -72,8 +76,9 @@ functor Make(M : sig
 
         chan <- channel;
         dml (INSERT INTO listeners(Channel) VALUES ({[chan]}));
-                                   
-        return {Perm = perm,
+
+        return {Config = config,
+                Perm = perm,
                 Rows = rows,
                 ToAdd = toAdd,
                 Channel = chan}
@@ -115,7 +120,7 @@ functor Make(M : sig
          else
              error <xml>Don't have permission to add row</xml>);
 
-        @@Sql.easy_insert [map fst fs] [_] injs (@@Folder.mp [fst] [_] fl) tab r;
+        @@Sql.easy_insert [map fst3 fs] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
 
         queryI1 (SELECT * FROM listeners)
         (fn x => send x.Channel (ADD r));
@@ -130,8 +135,8 @@ functor Make(M : sig
              error <xml>Don't have permission to delete row</xml>);
 
         dml (DELETE FROM tab
-             WHERE {@@Sql.easy_where [#T] [map fst fs] [[]] [[]] [[]] [[]] ! !
-               injs (@@Folder.mp [fst] [_] fl) r});
+             WHERE {@@Sql.easy_where [#T] [map fst3 fs] [[]] [[]] [[]] [[]] ! !
+               injs (@@Folder.mp [fst3] [_] fl) r});
 
         queryI1 (SELECT * FROM listeners)
         (fn x => send x.Channel (DEL r));
@@ -145,13 +150,13 @@ functor Make(M : sig
          else
              error <xml>Don't have permission to delete row</xml>);
 
-        dml (@@update [[]] [_] [map fst fs] !
-              (@map2 [fn p => sql_injectable p.1] [fst] [fn p => sql_exp _ _ _ p.1]
+        dml (@@update [[]] [_] [map fst3 fs] !
+              (@map2 [fn p => sql_injectable p.1] [fst3] [fn p => sql_exp _ _ _ p.1]
                 (fn [p] => @sql_inject)
                 fl injs r.New)
               tab
-              (@@Sql.easy_where [#T] [map fst fs] [[]] [[]] [[]] [[]] ! !
-                 injs (@@Folder.mp [fst] [_] fl) r.Old));
+              (@@Sql.easy_where [#T] [map fst3 fs] [[]] [[]] [[]] [[]] ! !
+                 injs (@@Folder.mp [fst3] [_] fl) r.Old));
 
         queryI1 (SELECT * FROM listeners)
         (fn x => send x.Channel (MOD r));
@@ -186,14 +191,14 @@ functor Make(M : sig
                                                     {if a.Perm.Modify then <xml>
                                                          <button class="btn glyphicon glyphicon-pencil"
                                                                  onclick={fn _ =>
-                                                                             fr <- initRow r.Content;
+                                                                             fr <- initRow a.Config r.Content;
                                                                              set r.Editing (Some fr)}/>
                                                      </xml> else
                                                          <xml/>}
                                                   </td>
-                                                  {@mapX2 [Widget.t'] [fst] [_]
+                                                  {@mapX2 [Widget.t'] [fst3] [_]
                                                     (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
-                                                                 (w : Widget.t' p) (v : fst p) =>
+                                                                 (w : Widget.t' p) (v : fst3 p) =>
                                                         <xml><td>{@Widget.asValue w v}</td></xml>)
                                                     fl widgets r.Content}
                                                 </xml>
@@ -208,9 +213,9 @@ functor Make(M : sig
                                                   <button class="btn glyphicon glyphicon-remove"
                                                           onclick={fn _ => set r.Editing None}/>
                                                 </td>
-                                                {@mapX2 [Widget.t'] [snd] [_]
+                                                {@mapX2 [Widget.t'] [snd3] [_]
                                                   (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
-                                                               (w : Widget.t' p) (v : snd p) =>
+                                                               (w : Widget.t' p) (v : snd3 p) =>
                                                       <xml><td>{@Widget.asWidget w v None}</td></xml>)
                                                   fl widgets ws}
                                               </xml>)}/>
@@ -226,8 +231,8 @@ functor Make(M : sig
                                          r <- rowOut a.ToAdd;
                                          rpc (add r)}/></th>
 
-                 {@mapX2 [Widget.t'] [snd] [_]
-                   (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : snd p) =>
+                 {@mapX2 [Widget.t'] [snd3] [_]
+                   (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : snd3 p) =>
                        <xml><td>{@Widget.asWidget w v None}</td></xml>)
                    fl widgets a.ToAdd}
                </tr>

@@ -31,12 +31,12 @@ functor Make(M : sig
                  val whoami : transaction (option string)
 
                  (* Metadata to collect with submissions *)
-                 con fs :: {(Type * Type)}
+                 con fs :: {(Type * Type * Type)}
                  constraint [ukey, Filename, Content, MimeType, When] ~ fs
                  constraint key ~ fs
                  val widgets : $(map Widget.t' fs)
                  val fl : folder fs
-                 val injs : $(map sql_injectable (map fst fs))
+                 val injs : $(map sql_injectable (map fst3 fs))
                  val labels : $(map (fn _ => string) fs)
 
                  val makeFilename : $key -> string (* username *) -> string

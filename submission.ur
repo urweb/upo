@@ -28,12 +28,12 @@ functor Make(M : sig
                  val user : sql_table ([ukey = string] ++ uother) ([ukeyName = [ukey]] ++ uotherConstraints)
                  val whoami : transaction (option string)
 
-                 con fs :: {(Type * Type)}
+                 con fs :: {(Type * Type * Type)}
                  constraint [ukey, Filename, Content, MimeType, When] ~ fs
                  constraint key ~ fs
                  val widgets : $(map Widget.t' fs)
                  val fl : folder fs
-                 val injs : $(map sql_injectable (map fst fs))
+                 val injs : $(map sql_injectable (map fst3 fs))
                  val labels : $(map (fn _ => string) fs)
 
                  val makeFilename : $key -> string (* username *) -> string
@@ -42,14 +42,14 @@ functor Make(M : sig
 
     open M
 
-    con others = map fst fs ++ [Filename = option string, Content = blob, MimeType = string, When = time]
+    con others = map fst3 fs ++ [Filename = option string, Content = blob, MimeType = string, When = time]
     constraint others ~ (key ++ [ukey = string])
     con submission_hidden_constraints = [Pkey = [ukey, When] ++ map (fn _ => ()) key,
                                          Key = [],
                                          User = []]
     con lame :: {{Unit}} = []
     constraint lame ~ submission_hidden_constraints
-    table submission : (key ++ [ukey = string] ++ map fst fs
+    table submission : (key ++ [ukey = string] ++ map fst3 fs
                             ++ [Filename = option string, Content = blob, MimeType = string, When = time])
       PRIMARY KEY {{@primary_key [ukey] [key ++ [When = time]] ! ! (_ ++ keyInj)}},
       {{one_constraint [#Key] (@Sql.easy_foreign ! ! ! ! ! ! keyFl tab)}},
@@ -70,7 +70,7 @@ functor Make(M : sig
               | Some u =>
                 tm <- now;
                 @@Sql.easy_insert
-                  [key ++ map fst fs ++ [Filename = _, Content = _, MimeType = _, When = _, ukey = _]] [_]
+                  [key ++ map fst3 fs ++ [Filename = _, Content = _, MimeType = _, When = _, ukey = _]] [_]
                   (_ ++ injs ++ keyInj')
                   (@Folder.concat ! _ (@Folder.concat ! keyFl (@Folder.mp fl))) submission
                   (k ++ up ++ {When = tm, ukey = u} ++ vs)
@@ -81,7 +81,8 @@ functor Make(M : sig
         ws <- @Monad.mapR _ [Widget.t'] [fn p => id * p.2]
               (fn [nm ::_] [p ::_] (w : Widget.t' p) =>
                   id <- fresh;
-                  w <- @Widget.create w;
+                  cfg <- @Widget.configure w;
+                  w <- @Widget.create w cfg;
                   return (id, w))
               fl widgets;
         up <- AjaxUpload.render {SubmitLabel = None,
@@ -93,7 +94,7 @@ functor Make(M : sig
                 (st <- get st;
                  case st of
                      Uploaded h =>
-                     vs <- @Monad.mapR2 _ [Widget.t'] [fn p => id * p.2] [fst]
+                     vs <- @Monad.mapR2 _ [Widget.t'] [fn p => id * p.2] [fst3]
                             (fn [nm ::_] [p ::_] (w : Widget.t' p) (_, x) => current (@Widget.value w x))
                             fl widgets ws;
                      rpc (upload k h vs)

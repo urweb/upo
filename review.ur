@@ -3,13 +3,13 @@ open Bootstrap3
 functor Make(M : sig
                  con reviewer :: Name
                  con reviewed :: {Type}
-                 con other :: {(Type * Type)}
+                 con other :: {(Type * Type * Type)}
                  constraint reviewed ~ other
                  constraint [reviewer] ~ [When]
                  constraint [reviewer, When] ~ reviewed
                  constraint [reviewer, When] ~ other
                  constraint [Channel] ~ reviewed
-                 table tab : ([When = time, reviewer = string] ++ reviewed ++ map fst other)
+                 table tab : ([When = time, reviewer = string] ++ reviewed ++ map fst3 other)
 
                  val widgets : $(map Widget.t' other)
                  val reviewedFl : folder reviewed
@@ -19,7 +19,7 @@ functor Make(M : sig
                  val labels : $(map (fn _ => string) other)
 
                  val show_reviewed : show $reviewed
-                 val summarize : $(map fst other) -> xbody
+                 val summarize : $(map fst3 other) -> xbody
                  val whoami : transaction (option string)
              end) = struct
 
@@ -31,7 +31,7 @@ functor Make(M : sig
 
     open M
 
-    type fields = {Reviewed : $reviewed, Reviewer : string, When : time, Other : $(map fst other)}
+    type fields = {Reviewed : $reviewed, Reviewer : string, When : time, Other : $(map fst3 other)}
 
     datatype action =
              Add of fields
@@ -52,30 +52,31 @@ functor Make(M : sig
                        State : source review_state,
                        WaitingForRpc : source bool}
 
-        type a = {Whoami : string,
+        type a = {Config : $(map thd3 other),
+                  Whoami : string,
                   Reviewed : $reviewed,
                   Reviews : source (list review),
                   Widgets : $(map (fn p => id * p.2) other),
                   Channel : channel action}
 
         val freshWidgets =
-            @Monad.mapR _ [Widget.t'] [fn p => id * p.2]
-             (fn [nm ::_] [p ::_] (w : Widget.t' p) =>
+            @Monad.mapR2 _ [Widget.t'] [thd3] [fn p => id * p.2]
+             (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) =>
                  id <- fresh;
-                 w <- @Widget.create w;
+                 w <- @Widget.create w cfg;
                  return (id, w))
              otherFl widgets
 
         val widgetsFrom =
-            @Monad.mapR2 _ [Widget.t'] [fn p => id * p.1] [fn p => id * p.2]
-             (fn [nm ::_] [p ::_] (w : Widget.t' p) (_, x : p.1) =>
+            @Monad.mapR3 _ [Widget.t'] [thd3] [fn p => id * p.1] [fn p => id * p.2]
+             (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (_, x : p.1) =>
                  id <- fresh;
-                 w <- @Widget.initialize w x;
+                 w <- @Widget.initialize w cfg x;
                  return (id, w))
              otherFl widgets
 
         val readWidgets =
-            @Monad.mapR2 _ [Widget.t'] [fn p => id * p.2] [fst]
+            @Monad.mapR2 _ [Widget.t'] [fn p => id * p.2] [fst3]
              (fn [nm ::_] [p ::_] (w : Widget.t' p) (id, x : p.2) =>
                  current (@Widget.value w x))
              otherFl widgets
@@ -85,12 +86,15 @@ functor Make(M : sig
             u <- (case u of
                       None => error <xml>Must be logged in</xml>
                     | Some u => return u);
-            rs <- List.mapQueryM (SELECT tab.{reviewer}, tab.When, tab.{{map fst other}}
+            cfg <- @Monad.mapR _ [Widget.t'] [thd3]
+                    (fn [nm ::_] [p ::_] (x : Widget.t' p) => @Widget.configure x)
+                    otherFl widgets;
+            rs <- List.mapQueryM (SELECT tab.{reviewer}, tab.When, tab.{{map fst3 other}}
                                   FROM tab
                                   WHERE {@Sql.easy_where [#Tab] ! ! reviewedInj reviewedFl key}
                                   ORDER BY tab.When)
                                  (fn {Tab = r} =>
-                                     other <- @Monad.mapR _ [fst] [fn p => id * p.1]
+                                     other <- @Monad.mapR _ [fst3] [fn p => id * p.1]
                                                (fn [nm ::_] [p ::_] (x : p.1) =>
                                                    id <- fresh;
                                                    return (id, x))
@@ -102,13 +106,14 @@ functor Make(M : sig
                                              State = rs,
                                              WaitingForRpc = waiting});
             rs <- source rs;
-            ws <- freshWidgets;
+            ws <- freshWidgets cfg;
             ch <- channel;
             @@Sql.easy_insert [[Channel = _] ++ reviewed] [_]
               ({Channel = _} ++ reviewedInj)
               (@Folder.cons [#Channel] [_] ! reviewedFl)
               specificListeners ({Channel = ch} ++ key);
-            return {Whoami = u,
+            return {Config = cfg,
+                    Whoami = u,
                     Reviewed = key,
                     Reviews = rs,
                     Widgets = ws,
@@ -121,7 +126,7 @@ functor Make(M : sig
                     (case act of
                          Add r =>
                          rs <- get a.Reviews;
-                         other <- @Monad.mapR _ [fst] [fn p => id * p.1]
+                         other <- @Monad.mapR _ [fst3] [fn p => id * p.1]
                                    (fn [nm ::_] [p ::_] (x : p.1) =>
                                        id <- fresh;
                                        return (id, x))
@@ -134,7 +139,7 @@ functor Make(M : sig
                                                          WaitingForRpc = waiting} :: []))
                        | Edit r =>
                          rs <- get a.Reviews;
-                         other <- @Monad.mapR _ [fst] [fn p => id * p.1]
+                         other <- @Monad.mapR _ [fst3] [fn p => id * p.1]
                                    (fn [nm ::_] [p ::_] (x : p.1) =>
                                        id <- fresh;
                                        return (id, x))
@@ -162,7 +167,7 @@ functor Make(M : sig
               | Some u =>
                 tm <- now;
                 @@Sql.easy_update' [[reviewer = _] ++ reviewed]
-                  [[When = _] ++ map fst other] [_] !
+                  [[When = _] ++ map fst3 other] [_] !
                   ({reviewer = _} ++ reviewedInj)
                   ({When = _} ++ otherInj)
                   (@Folder.cons [reviewer] [_] ! reviewedFl)
@@ -183,7 +188,7 @@ functor Make(M : sig
                 None => error <xml>Must be logged in to add a record</xml>
               | Some u =>
                 tm <- now;
-                @@Sql.easy_insert [[When = _, reviewer = _] ++ reviewed ++ map fst other] [_]
+                @@Sql.easy_insert [[When = _, reviewer = _] ++ reviewed ++ map fst3 other] [_]
                   ({When = _, reviewer = _} ++ reviewedInj ++ otherInj)
                   (@Folder.cons [#When] [_] ! (@Folder.cons [reviewer] [_] !
                     (@Folder.concat ! reviewedFl (@Folder.mp otherFl))))
@@ -206,7 +211,7 @@ functor Make(M : sig
                                                          onclick={fn _ => set r.State (Full o)}>
                                                       {[r.Reviewer]}
                                                       ({[r.When]})
-                                                      {[summarize (@mp [fn p => id * p.1] [fst]
+                                                      {[summarize (@mp [fn p => id * p.1] [fst3]
                                                                     (fn [p] (_, x) => x)
                                                                     otherFl o)]}
                                                     </div>
@@ -229,7 +234,7 @@ functor Make(M : sig
                                                                                 <button class="btn btn-primary"
                                                                                         value="Edit Review"
                                                                                         onclick={fn _ =>
-                                                                                                    ws <- widgetsFrom o;
+                                                                                                    ws <- widgetsFrom a.Config o;
                                                                                                     set r.State (Editing (o, ws))}/>
                                                                               </xml>)}/>
                                                        </xml>}

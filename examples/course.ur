@@ -107,8 +107,8 @@ structure PsetSub = Submission.Make(struct
                                         val tab = pset
                                         val user = user
                                         val whoami = getCookie userC
-                                        con fs = [Confidence = (string, _),
-                                                  Aggravation = (int, _)]
+                                        con fs = [Confidence = (string, _, _),
+                                                  Aggravation = (int, _, _)]
                                         val labels = {Confidence = "Confidence",
                                                       Aggravation = "Aggravation"}
 

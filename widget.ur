@@ -1,23 +1,26 @@
-con t (value :: Type) (state :: Type) =
-      { Create : transaction state,
-        Initialize : value -> transaction state,
+con t (value :: Type) (state :: Type) (config :: Type) =
+      { Configure : transaction config,
+        Create : config -> transaction state,
+        Initialize : config -> value -> transaction state,
         AsWidget : state -> option id -> xbody,
         Value : state -> signal value,
         AsValue : value -> xbody }
 
-con t' (value :: Type, state :: Type) = t value state
+con t' (value :: Type, state :: Type, config :: Type) = t value state config
 
-fun create [value] [state] (t : t value state) = t.Create
-fun initialize [value] [state] (t : t value state) = t.Initialize
-fun asWidget [value] [state] (t : t value state) = t.AsWidget
-fun value [value] [state] (t : t value state) = t.Value
-fun asValue [value] [state] (t : t value state) = t.AsValue
+fun configure [value] [state] [config] (t : t value state config) = t.Configure
+fun create [value] [state] [config] (t : t value state config) = t.Create
+fun initialize [value] [state] [config] (t : t value state config) = t.Initialize
+fun asWidget [value] [state] [config] (t : t value state config) = t.AsWidget
+fun value [value] [state] [config] (t : t value state config) = t.Value
+fun asValue [value] [state] [config] (t : t value state config) = t.AsValue
 
-fun make [value] [state] r = r
+fun make [value] [state] [config] r = r
 
 
-val textbox = { Create = source "",
-                Initialize = source,
+val textbox = { Configure = return (),
+                Create = fn () => source "",
+                Initialize = fn () => source,
                 AsWidget = fn s ido =>
                               case ido of
                                   None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
@@ -25,8 +28,9 @@ val textbox = { Create = source "",
                 Value = signal,
                 AsValue = txt }
 
-val checkbox = { Create = source False,
-                 Initialize = source,
+val checkbox = { Configure = return (),
+                 Create = fn () => source False,
+                 Initialize = fn () => source,
                  AsWidget = fn s ido =>
                                case ido of
                                    None => <xml><ccheckbox class={Bootstrap3.form_control} source={s}/></xml>
@@ -34,8 +38,9 @@ val checkbox = { Create = source False,
                  Value = signal,
                  AsValue = txt }
 
-val intbox = { Create = source "",
-               Initialize = fn n => source (show n),
+val intbox = { Configure = return (),
+               Create = fn () => source "",
+               Initialize = fn () n => source (show n),
                AsWidget = fn s ido =>
                              case ido of
                                  None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
@@ -43,8 +48,9 @@ val intbox = { Create = source "",
                Value = fn s => v <- signal s; return (Option.get 0 (read v)),
                AsValue = txt }
 
-val timebox = { Create = source "",
-                Initialize = fn n => source (show n),
+val timebox = { Configure = return (),
+                Create = fn () => source "",
+                Initialize = fn () n => source (show n),
                 AsWidget = fn s ido =>
                               case ido of
                                   None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
@@ -52,8 +58,9 @@ val timebox = { Create = source "",
                 Value = fn s => v <- signal s; return (Option.get minTime (read v)),
                 AsValue = fn t => if t = minTime then <xml><b>INVALID</b></xml> else txt t }
 
-val urlbox = { Create = source "",
-               Initialize = source,
+val urlbox = { Configure = return (),
+               Create = fn () => source "",
+               Initialize = fn () => source,
                AsWidget = fn s ido =>
                              case ido of
                                  None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
@@ -102,8 +109,9 @@ fun html s =
         Html.Failure msg => <xml><b>HTML error: {[msg]}</b></xml>
       | Html.Success xm => xm
 
-val htmlbox = { Create = ed,
-                Initialize = fn s => me <- ed; Ckeditor.setContent me s; return me,
+val htmlbox = { Configure = return (),
+                Create = fn () => ed,
+                Initialize = fn () s => me <- ed; Ckeditor.setContent me s; return me,
                 AsWidget = fn x _ => Ckeditor.show x,
                 Value = Ckeditor.content,
                 AsValue = html }

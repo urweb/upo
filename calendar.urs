@@ -2,8 +2,8 @@
 
 (* Generators of calendar entries *)
 con t :: {Type}    (* Dictionary of all key fields used across all sources of events *)
-         -> {(Type * Type)} (* Mapping user-meaningful tags (for event kinds) to associated data
-                             * and the way to encode it imperatively with client-side widgets *)
+         -> {(Type * Type * Type)} (* Mapping user-meaningful tags (for event kinds) to associated data
+                                    * and the way to encode it imperatively with client-side widgets *)
          -> Type
 
 (* Levels of access control *)
@@ -11,9 +11,9 @@ datatype level = Forbidden | Read | Write
 
 functor FromTable(M : sig
                       con tag :: Name
-                      con key :: {(Type * Type)} (* Each 2nd component is a type of GUI widget private state. *)
+                      con key :: {(Type * Type * Type)} (* Each 2nd component is a type of GUI widget private state. *)
                       con times :: {Unit}
-                      con other :: {(Type * Type)}
+                      con other :: {(Type * Type * Type)}
                       con us :: {{Unit}}
                       constraint key ~ times
                       constraint key ~ other
@@ -25,22 +25,22 @@ functor FromTable(M : sig
                       val inj : $(map (fn p => sql_injectable_prim p.1) key)
                       val injO : $(map (fn p => sql_injectable_prim p.1) other)
                       val ws : $(map Widget.t' (key ++ other))
-                      val tab : sql_table (map fst (key ++ other) ++ mapU time times) us
+                      val tab : sql_table (map fst3 (key ++ other) ++ mapU time times) us
                       val labels : $(map (fn _ => string) (key ++ other) ++ mapU string times)
                       val eqs : $(map (fn p => eq p.1) key)
                       val title : string
-                      val display : Ui.context -> $(map fst key) -> transaction xbody
+                      val display : Ui.context -> $(map fst3 key) -> transaction xbody
                       val auth : transaction level
                       val kinds : $(mapU string times)
-                      val sh : show $(map fst key)
+                      val sh : show $(map fst3 key)
                   end) : sig
     con private
     con tag = M.tag
-    val cal : t (map fst M.key) [tag = private]
+    val cal : t (map fst3 M.key) [tag = private]
 end
 
 val compose : keys1 ::: {Type} -> keys2 ::: {Type}
-              -> tags1 ::: {(Type * Type)} -> tags2 ::: {(Type * Type)}
+              -> tags1 ::: {(Type * Type * Type)} -> tags2 ::: {(Type * Type * Type)}
               -> [keys1 ~ keys2] => [tags1 ~ tags2]
               => folder keys1 -> folder keys2
               -> $(map sql_injectable_prim keys1)
@@ -49,7 +49,7 @@ val compose : keys1 ::: {Type} -> keys2 ::: {Type}
 
 functor Make(M : sig
                  con keys :: {Type}
-                 con tags :: {(Type * Type)}
+                 con tags :: {(Type * Type * Type)}
                  constraint [When, Kind] ~ keys
                  val t : t keys tags
                  val fl : folder tags

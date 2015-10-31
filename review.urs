@@ -3,13 +3,13 @@
 functor Make(M : sig
                  con reviewer :: Name
                  con reviewed :: {Type}
-                 con other :: {(Type * Type)}
+                 con other :: {(Type * Type * Type)}
                  constraint reviewed ~ other
                  constraint [reviewer] ~ [When]
                  constraint [reviewer, When] ~ reviewed
                  constraint [reviewer, When] ~ other
                  constraint [Channel] ~ reviewed
-                 table tab : ([When = time, reviewer = string] ++ reviewed ++ map fst other)
+                 table tab : ([When = time, reviewer = string] ++ reviewed ++ map fst3 other)
 
                  val widgets : $(map Widget.t' other)
                  val reviewedFl : folder reviewed
@@ -19,7 +19,7 @@ functor Make(M : sig
                  val labels : $(map (fn _ => string) other)
 
                  val show_reviewed : show $reviewed
-                 val summarize : $(map fst other) -> xbody
+                 val summarize : $(map fst3 other) -> xbody
                  val whoami : transaction (option string)
              end) : sig
     structure One : Ui.S where type input = $M.reviewed

@@ -2,42 +2,51 @@
 
 class t :: Type (* final value generated *)
       -> Type (* internal state *)
+      -> Type (* global configuration for this kind of widget, computed on the server *)
       -> Type
 
-con t' (value :: Type, state :: Type) = t value state
+con t' (value :: Type, state :: Type, config :: Type) = t value state config
 
-val create : value ::: Type -> state ::: Type -> t value state -> transaction state
-val initialize : value ::: Type -> state ::: Type -> t value state -> value -> transaction state
-val asWidget : value ::: Type -> state ::: Type -> t value state -> state -> option id (* Use this ID if you can, to help group with labels. *) -> xbody
-val value : value ::: Type -> state ::: Type -> t value state -> state -> signal value
-val asValue : value ::: Type -> state ::: Type -> t value state -> value -> xbody
+val configure : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> transaction config
+val create : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> config -> transaction state
+val initialize : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> config -> value -> transaction state
+val asWidget : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> option id (* Use this ID if you can, to help group with labels. *) -> xbody
+val value : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> signal value
+val asValue : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> value -> xbody
 
-val make : value ::: Type -> state ::: Type
-           -> { Create : transaction state,
-                Initialize : value -> transaction state,
+val make : value ::: Type -> state ::: Type -> config ::: Type
+           -> { Configure : transaction config,
+                Create : config -> transaction state,
+                Initialize : config -> value -> transaction state,
                 AsWidget : state -> option id -> xbody,
                 Value : state -> signal value,
                 AsValue : value -> xbody }
-           -> t value state
+           -> t value state config
 
 (* Some default widgets *)
 
 type urlbox
-val urlbox : t string urlbox
+type urlbox_config
+val urlbox : t string urlbox urlbox_config
 (* This one is earlier in the list so that [textbox] overrides it by default! *)
 
 type htmlbox
-val htmlbox : t string htmlbox
+type htmlbox_config
+val htmlbox : t string htmlbox htmlbox_config
 val html : string -> xbody (* Use this one to parse result of [htmlbox] into real HTML. *)
 
 type textbox
-val textbox : t string textbox
+type textbox_config
+val textbox : t string textbox textbox_config
 
 type checkbox
-val checkbox : t bool checkbox
+type checkbox_config
+val checkbox : t bool checkbox checkbox_config
 
 type intbox
-val intbox : t int intbox
+type intbox_config
+val intbox : t int intbox intbox_config
 
 type timebox
-val timebox : t time timebox
+type timebox_config
+val timebox : t time timebox timebox_config
