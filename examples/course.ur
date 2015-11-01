@@ -2,8 +2,12 @@
 
 open Bootstrap3
 
-table user : { User : string, IsStudent : bool, IsInstructor : bool, IsStaff : bool }
-  PRIMARY KEY User
+table section : { Section : string }
+  PRIMARY KEY Section
+
+table user : { User : string, IsStudent : bool, IsInstructor : bool, IsStaff : bool, Section : option string }
+  PRIMARY KEY User,
+  CONSTRAINT Section FOREIGN KEY Section REFERENCES section(Section) ON UPDATE CASCADE
 
 val userShow : show {User : string} = mkShow (fn r => r.User)
 val userRead : read {User : string} = mkRead' (fn s => Some {User = s}) "user"
@@ -15,8 +19,8 @@ task initialize = fn () =>
   if anyUsers then
       return ()
   else
-      dml (INSERT INTO user(User, IsStudent, IsInstructor, IsStaff)
-           VALUES ('prof', FALSE, TRUE, TRUE))
+      dml (INSERT INTO user(User, IsStudent, IsInstructor, IsStaff, Section)
+           VALUES ('prof', FALSE, TRUE, TRUE, NULL))
 
 cookie userC : string
 
@@ -429,13 +433,29 @@ structure MeetingCal = Calendar.FromTable(struct
                                            val auth = profPrivate
                                        end)
 
+structure EditSections = EditableTable.Make(struct
+                                                val tab = section
+                                                val labels = {Section = "Section"}
+                                                val permission = instructorPermission
+
+                                                fun onAdd _ = return ()
+                                                fun onDelete _ = return ()
+                                                fun onModify _ = return ()
+                                            end)
+
 structure EditUsers = EditableTable.Make(struct
                                              val tab = user
                                              val labels = {User = "Username",
                                                            IsInstructor = "Instructor?",
                                                            IsStudent = "Student?",
-                                                           IsStaff = "Staff?"}
+                                                           IsStaff = "Staff?",
+                                                           Section = "Section"}
                                              val permission = instructorPermission
+
+                                             val widgets = {Section = Widget.foreignbox
+                                                                          (SELECT (section.Section)
+                                                                           FROM section
+                                                                           ORDER BY section.Section)} ++ _
 
                                              fun onAdd _ = return ()
                                              fun onDelete _ = return ()
@@ -495,6 +515,8 @@ val admin =
     Ui.tabbed "Instructor Dashboard"
               ((Some "Users",
                 EditUsers.ui),
+               (Some "Sections",
+                EditSections.ui),
                (Some "Calendar",
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
                         ToDay = readError "09/01/15 00:00:00"}),

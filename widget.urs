@@ -52,3 +52,12 @@ val intbox : t int intbox intbox_config
 type timebox
 type timebox_config
 val timebox : t time timebox timebox_config
+
+(* A widget that only allows selection from a finite list, computed via an SQL query *)
+con foreignbox :: Type -> Type
+con foreignbox_config :: Type -> Type
+val foreignbox : a ::: Type -> f ::: Name ->
+                 show a
+                 -> read a
+                 -> sql_query [] [] [] [f = a]
+                 -> t (option a) (foreignbox a) (foreignbox_config a)

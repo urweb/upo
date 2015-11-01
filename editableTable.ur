@@ -148,7 +148,7 @@ functor Make(M : sig
         (if perm.Modify then
              return ()
          else
-             error <xml>Don't have permission to delete row</xml>);
+             error <xml>Don't have permission to modify row</xml>);
 
         dml (@@update [[]] [_] [map fst3 fs] !
               (@map2 [fn p => sql_injectable p.1] [fst3] [fn p => sql_exp _ _ _ p.1]
