@@ -17,7 +17,7 @@ style post_body
 
 functor Make(M : sig
                  con key :: {Type}
-                 constraint key ~ [When, Who, Text]
+                 constraint key ~ [Thread, When, Who, Text]
                  val fl : folder key
                  val kinj : $(map sql_injectable key)
 
@@ -27,7 +27,7 @@ functor Make(M : sig
                  val text : Widget.t text text_internal text_config
                  val inj : sql_injectable text
 
-                 table message : (key ++ [When = time, Who = string, Text = text])
+                 table message : (key ++ [Thread = time, When = time, Who = string, Text = text])
 
                  val access : $key -> transaction access
              end) : Ui.S where type input = $M.key
