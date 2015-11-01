@@ -61,10 +61,11 @@ function uw_ckeditor_editor(r) {
 function uw_ckeditor_replace(t, id) {
     t.editor = CKEDITOR.replace(id, t.config);
     t.editor.setData(sg(t.source));
-    t.editor.on('saveSnapshot', function(e) { sv(t.source, t.editor.getData()); });
+    t.editor.on('change', function(e) { sv(t.source, t.editor.getData()); });
 }
 
 function uw_ckeditor_content(t) {
+    if (t.editor != undefined) sv(t.source, t.editor.getData());
     return ss(t.source);
 }
 
