@@ -55,7 +55,8 @@ functor Make(M : sig
            | TCons of thread * source threads
 
     datatype update =
-             New of { Thread : time, When : time, Who : string, Text : text }
+             NewThread of { Thread : time, Subject : string }
+           | New of { Thread : time, When : time, Who : string, Text : text }
            | Edit of { Thread: time, When : time, Text : text }
            | Delete of { Thread : time, When : time }
 
@@ -65,6 +66,7 @@ functor Make(M : sig
               Head : source threads,
               Tail : source (source threads),
               Thread : source string,
+              NewThread : source (option (source string)),
               NewPost : text_internal,
               Channel : channel update}
 
@@ -79,6 +81,7 @@ functor Make(M : sig
 
         cfg <- @Widget.configure text;
         np <- @Widget.create text cfg;
+        nt <- source None;
 
         tail' <- source TNil;
         tail <- source tail';
@@ -132,6 +135,7 @@ functor Make(M : sig
                 Head = threads,
                 Tail = tail,
                 Thread = thread,
+                NewThread = nt,
                 NewPost = np,
                 Channel = ch}
 
@@ -150,7 +154,32 @@ functor Make(M : sig
             fun loop () =
                 upd <- recv a.Channel;
                 (case upd of
-                     New msg =>
+                     NewThread r =>
+                     let
+                         fun atEnd ls =
+                             lsV <- get ls;
+                             case lsV of
+                                 TNil =>
+                                 (head <- source Nil;
+                                  tail <- source head;
+                                  tail' <- source TNil;
+                                  cell <- return (TCons ({Thread = r.Thread,
+                                                          Subject = r.Subject,
+                                                          Head = head,
+                                                          Tail = tail}, 
+                                                         tail'));
+                                  set ls cell;
+                                  set a.Tail tail';
+
+                                  hdV <- get a.Head;
+                                  case hdV of
+                                      TNil => set a.Head cell
+                                    | _ => return ())
+                               | TCons (_, ls') => atEnd ls'
+                     in
+                         atEnd a.Head
+                     end
+                   | New msg =>
                      withThread (fn head tail =>
                                     let
                                         fun atEnd ls =
@@ -209,23 +238,51 @@ functor Make(M : sig
             spawn (loop ())
         end
 
+    fun newThread k subj =
+        acc <- access k;
+        case mayPost acc of
+            None => error <xml>Access denied</xml>
+          | Some _ =>
+            tm <- now;
+
+            @@Sql.easy_insert [key ++ [Thread = _, Text = _]] [_]
+              (kinj ++ {Thread = _, Text = _})
+              (@Folder.concat ! _ fl)
+              threads
+              (k ++ {Thread = tm, Text = subj});
+
+            queryI1 (SELECT listeners.Who
+                     FROM listeners
+                     WHERE {@Sql.easy_where [#Listeners] ! ! kinj fl k})
+            (fn r => send r.Who (NewThread {Thread = tm, Subject = subj}));
+
+            return tm
+
     fun postMsg k thread text =
         acc <- access k;
         case mayPost acc of
             None => error <xml>Access denied</xml>
           | Some u =>
-            tm <- now;
+            b <- oneRowE1 (SELECT COUNT( * ) = 0
+                           FROM threads
+                           WHERE {@Sql.easy_where [#Threads] ! ! kinj fl k}
+                             AND threads.Thread = {[thread]});
 
-            @@Sql.easy_insert [key ++ [Thread = _, When = _, Who = _, Text = _]] [_]
-              (kinj ++ {Thread = _, When = _, Who = _, Text = _})
-              (@Folder.concat ! _ fl)
-              message
-              (k ++ {Thread = thread, When = tm, Who = u, Text = text});
+            if b then
+                error <xml>Trying to post to nonexistent thread</xml>
+            else
+                tm <- now;
 
-            queryI1 (SELECT listeners.Who
-                     FROM listeners
-                     WHERE {@Sql.easy_where [#Listeners] ! ! kinj fl k})
-            (fn r => send r.Who (New {Thread = thread, When = tm, Who = u, Text = text}))
+                @@Sql.easy_insert [key ++ [Thread = _, When = _, Who = _, Text = _]] [_]
+                  (kinj ++ {Thread = _, When = _, Who = _, Text = _})
+                  (@Folder.concat ! _ fl)
+                  message
+                  (k ++ {Thread = thread, When = tm, Who = u, Text = text});
+
+                queryI1 (SELECT listeners.Who
+                         FROM listeners
+                         WHERE {@Sql.easy_where [#Listeners] ! ! kinj fl k})
+                        (fn r => send r.Who (New {Thread = thread, When = tm, Who = u, Text = text}))
 
     fun render ctx a =
         let
@@ -236,7 +293,7 @@ functor Make(M : sig
                   | TCons (th, ls') =>
                     x <- renderThreads ls';
                     return <xml>
-                      <coption value={show th.Thread}>{[th.Subject]}</coption>
+                      <coption value={show (toMilliseconds th.Thread)}>{[th.Subject]}</coption>
                       {x}
                     </xml>
 
@@ -275,11 +332,36 @@ functor Make(M : sig
                                         {x}
                                       </cselect>
                                     </xml>}/>
+              <dyn signal={nt <- signal a.NewThread;
+                           return (case nt of
+                                       None => <xml>
+                                         <button class="btn"
+                                                 value="New Thread"
+                                                 onclick={fn _ =>
+                                                             s <- source "";
+                                                             set a.NewThread (Some s)}/>
+                                       </xml>
+                                     | Some s => <xml>
+                                       New thread:
+                                       <ctextbox source={s}/>
+                                       <button class="btn btn-primary"
+                                               value="Create"
+                                               onclick={fn _ =>
+                                                           subj <- get s;
+                                                           set a.NewThread None;
+                                                           th <- rpc (newThread a.Key subj);
+                                                           set a.Thread (show (toMilliseconds th))}/>
+                                       <button class="btn"
+                                               value="Cancel"
+                                               onclick={fn _ => set a.NewThread None}/>
+                                       </xml>)}/>
+
+              <hr/>
 
               <dyn signal={th <- signal a.Thread;
                            case th of
                                "" => return <xml></xml>
-                             | _ => renderPostsOfThread (readError th) a.Head}/>
+                             | _ => renderPostsOfThread (fromMilliseconds (readError th)) a.Head}/>
 
               <dyn signal={th <- signal a.Thread;
                            return (case th of
@@ -297,7 +379,7 @@ functor Make(M : sig
                                                    onclick={fn _ =>
                                                                txt <- current (@Widget.value text a.NewPost);
                                                                @Widget.reset text a.NewPost;
-                                                               rpc (postMsg a.Key (readError th) txt)}/>
+                                                               rpc (postMsg a.Key (fromMilliseconds (readError th)) txt)}/>
                                          </xml>)}/>
             </xml>
         end

@@ -140,31 +140,6 @@ structure PsetGrade = Review.Make(struct
                                       val whoami = getCookie userC
                                   end)
 
-fun psetInfo n =
-    ps <- getPset n;
-    
-    Ui.simple ("Pset #" ^ show n)
-              (Ui.constM (fn ctx => <xml>
-                <active code={content <- source <xml/>;
-                              set content <xml>
-                                <h2>Pset #{[n]}</h2>
-
-                                {Ui.modalButton ctx
-                                                (CLASS "btn btn-primary")
-                                                <xml>New Submission</xml>
-                                                (PsetSub.newUpload {PsetNum = n})}
-
-                                <hr/>
-
-                                <h2>Instructions</h2>
-
-                                {Widget.html ps.Instructions}
-                              </xml>;
-                              return <xml>
-                                <dyn signal={signal content}/>
-                              </xml>}/>
-               </xml>))
-
 fun psetGrades n u =
     requireStaff;
     Ui.simple ("Grading Pset #" ^ show n ^ ", " ^ u)
@@ -278,6 +253,57 @@ structure PsetTodo = Todo.WithDueDate(struct
 
                                           fun render r u = <xml><a link={psetGrades r.PsetNum u}>{[r]}</a></xml>
                                       end)
+
+structure PsetForum = TableDiscussion.Make(struct
+                                               val parent = pset
+                                               val text = Widget.htmlbox
+
+                                               fun access _ =
+                                                   u <- getCookie userC;
+                                                   case u of
+                                                       None => return Discussion.Forbidden
+                                                     | Some u =>
+                                                       flags <- oneOrNoRows1 (SELECT user.IsInstructor, user.IsStaff, user.IsStudent
+                                                                              FROM user
+                                                                              WHERE user.User = {[u]});
+                                                       return (case flags of
+                                                                   None => Discussion.Forbidden
+                                                                 | Some r =>
+                                                                   if r.IsInstructor || r.IsStaff then
+                                                                       Discussion.Admin {User = u}
+                                                                   else if r.IsStudent then
+                                                                       Discussion.Post {User = u, MayEdit = True, MayDelete = False}
+                                                                   else
+                                                                       Discussion.Read)
+                                           end)
+
+fun psetInfo n =
+    ps <- getPset n;
+    
+    Ui.simple ("Pset #" ^ show n)
+              (Ui.seq
+                   (Ui.constM (fn ctx => <xml>
+                                           <active code={content <- source <xml/>;
+                                                    set content <xml>
+                                                      <h2>Pset #{[n]}</h2>
+
+                                                      {Ui.modalButton ctx
+                                                                      (CLASS "btn btn-primary")
+                                                                      <xml>New Submission</xml>
+                                                                      (PsetSub.newUpload {PsetNum = n})}
+
+                                                      <hr/>
+
+                                                      <h2>Instructions</h2>
+
+                                                      {Widget.html ps.Instructions}
+                                                    </xml>;
+                                                    return <xml>
+                                                      <dyn signal={signal content}/>
+                                                    </xml>}/>
+                                     </xml>),
+                    Ui.const <xml><hr/> <h2>Forum for this Pset</h2></xml>,
+                    PsetForum.ui {PsetNum = n}))
 
 table exam : { ExamNum : int, When : time, GradesDue : time }
   PRIMARY KEY ExamNum

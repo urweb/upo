@@ -116,10 +116,37 @@ fun html s =
         Html.Failure msg => <xml><b>HTML error: {[msg]}</b></xml>
       | Html.Success xm => xm
 
+type htmlbox = {Editor : source (option Ckeditor.editor),
+                Initialize : string}
+
 val htmlbox = { Configure = return (),
-                Create = fn () => ed,
-                Initialize = fn () s => me <- ed; Ckeditor.setContent me s; return me,
-                Reset = fn me => Ckeditor.setContent me "",
-                AsWidget = fn x _ => Ckeditor.show x,
-                Value = Ckeditor.content,
+                Create = fn () =>
+                            s <- source None;
+                            return {Editor = s,
+                                    Initialize = ""},
+                Initialize = fn () init =>
+                                s <- source None;
+                                return {Editor = s,
+                                        Initialize = init},
+                Reset = fn me =>
+                           me <- get me.Editor;
+                           case me of
+                               None => return ()
+                             | Some ed => Ckeditor.setContent ed "",
+                AsWidget = fn me _ => <xml>
+                  <active code={meV <- get me.Editor;
+                                meV <- (case meV of
+                                           Some meV => return meV
+                                         | None =>
+                                           meV <- ed;
+                                           set me.Editor (Some meV);
+                                           return meV);
+                                Ckeditor.setContent meV me.Initialize;
+                                return (Ckeditor.show meV)}/>
+                </xml>,
+                Value = fn me =>
+                           meV <- signal me.Editor;
+                           case meV of
+                               None => return ""
+                             | Some meV => Ckeditor.content meV,
                 AsValue = html }

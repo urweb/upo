@@ -3,6 +3,7 @@ rewrite all Course/*
 safeGet admin
 safeGet staff
 safeGet main
+safeGet psetInfo
 safeGet psetGrades
 safeGet examGrades
 allow url http://*
