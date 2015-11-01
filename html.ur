@@ -45,12 +45,20 @@ fun format [tags] (fl : folder tags) (tags : $(map tag tags)) [ctx] [[Body] ~ ct
                          None => Bad "No ';' after '&'"
                        | Some (code, post) =>
                          let
-                             val xml = 
+                             val xml =
                                  case code of
                                      "lt" => <xml>&lt;</xml>
                                    | "gt" => <xml>&gt;</xml>
                                    | "amp" => <xml>&amp;</xml>
-                                   | _ => <xml/>
+                                   | "nbsp" => <xml>&nbsp;</xml>
+                                   | _ =>
+                                     if String.length code > 0 && String.sub code 0 = #"#" then
+                                         case read (String.suffix code 1) of
+                                             None => <xml/>
+                                           | Some 0 => <xml/>
+                                           | Some n => cdataChar (Char.fromInt n)
+                                     else
+                                         <xml/>
                          in
                              case loop post of
                                  Good (after, post) => Good (<xml>{[pre]}{xml}{after}</xml>, post)
