@@ -309,9 +309,9 @@ functor Make(M : sig
 
                                                         <div class={post_body}>{@Widget.asValue text r.Text}</div>
                                                       </xml>}/>
-
-                                         {renderPosts ls'}
                                        </div>
+
+                                       {renderPosts ls'}
                                      </xml>)}/>
             </xml>
 

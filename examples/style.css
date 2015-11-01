@@ -89,6 +89,18 @@ div.Calendar_item {
 
 .PsetSub_file {
     width: 100%;
-    border-style: solid
+    border-style: solid;
     padding: 10px;
+}
+
+.Discussion_post {
+    width: 100%;
+    border-style: solid;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.Discussion_post_header {
+    border-style: solid;
+    padding: 5px;
 }

@@ -39,7 +39,7 @@ function sizeOut(v) {
         throw ("Invalid Ckeditor.size " + v);
 }
 
-function uw_ckeditor_editor(r) {
+function uw_ckeditor_replace(r) {
     var config = {};
 
     var width = sizeOut(r._Width);
@@ -54,23 +54,14 @@ function uw_ckeditor_editor(r) {
 
     if (toolbarSet != null)
         config.toolbar = toolbar_set(toolbarSet.v);
-    
-    return {config: config, name: fresh(), source: sc("")};
+
+    var ed = CKEDITOR.replace(r._Id, config);
+    var src = r._Source;
+    ed.setData(sg(src));
+    ed.on('change', function(e) { sv(src, ed.getData()); });
 }
 
-function uw_ckeditor_replace(t, id) {
-    t.editor = CKEDITOR.replace(id, t.config);
-    t.editor.setData(sg(t.source));
-    t.editor.on('change', function(e) { sv(t.source, t.editor.getData()); });
-}
-
-function uw_ckeditor_content(t) {
-    if (t.editor != undefined) sv(t.source, t.editor.getData());
-    return ss(t.source);
-}
-
-function uw_ckeditor_setContent(t, s) {
-    sv(t.source, s);
-    if (t.editor != undefined)
-        t.editor.setData(s);
+function uw_ckeditor_setContent(id, s) {
+    var ed = CKEDITOR.instances[id];
+    if (ed) ed.setData(s);
 }

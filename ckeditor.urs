@@ -106,7 +106,8 @@ type editor
 
 val editor : {Width : size,
               Height : size,
-              ToolbarSet : toolbar_set}
+              ToolbarSet : toolbar_set,
+              InitialText : string}
              -> transaction editor
 val show : editor -> xbody
 val content : editor -> signal string

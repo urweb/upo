@@ -107,46 +107,20 @@ val links = Ckeditor.Bar {Nam = Some "Links",
                                         :: Ckeditor.Unlink
                                         :: []}
 
-val ed = Ckeditor.editor {Width = Ckeditor.DefaultSize,
-                          Height = Ckeditor.DefaultSize,
-                          ToolbarSet = Ckeditor.Custom (undoEtc :: find :: basic :: links :: [])}
+fun ed s = Ckeditor.editor {Width = Ckeditor.DefaultSize,
+                            Height = Ckeditor.DefaultSize,
+                            ToolbarSet = Ckeditor.Custom (undoEtc :: find :: basic :: links :: []),
+                            InitialText = s}
 
 fun html s =
     case Html.format (Html.b, Html.i, Html.a, Html.strong, Html.em, Html.p) s of
         Html.Failure msg => <xml><b>HTML error: {[msg]}</b></xml>
       | Html.Success xm => xm
 
-type htmlbox = {Editor : source (option Ckeditor.editor),
-                Initialize : string}
-
 val htmlbox = { Configure = return (),
-                Create = fn () =>
-                            s <- source None;
-                            return {Editor = s,
-                                    Initialize = ""},
-                Initialize = fn () init =>
-                                s <- source None;
-                                return {Editor = s,
-                                        Initialize = init},
-                Reset = fn me =>
-                           me <- get me.Editor;
-                           case me of
-                               None => return ()
-                             | Some ed => Ckeditor.setContent ed "",
-                AsWidget = fn me _ => <xml>
-                  <active code={meV <- get me.Editor;
-                                meV <- (case meV of
-                                           Some meV => return meV
-                                         | None =>
-                                           meV <- ed;
-                                           set me.Editor (Some meV);
-                                           return meV);
-                                Ckeditor.setContent meV me.Initialize;
-                                return (Ckeditor.show meV)}/>
-                </xml>,
-                Value = fn me =>
-                           meV <- signal me.Editor;
-                           case meV of
-                               None => return ""
-                             | Some meV => Ckeditor.content meV,
+                Create = fn () => ed "",
+                Initialize = fn () => ed,
+                Reset = fn me => Ckeditor.setContent me "",
+                AsWidget = fn me _ => Ckeditor.show me,
+                Value = Ckeditor.content,
                 AsValue = html }

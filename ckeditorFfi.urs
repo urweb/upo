@@ -102,12 +102,10 @@ datatype toolbar_set =
          DefaultToolbarSet
        | Custom of list toolbar
 
-type editor
-
-val editor : {Width : size,
-              Height : size,
-              ToolbarSet : toolbar_set}
-             -> transaction editor
-val replace : editor -> id -> transaction unit
-val content : editor -> signal string
-val setContent : editor -> string -> transaction unit
+val replace : {Width : size,
+               Height : size,
+               ToolbarSet : toolbar_set,
+               Id : id,
+               Source : source string}
+             -> transaction unit
+val setContent : id -> string -> transaction unit
