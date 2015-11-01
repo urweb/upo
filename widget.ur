@@ -2,6 +2,7 @@ con t (value :: Type) (state :: Type) (config :: Type) =
       { Configure : transaction config,
         Create : config -> transaction state,
         Initialize : config -> value -> transaction state,
+        Reset : state -> transaction unit,
         AsWidget : state -> option id -> xbody,
         Value : state -> signal value,
         AsValue : value -> xbody }
@@ -11,6 +12,7 @@ con t' (value :: Type, state :: Type, config :: Type) = t value state config
 fun configure [value] [state] [config] (t : t value state config) = t.Configure
 fun create [value] [state] [config] (t : t value state config) = t.Create
 fun initialize [value] [state] [config] (t : t value state config) = t.Initialize
+fun reset [value] [state] [config] (t : t value state config) = t.Reset
 fun asWidget [value] [state] [config] (t : t value state config) = t.AsWidget
 fun value [value] [state] [config] (t : t value state config) = t.Value
 fun asValue [value] [state] [config] (t : t value state config) = t.AsValue
@@ -21,6 +23,7 @@ fun make [value] [state] [config] r = r
 val textbox = { Configure = return (),
                 Create = fn () => source "",
                 Initialize = fn () => source,
+                Reset = fn s => set s "",
                 AsWidget = fn s ido =>
                               case ido of
                                   None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
@@ -31,6 +34,7 @@ val textbox = { Configure = return (),
 val checkbox = { Configure = return (),
                  Create = fn () => source False,
                  Initialize = fn () => source,
+                 Reset = fn s => set s False,
                  AsWidget = fn s ido =>
                                case ido of
                                    None => <xml><ccheckbox class={Bootstrap3.form_control} source={s}/></xml>
@@ -41,6 +45,7 @@ val checkbox = { Configure = return (),
 val intbox = { Configure = return (),
                Create = fn () => source "",
                Initialize = fn () n => source (show n),
+               Reset = fn s => set s "",
                AsWidget = fn s ido =>
                              case ido of
                                  None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
@@ -51,6 +56,7 @@ val intbox = { Configure = return (),
 val timebox = { Configure = return (),
                 Create = fn () => source "",
                 Initialize = fn () n => source (show n),
+                Reset = fn s => set s "",
                 AsWidget = fn s ido =>
                               case ido of
                                   None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
@@ -61,6 +67,7 @@ val timebox = { Configure = return (),
 val urlbox = { Configure = return (),
                Create = fn () => source "",
                Initialize = fn () => source,
+               Reset = fn s => set s "",
                AsWidget = fn s ido =>
                              case ido of
                                  None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
@@ -112,6 +119,7 @@ fun html s =
 val htmlbox = { Configure = return (),
                 Create = fn () => ed,
                 Initialize = fn () s => me <- ed; Ckeditor.setContent me s; return me,
+                Reset = fn me => Ckeditor.setContent me "",
                 AsWidget = fn x _ => Ckeditor.show x,
                 Value = Ckeditor.content,
                 AsValue = html }

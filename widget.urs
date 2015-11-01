@@ -10,6 +10,7 @@ con t' (value :: Type, state :: Type, config :: Type) = t value state config
 val configure : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> transaction config
 val create : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> config -> transaction state
 val initialize : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> config -> value -> transaction state
+val reset : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> transaction unit
 val asWidget : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> option id (* Use this ID if you can, to help group with labels. *) -> xbody
 val value : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> signal value
 val asValue : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> value -> xbody
@@ -18,6 +19,7 @@ val make : value ::: Type -> state ::: Type -> config ::: Type
            -> { Configure : transaction config,
                 Create : config -> transaction state,
                 Initialize : config -> value -> transaction state,
+                Reset : state -> transaction unit,
                 AsWidget : state -> option id -> xbody,
                 Value : state -> signal value,
                 AsValue : value -> xbody }
