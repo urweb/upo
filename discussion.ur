@@ -22,13 +22,11 @@ functor Make(M : sig
                  val fl : folder key
                  val kinj : $(map sql_injectable key)
 
-                 type text
                  type text_internal
                  type text_config
-                 val text : Widget.t text text_internal text_config
-                 val inj : sql_injectable text
+                 val text : Widget.t string text_internal text_config
 
-                 table message : (key ++ [Thread = time, When = time, Who = string, Text = text])
+                 table message : (key ++ [Thread = time, When = time, Who = string, Text = string])
 
                  val access : $key -> transaction access
              end) = struct
@@ -39,7 +37,7 @@ functor Make(M : sig
 
     type message = {When : time,
                     Who : string,
-                    Text : text}
+                    Text : string}
 
     datatype messages =
              Nil
@@ -56,8 +54,8 @@ functor Make(M : sig
 
     datatype update =
              NewThread of { Thread : time, Subject : string }
-           | New of { Thread : time, When : time, Who : string, Text : text }
-           | Edit of { Thread: time, When : time, Text : text }
+           | New of { Thread : time, When : time, Who : string, Text : string }
+           | Edit of { Thread: time, When : time, Text : string }
            | Delete of { Thread : time, When : time }
 
     type a = {Config : text_config,
@@ -312,6 +310,7 @@ functor Make(M : sig
                                        </div>
 
                                        {renderPosts ls'}
+
                                      </xml>)}/>
             </xml>
 
@@ -372,9 +371,12 @@ functor Make(M : sig
                                          | Some u => <xml>
                                            <h2>Post Message</h2>
 
-                                           {@Widget.asWidget text a.NewPost None}
+                                           {@Widget.asWidget text a.NewPost None}<br/>
                                            
-                                           <button class="btn btn-primary"
+                                           <button dynClass={v <- @Widget.value text a.NewPost;
+                                                             return (case v of
+                                                                         "" => CLASS "btn disabled"
+                                                                       | _ => CLASS "btn btn-primary")}
                                                    value="Post"
                                                    onclick={fn _ =>
                                                                txt <- current (@Widget.value text a.NewPost);

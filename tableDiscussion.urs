@@ -16,11 +16,9 @@ functor Make(M : sig
                  constraint [keyName] ~ otherConstraints
                  val parent : sql_table (key ++ rest) ([keyName = map (fn _ => ()) key] ++ otherConstraints)
 
-                 type text
                  type text_internal
                  type text_config
-                 val text : Widget.t text text_internal text_config
-                 val inj : sql_injectable text
+                 val text : Widget.t string text_internal text_config
 
                  val access : $key -> transaction Discussion.access
              end) : Ui.S where type input = $M.key

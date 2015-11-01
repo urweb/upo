@@ -19,4 +19,6 @@ fun show ed = ed.Show
 
 fun content ed = signal ed.Source
 
-fun setContent ed s = CkeditorFfi.setContent ed.Id s
+fun setContent ed s =
+    set ed.Source s;
+    CkeditorFfi.setContent ed.Id s

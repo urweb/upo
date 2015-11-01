@@ -14,18 +14,16 @@ functor Make(M : sig
                  constraint [keyName] ~ otherConstraints
                  val parent : sql_table (key ++ rest) ([keyName = map (fn _ => ()) key] ++ otherConstraints)
 
-                 type text
                  type text_internal
                  type text_config
-                 val text : Widget.t text text_internal text_config
-                 val inj : sql_injectable text
+                 val text : Widget.t string text_internal text_config
 
                  val access : $key -> transaction Discussion.access
              end) = struct
 
     open M
 
-    table message : (key ++ [Thread = time, When = time, Who = string, Text = text])
+    table message : (key ++ [Thread = time, When = time, Who = string, Text = string])
       PRIMARY KEY {{@primary_key [key1] [keyR ++ [Thread = _, When = _]] ! !
                      (kinj ++ _)}},
       {{one_constraint [#Parent] (@Sql.easy_foreign ! ! ! ! ! ! fl parent)}}

@@ -21,13 +21,11 @@ functor Make(M : sig
                  val fl : folder key
                  val kinj : $(map sql_injectable key)
 
-                 type text
                  type text_internal
                  type text_config
-                 val text : Widget.t text text_internal text_config
-                 val inj : sql_injectable text
+                 val text : Widget.t string text_internal text_config
 
-                 table message : (key ++ [Thread = time, When = time, Who = string, Text = text])
+                 table message : (key ++ [Thread = time, When = time, Who = string, Text = string])
 
                  val access : $key -> transaction access
              end) : Ui.S where type input = $M.key
