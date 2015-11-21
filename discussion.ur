@@ -12,6 +12,12 @@ fun mayPost acc =
       | Admin r => Some r.User
       | _ => None
 
+fun mayEdit acc poster =
+    case acc of
+        Post r => if r.MayEdit && poster = r.User then Some r.User else None
+      | Admin r => Some r.User
+      | _ => None
+
 fun mayDelete acc poster =
     case acc of
         Post r => if r.MayDelete && poster = r.User then Some r.User else None
@@ -288,6 +294,33 @@ functor Make(M : sig
                          WHERE {@Sql.easy_where [#Listeners] ! ! kinj fl k})
                         (fn r => send r.Who (New {Thread = thread, When = tm, Who = u, Text = text}))
 
+    fun saveMsg k thread msg text =
+        acc <- access k;
+        wh <- oneOrNoRowsE1 (SELECT (message.Who)
+                             FROM message
+                             WHERE {@Sql.easy_where [#Message] ! ! kinj fl k}
+                               AND message.Thread = {[thread]}
+                               AND message.When = {[msg]});
+
+        case wh of
+            None => error <xml>Trying to edit nonexistent message</xml>
+          | Some wh =>
+            case mayEdit acc wh of
+                None => error <xml>Access denied</xml>
+              | Some u =>
+                dml (UPDATE message
+                     SET Text = {[text]}
+                     WHERE {@@Sql.easy_where [#T] [key ++ [Thread = _, When = _]] [[Who = _, Text = _]]
+                       [[]] [[]] [[]] ! !
+                       (kinj ++ {Thread = _, When = _})
+                       (@Folder.concat ! _ fl)
+                       (k ++ {Thread = thread, When = msg})});
+
+                queryI1 (SELECT listeners.Who
+                         FROM listeners
+                         WHERE {@Sql.easy_where [#Listeners] ! ! kinj fl k})
+                        (fn r => send r.Who (Edit {Thread = thread, When = msg, Text = text}))
+
     fun deleteMsg k thread msg =
         acc <- access k;
         wh <- oneOrNoRowsE1 (SELECT (message.Who)
@@ -338,6 +371,22 @@ functor Make(M : sig
                                                  <dyn signal={r <- signal msg;
                                                               return <xml>
                                                                 <div class={post_header}>{[r.Who]} at {[r.When]}
+                                                                  {case mayEdit a.Access r.Who of
+                                                                       None => <xml></xml>
+                                                                     | Some _ =>
+                                                                       Ui.modalButton ctx (CLASS "btn glyphicon glyphicon-edit")
+                                                                                      <xml></xml>
+                                                                                      (newText <- @Widget.initialize text a.Config r.Text;
+                                                                                       return (Ui.modal
+                                                                                                   (text' <- current (@Widget.value text newText);
+                                                                                                    rpc (saveMsg a.Key th r.When text'))
+                                                                                                   <xml>
+                                                                                                     <h2>Editing Post</h2>
+
+                                                                                                     {@Widget.asWidget text newText None}
+                                                                                                   </xml>
+                                                                                                   <xml/>
+                                                                                                   <xml>Save</xml>))}
                                                                   {case mayDelete a.Access r.Who of
                                                                        None => <xml></xml>
                                                                      | Some _ =>
