@@ -12,6 +12,12 @@ fun mayPost acc =
       | Admin r => Some r.User
       | _ => None
 
+fun mayDelete acc poster =
+    case acc of
+        Post r => if r.MayDelete && poster = r.User then Some r.User else None
+      | Admin r => Some r.User
+      | _ => None
+
 style post
 style post_header
 style post_body
@@ -282,6 +288,32 @@ functor Make(M : sig
                          WHERE {@Sql.easy_where [#Listeners] ! ! kinj fl k})
                         (fn r => send r.Who (New {Thread = thread, When = tm, Who = u, Text = text}))
 
+    fun deleteMsg k thread msg =
+        acc <- access k;
+        wh <- oneOrNoRowsE1 (SELECT (message.Who)
+                             FROM message
+                             WHERE {@Sql.easy_where [#Message] ! ! kinj fl k}
+                               AND message.Thread = {[thread]}
+                               AND message.When = {[msg]});
+
+        case wh of
+            None => error <xml>Trying to delete nonexistent message</xml>
+          | Some wh =>
+            case mayDelete acc wh of
+                None => error <xml>Access denied</xml>
+              | Some u =>
+                dml (DELETE FROM message
+                     WHERE {@@Sql.easy_where [#T] [key ++ [Thread = _, When = _]] [[Who = _, Text = _]]
+                       [[]] [[]] [[]] ! !
+                       (kinj ++ {Thread = _, When = _})
+                       (@Folder.concat ! _ fl)
+                       (k ++ {Thread = thread, When = msg})});
+
+                queryI1 (SELECT listeners.Who
+                         FROM listeners
+                         WHERE {@Sql.easy_where [#Listeners] ! ! kinj fl k})
+                        (fn r => send r.Who (Delete {Thread = thread, When = msg}))
+
     fun render ctx a =
         let
             fun renderThreads ls =
@@ -295,34 +327,47 @@ functor Make(M : sig
                       {x}
                     </xml>
 
-            fun renderPosts ls = <xml>
-              <dyn signal={h <- signal ls;
-                           return (case h of
-                                       Nil => <xml></xml>
-                                     | Cons (msg, ls') => <xml>
-                                       <div class={post}>
-                                         <dyn signal={r <- signal msg;
-                                                      return <xml>
-                                                        <div class={post_header}>{[r.Who]} at {[r.When]}</div>
-
-                                                        <div class={post_body}>{@Widget.asValue text r.Text}</div>
-                                                      </xml>}/>
-                                       </div>
-
-                                       {renderPosts ls'}
-
-                                     </xml>)}/>
-            </xml>
-
             fun renderPostsOfThread (th : time) ls =
-                h <- signal ls;
-                case h of
-                    TNil => return <xml></xml>
-                  | TCons (r, ls') =>
-                    if r.Thread = th then
-                        return (renderPosts r.Head)
-                    else
-                        renderPostsOfThread th ls'
+                let
+                    fun renderPosts ls = <xml>
+                      <dyn signal={h <- signal ls;
+                                   return (case h of
+                                               Nil => <xml></xml>
+                                             | Cons (msg, ls') => <xml>
+                                               <div class={post}>
+                                                 <dyn signal={r <- signal msg;
+                                                              return <xml>
+                                                                <div class={post_header}>{[r.Who]} at {[r.When]}
+                                                                  {case mayDelete a.Access r.Who of
+                                                                       None => <xml></xml>
+                                                                     | Some _ =>
+                                                                       Ui.modalButton ctx close
+                                                                                      <xml>&times;</xml>
+                                                                                      (return (Ui.modal
+                                                                                                   (rpc (deleteMsg a.Key th r.When))
+                                                                                                   <xml>Are you sure you want to delete that post by {[r.Who]}?</xml>
+                                                                                                   <xml/>
+                                                                                                   <xml>Yes!</xml>))}
+                                                                </div>
+
+                                                                <div class={post_body}>{@Widget.asValue text r.Text}</div>
+                                                              </xml>}/>
+                                               </div>
+
+                                               {renderPosts ls'}
+
+                                             </xml>)}/>
+                    </xml>
+                in
+                    h <- signal ls;
+                    case h of
+                        TNil => return <xml></xml>
+                      | TCons (r, ls') =>
+                        if r.Thread = th then
+                            return (renderPosts r.Head)
+                        else
+                            renderPostsOfThread th ls'
+                end
         in
             <xml>
               Threads: <dyn signal={x <- renderThreads a.Head;

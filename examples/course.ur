@@ -276,7 +276,7 @@ structure PsetForum = TableDiscussion.Make(struct
                                                                    if r.IsInstructor || r.IsStaff then
                                                                        Discussion.Admin {User = u}
                                                                    else if r.IsStudent then
-                                                                       Discussion.Post {User = u, MayEdit = True, MayDelete = False}
+                                                                       Discussion.Post {User = u, MayEdit = True, MayDelete = True}
                                                                    else
                                                                        Discussion.Read)
                                            end)
