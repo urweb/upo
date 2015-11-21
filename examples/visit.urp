@@ -1,10 +1,9 @@
-library ..
+library ../default
 rewrite all Visit/*
 safeGet Locals/admin
 safeGet Locals/pi
 safeGet Locals/main
 safeGet Admits/main
-file /style.css style.css
 database dbname=visit
 sql visit.sql
 prefix /visit

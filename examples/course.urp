@@ -1,4 +1,4 @@
-library ..
+library ../default
 rewrite all Course/*
 safeGet admin
 safeGet staff
@@ -10,7 +10,6 @@ allow url http://*
 allow url https://*
 allow mime application/pdf
 timeFormat %m/%d/%Y %I:%M %p
-file /style.css style.css
 database dbname=course
 sql course.sql
 prefix /course

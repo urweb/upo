@@ -1,9 +1,8 @@
 database dbname=upotest
 sql upo.sql
-library ..
+library ../default
 rewrite url Ov/*
 safeGet main
-file /style.css style.css
 allow url http://*
 allow url https://*
 

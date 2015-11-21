@@ -8,7 +8,6 @@ script https://code.jquery.com/jquery-2.1.3.min.js
 script https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js
 script /navbar.js
 file /navbar.js navbar.js
-alwaysInline Theme/page
 allow env SSL_CLIENT_S_DN
 
 $/list

@@ -13,6 +13,5 @@ benignEffectful CkeditorFfi.content
 benignEffectful CkeditorFfi.setContent
 file /ckeditor.js ckeditor.js
 script /ckeditor.js
-script http://ckeditor.com/apps/ckeditor/4.3/ckeditor.js
 
 ckeditor

@@ -1,6 +1,7 @@
 (* Organizing dinners for the MIT EECS junior faculty *)
 
 open Bootstrap3
+structure Theme = Ui.Make(Default)
 
 (* Local MIT people *)
 table user : { HumanName : string, MitId : string, IsAdmin : bool, IsJfac : bool }
@@ -259,7 +260,7 @@ val main =
                                 ORDER BY dinner.Time
                                 LIMIT 1);
 
-    Ui.tabbed "EECS Junior Faculty Dinners"
+    Theme.tabbed "EECS Junior Faculty Dinners"
               ((case nextDinner of
                     None => None
                   | Some _ => Some "Next Dinner",
@@ -373,7 +374,7 @@ val main =
 val admin =
     requireAdmin;
 
-    Ui.tabbed "EECS Junior Faculty Admin"
+    Theme.tabbed "EECS Junior Faculty Admin"
               ((Some "Users",
                 EditUsers.ui),
                (Some "Times",
@@ -400,7 +401,7 @@ fun setIt v =
 val cookieSetup =
     sc <- source "";
 
-    Ui.tabbed "Cookie Setup"
+    Theme.tabbed "Cookie Setup"
     {1 = (Some "Set Cookie",
       Ui.const <xml>
         <ctextbox source={sc}/>

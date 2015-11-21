@@ -1,3 +1,5 @@
+structure Theme = Ui.Make(Default)
+
 table h : { Title : string, Groovy : bool, Descr : string, Url : string }
   PRIMARY KEY Title
 
@@ -20,4 +22,4 @@ structure ET = EditableTable.Make(struct
                                       fun onModify _ = return ()
                                   end)
 
-val main = Ui.simple "Main" ET.ui
+val main = Theme.simple "Main" ET.ui

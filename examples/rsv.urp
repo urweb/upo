@@ -1,6 +1,6 @@
 database dbname=upotest
 sql rsv.sql
-library ..
+library ../default
 rewrite url Rsv/*
 safeGet home
 

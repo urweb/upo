@@ -1,3 +1,5 @@
+structure Theme = Ui.Make(Default)
+
 table user : { User : string }
   PRIMARY KEY User
 
@@ -46,6 +48,7 @@ structure VotingUnlimited = OpenBallot.Make(struct
                                                 val amVoter = getCookie userC
                                                 val maxVotesPerVoter = None
                                                 val alwaysShowVotes = False
+                                                val keyFilter = (WHERE TRUE)
                                             end)
 
 structure VotingLimited = OpenBallot.Make(struct
@@ -56,6 +59,7 @@ structure VotingLimited = OpenBallot.Make(struct
                                               val amVoter = getCookie userC
                                               val maxVotesPerVoter = Some 2
                                               val alwaysShowVotes = False
+                                              val keyFilter = (WHERE TRUE)
                                           end)
 
 fun auth s =
@@ -75,7 +79,7 @@ val main =
     newuname <- source "";
     uname <- getCookie userC;
     uname <- return (Option.get {User = ""} uname);
-    Ui.tabbed "OV"
+    Theme.tabbed "OV"
     ((Some "Login",
       Ui.const <xml>
         <ctextbox source={newuname}/>

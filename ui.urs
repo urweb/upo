@@ -45,19 +45,28 @@ val h3 : xbody -> t const
 val h4 : xbody -> t const
 val hr : t const
 
-(* Render a page with just one simple UI worth of content. *)
-val simple : a ::: Type
-             -> string (* title *)
-             -> t a    (* content *)
-             -> transaction page
+(* Themes control where to get CSS and JavaScript from, etc. *)
+signature THEME = sig
+    val bootstrap : url
+    val custom : url
+    (* Two CSS URLs *)
+end
 
-(* Render a page with several named tabs, each with its own UI.
- * Switch between tabs using the top navbar. *)
-val tabbed : ts ::: {Type} -> folder ts
-             -> string                                     (* title *)
-             -> $(map (fn a => option string * t a) ts)    (* content *)
-             -> transaction page
-(* Tabs labeled with [None] are hidden in this rendering. *)
+functor Make(M : THEME) : sig
+    (* Render a page with just one simple UI worth of content. *)
+    val simple : a ::: Type
+                 -> string (* title *)
+                 -> t a    (* content *)
+                 -> transaction page
+
+    (* Render a page with several named tabs, each with its own UI.
+     * Switch between tabs using the top navbar. *)
+    val tabbed : ts ::: {Type} -> folder ts
+                 -> string                                     (* title *)
+                 -> $(map (fn a => option string * t a) ts)    (* content *)
+                 -> transaction page
+    (* Tabs labeled with [None] are hidden in this rendering. *)
+end
 
 (* Create an HTML button that opens a modal dialog with the content
  * that the callback function returns. *)

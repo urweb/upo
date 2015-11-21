@@ -1,3 +1,5 @@
+structure Theme = Ui.Make(Default)
+
 table user : { User : string }
   PRIMARY KEY User
 
@@ -51,7 +53,7 @@ fun auth s =
 val main =
     newuname <- source "";
     uname <- getCookie userC;
-    Ui.tabbed "OV"
+    Theme.tabbed "OV"
     ((Some "Login",
       Ui.const <xml>
         <ctextbox source={newuname}/>

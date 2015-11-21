@@ -1,6 +1,6 @@
 database dbname=upotest
 sql mg.sql
-library ..
+library ../default
 rewrite url Mg/*
 safeGet main
 safeGet mainRev

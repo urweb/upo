@@ -1,3 +1,5 @@
+structure Theme = Ui.Make(Default)
+
 table h : { Title : string, Bogosity : int, Office : string }
   PRIMARY KEY Title
 
@@ -59,7 +61,7 @@ fun home s =
         setCookie homeC {Value = ho,
                          Secure = False,
                          Expires = None};
-        Ui.simple ("Your Options (" ^ s ^ ")")
+        Theme.simple ("Your Options (" ^ s ^ ")")
                   (S.Home.ui ho)
 
 fun away s =
@@ -69,7 +71,7 @@ fun away s =
         setCookie awayC {Value = aw,
                          Secure = False,
                          Expires = None};
-        Ui.simple ("Your Options (" ^ s ^ ")")
+        Theme.simple ("Your Options (" ^ s ^ ")")
                   (S.Away.ui aw)
 
 

@@ -1,6 +1,7 @@
 (* Adapted version of app for MIT CS admitted PhD student visit weekend *)
 
 open Bootstrap3
+structure Theme = Ui.Make(Default)
 
 (* Has the visit weekend started yet?  (Only admins may set it.) *)
 table visitStarted : { Started : bool }
@@ -287,7 +288,7 @@ structure Admits = struct
                                WHERE admit.AdmitId = {[id]});
         attending <- source attending;
 
-        Ui.simple ("MIT CS Admitted PhD Student Portal (" ^ name ^ ")")
+        Theme.simple ("MIT CS Admitted PhD Student Portal (" ^ name ^ ")")
                   (Ui.seq
                        (Ui.const <xml>
                          <dyn signal={att <- signal attending;
@@ -499,7 +500,7 @@ structure Locals = struct
         schMode <- oneRowE1 (SELECT COUNT( * ) > 0
                              FROM schedulingStarted);
 
-        Ui.tabbed "Visit Weekend PI Portal"
+        Theme.tabbed "Visit Weekend PI Portal"
                   ((Some "Profile",
                     Ui.seq (Ui.const <xml>
                       <dyn signal={att <- signal attending;
@@ -683,7 +684,7 @@ structure Locals = struct
                              <tr><td><a link={pi r.LocalName}>{[r.LocalName]}</a></td></tr>
                            </xml>);
 
-        Ui.tabbed "Visit Weekend Admin"
+        Theme.tabbed "Visit Weekend Admin"
                   ((Some "Locals",
                     EditLocal.ui),
                    (Some "Import PIs", Ui.const <xml>
@@ -810,8 +811,8 @@ structure Locals = struct
     val main =
         user <- authCsail;
         key <- return {LocalName = user};
-
-        Ui.simple "Visit Weekend Local-Participant Portal"
+        
+        Theme.simple "Visit Weekend Local-Participant Portal"
                   (Ui.seq
                        (InputLocal.ui key,
                         Ui.h2 <xml>Research-area dinners (Friday, March 6)</xml>,
@@ -826,7 +827,7 @@ fun setIt v =
 val cookieSetup =
     sc <- source "";
 
-    Ui.tabbed "Cookie Setup"
+    Theme.tabbed "Cookie Setup"
     {1 = (Some "Set Cookie",
       Ui.const <xml>
         <ctextbox source={sc}/>

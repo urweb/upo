@@ -1,6 +1,7 @@
 (* A simple course *)
 
 open Bootstrap3
+structure Theme = Ui.Make(Default)
 
 table section : { Section : string }
   PRIMARY KEY Section
@@ -146,7 +147,7 @@ structure PsetGrade = Review.Make(struct
 
 fun psetGrades n u =
     requireStaff;
-    Ui.simple ("Grading Pset #" ^ show n ^ ", " ^ u)
+    Theme.simple ("Grading Pset #" ^ show n ^ ", " ^ u)
     (Ui.seq
          (PsetSub.AllFiles.ui {Key = {PsetNum = n}, User = u},
           PsetGrade.One.ui {PsetNum = n, PsetStudent = u}))
@@ -284,7 +285,7 @@ structure PsetForum = TableDiscussion.Make(struct
 fun psetInfo n =
     ps <- getPset n;
     
-    Ui.simple ("Pset #" ^ show n)
+    Theme.simple ("Pset #" ^ show n)
               (Ui.seq
                    (Ui.constM (fn ctx => <xml>
                                            <active code={content <- source <xml/>;
@@ -366,7 +367,7 @@ structure ExamTodo = Todo.Happenings(struct
 
 fun examGrades n u =
     requireStaff;
-    Ui.simple ("Grading Exam #" ^ show n ^ ", " ^ u)
+    Theme.simple ("Grading Exam #" ^ show n ^ ", " ^ u)
     (ExamGrade.One.ui {ExamNum = n, ExamStudent = u})
 
 table examAssignedGrader : { ExamNum : int, ExamStudent : string, Grader : string }
@@ -512,7 +513,7 @@ structure ProfTod = Todo.Make(struct
 val admin =
     requireInstructor;
 
-    Ui.tabbed "Instructor Dashboard"
+    Theme.tabbed "Instructor Dashboard"
               ((Some "Users",
                 EditUsers.ui),
                (Some "Sections",
@@ -618,7 +619,7 @@ val staff =
     all_grades <- Grades.allStudents gradeTree;
     grs <- source [];
 
-    Ui.tabbed "Staff Dashboard"
+    Theme.tabbed "Staff Dashboard"
               ((Some "TODO",
                 StaffTod.OneUser.ui u),
                (Some "Calendar",
@@ -669,7 +670,7 @@ val main =
     u <- return (case c of
                      None => ""
                    | Some u => u);
-    Ui.tabbed "Course Home Page"
+    Theme.tabbed "Course Home Page"
               ((Some "TODO",
                 StudentTod.OneUser.ui u),
                (Some "Calendar",
@@ -686,7 +687,7 @@ fun setIt v =
 val cookieSetup =
     sc <- source "";
 
-    Ui.tabbed "Cookie Setup"
+    Theme.tabbed "Cookie Setup"
     {1 = (Some "Set Cookie",
       Ui.const <xml>
         <ctextbox source={sc}/>

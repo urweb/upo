@@ -1,3 +1,5 @@
+structure Theme = Ui.Make(Default)
+
 table h : { Title : string, Bogosity : int, Office : string }
   PRIMARY KEY Title
 
@@ -58,9 +60,12 @@ structure S = MeetingGrid.Make(struct
                                    val time = time
 
                                    val const = {}
+                                   val homeSoftConst = {}
+                                   val homeHardConst = {}
+                                   val awayConst = {}
                                end)
 
-val main = Ui.simple "MG"
+val main = Theme.simple "MG"
                      (Ui.seq
                           (S.Home.FullGrid.ui,
                            Ui.const <xml>
@@ -69,7 +74,7 @@ val main = Ui.simple "MG"
                              <button value="Schedule" onclick={fn _ => rpc S.scheduleSome}/>
                            </xml>))
 
-val mainRev = Ui.simple "MG"
+val mainRev = Theme.simple "MG"
                         S.Away.FullGrid.ui
 
 fun away s =
@@ -79,7 +84,7 @@ fun away s =
         setCookie awayC {Value = aw,
                          Secure = False,
                          Expires = None};
-        Ui.simple ("Your Schedule (" ^ s ^ ")")
+        Theme.simple ("Your Schedule (" ^ s ^ ")")
                   (S.Away.One.ui aw)
 
 fun home s =
@@ -89,35 +94,35 @@ fun home s =
         setCookie homeC {Value = aw,
                          Secure = False,
                          Expires = None};
-        Ui.simple ("Your Schedule (" ^ s ^ ")")
+        Theme.simple ("Your Schedule (" ^ s ^ ")")
                   (S.Home.One.ui aw)
 
 fun homepref s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some ho =>
-        Ui.simple ("Your Preferences (" ^ s ^ ")")
+        Theme.simple ("Your Preferences (" ^ s ^ ")")
                   (S.Home.Prefs.ui ho)
 
 fun awaypref s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some aw =>
-        Ui.simple ("Your Preferences (" ^ s ^ ")")
+        Theme.simple ("Your Preferences (" ^ s ^ ")")
                   (S.Away.Prefs.ui aw)
 
 fun homeavail s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some ho =>
-        Ui.simple ("Your Time Conflicts (" ^ s ^ ")")
+        Theme.simple ("Your Time Conflicts (" ^ s ^ ")")
                   (S.Home.Unavail.ui ho)
 
 fun awayavail s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some aw =>
-        Ui.simple ("Your Time Conflicts (" ^ s ^ ")")
+        Theme.simple ("Your Time Conflicts (" ^ s ^ ")")
                   (S.Away.Unavail.ui aw)
 
 structure AP = InputStrings.Make(struct
@@ -133,7 +138,7 @@ fun awayprof s =
     case read s of
         None => error <xml>Bad self-description</xml>
       | Some aw =>
-        Ui.simple ("Your Profile (" ^ s ^ ")")
+        Theme.simple ("Your Profile (" ^ s ^ ")")
                   (AP.ui aw)
 
 structure AG = EditGrid.Make(struct
@@ -147,7 +152,7 @@ structure AG = EditGrid.Make(struct
                              end)
 
 val awaygrid =
-    Ui.simple "All Aways"
+    Theme.simple "All Aways"
               AG.ui
 
 
@@ -179,7 +184,7 @@ open Bootstrap3
 
 val admin =
     input <- source "";
-    Ui.simple "Admin"
+    Theme.simple "Admin"
               (Ui.const <xml>
                 <ctextarea class="form-control" source={input}/>
                 <button class="btn btn-primary"
