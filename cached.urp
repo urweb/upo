@@ -1,0 +1,11 @@
+library .
+file /bootstrap.min.css cached/bootstrap.min.css
+file /jquery-2.1.3.min.js cached/jquery-2.1.3.min.js
+file /bootstrap.min.js cached/bootstrap.min.js
+file /ckeditor.js cached/ckeditor.js
+script /jquery-2.1.3.min.js
+script /bootstrap.min.js
+script /ckeditor.js
+file /style.css style.css
+
+cached
