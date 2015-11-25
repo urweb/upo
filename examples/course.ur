@@ -3,6 +3,16 @@
 open Bootstrap3
 structure Theme = Ui.Make(Default)
 
+structure Sm = LinearStateMachine.Make(struct
+                                           val steps =
+                                               {BeforeSemester = {Label = "Before semester starts",
+                                                                  WhenEntered = fn _ => return ()},
+                                                FirstWeekOfClass = {Label = "First week of class",
+                                                                    WhenEntered = fn _ => return ()},
+                                                SemesterOver = {Label = "Semester ends",
+                                                                WhenEntered = fn _ => return ()}}
+                                       end)
+
 table section : { Section : string }
   PRIMARY KEY Section
 
@@ -526,7 +536,9 @@ val admin =
                (Some "Assign Pset Grading",
                 PsetGraders.MakeAssignments.ui),
                (Some "Assign Exam Grading",
-                ExamGraders.MakeAssignments.ui))
+                ExamGraders.MakeAssignments.ui),
+               (Some "Timeline",
+                Sm.ui))
 
 structure StaffMeetingTodo = Todo.Happenings(struct
                                                  con tag = #StaffMeeting

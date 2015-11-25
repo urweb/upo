@@ -29,6 +29,17 @@ fun withAll [K] [r ::: {K}] (fl : folder r) (f : variant (map (fn _ => unit) r) 
     (fn [o :: {K}] [o ~ []] _ => return ())
     fl [[]] ! f
 
+fun withAllX [K] [r ::: {K}] [ctx] [inp] (fl : folder r) (f : variant (map (fn _ => unit) r) -> xml ctx inp []) =
+    @fold [fn r => o :: {K} -> [o ~ r] => (variant (map (fn _ => unit) (r ++ o)) -> xml ctx inp [])
+                                          -> xml ctx inp []]
+    (fn [nm ::_] [v ::_] [r ::_] [[nm] ~ r]
+                 (acc : o :: {K} -> [o ~ r] => (variant (map (fn _ => unit) (r ++ o)) -> xml ctx inp [])
+                                               -> xml ctx inp [])
+                 [o ::_] [o ~ [nm = v] ++ r] f =>
+        <xml>{f (make [nm] ())}{acc [[nm = v] ++ o] f}</xml>)
+    (fn [o :: {K}] [o ~ []] _ => <xml></xml>)
+    fl [[]] ! f
+
 fun erase [r ::: {Type}] (fl : folder r) (v : variant r) =
     match v
     (@fold [fn r => o :: {Type} -> [o ~ r] => $(map (fn t => t -> variant (map (fn _ => unit) (r ++ o))) r)]

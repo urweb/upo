@@ -104,3 +104,11 @@ div.Calendar_item {
     border-style: solid;
     padding: 5px;
 }
+
+.LinearStateMachine_downArrow {
+    text-align: center
+}
+
+.LinearStateMachine_label {
+    text-align: center
+}
