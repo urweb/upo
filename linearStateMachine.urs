@@ -13,6 +13,8 @@ functor Make(M : sig
                  val fl : folder steps
 
                  val steps : $(mapU metadata steps)
+
+                 val mayChange : transaction bool
              end) : sig
     type step = variant (mapU unit M.steps)
     val step_eq : eq step

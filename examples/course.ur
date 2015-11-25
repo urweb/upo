@@ -3,16 +3,6 @@
 open Bootstrap3
 structure Theme = Ui.Make(Default)
 
-structure Sm = LinearStateMachine.Make(struct
-                                           val steps =
-                                               {BeforeSemester = {Label = "Before semester starts",
-                                                                  WhenEntered = fn _ => return ()},
-                                                FirstWeekOfClass = {Label = "First week of class",
-                                                                    WhenEntered = fn _ => return ()},
-                                                SemesterOver = {Label = "Semester ends",
-                                                                WhenEntered = fn _ => return ()}}
-                                       end)
-
 table section : { Section : string }
   PRIMARY KEY Section
 
@@ -109,6 +99,22 @@ val profPrivate =
                 Calendar.Write
             else
                 Calendar.Forbidden)
+
+structure Sm = LinearStateMachine.Make(struct
+                                           val steps =
+                                               {BeforeSemester = {Label = "Before semester starts",
+                                                                  WhenEntered = fn _ => debug "Back to square 1"},
+                                                FirstWeekOfClass = {Label = "First week of class",
+                                                                    WhenEntered = fn aa =>
+                                                                                     case aa of
+                                                                                         LinearStateMachine.NextStep => debug "Next step"
+                                                                                       | LinearStateMachine.FastForward => debug "Fast forward"
+                                                                                       | LinearStateMachine.Rewind => debug "Rewind"},
+                                                SemesterOver = {Label = "Semester ends",
+                                                                WhenEntered = fn _ => debug "All done!"}}
+
+                                           val mayChange = amInstructor
+                                       end)
 
 table pset : { PsetNum : int, Released : time, Due : time, GradesDue : time, Instructions : string }
   PRIMARY KEY PsetNum
