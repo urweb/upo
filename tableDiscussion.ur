@@ -4,7 +4,10 @@ functor Make(M : sig
                  con keyR :: {Type}
                  constraint [key1] ~ keyR
                  con key = [key1 = keyT] ++ keyR
-                 constraint key ~ [Thread, When, Who, Text]
+                 con thread :: Name
+                 constraint [thread] ~ key
+                 constraint [thread] ~ [When, Who, Text, Closed]
+                 constraint key ~ [Thread, When, Who, Text, Closed]
                  val fl : folder key
                  val kinj : $(map sql_injectable_prim key)
                  con rest :: {Type}
@@ -24,8 +27,8 @@ functor Make(M : sig
 
     open M
 
-    table message : (key ++ [Thread = time, When = time, Who = string, Text = string])
-      PRIMARY KEY {{@primary_key [key1] [keyR ++ [Thread = _, When = _]] ! !
+    table message : (key ++ [thread = time, When = time, Who = string, Text = string])
+      PRIMARY KEY {{@primary_key [key1] [keyR ++ [thread = _, When = _]] ! !
                      (kinj ++ _)}},
       {{one_constraint [#Parent] (@Sql.easy_foreign ! ! ! ! ! ! fl parent)}}
 
@@ -38,6 +41,8 @@ functor Make(M : sig
                              val message = message
 
                              val kinj = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim fl kinj
+
+                             constraint key ~ [thread, When, Who, Text, Closed]
                          end)
 
 end

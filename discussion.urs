@@ -17,7 +17,9 @@ style post_body
 
 functor Make(M : sig
                  con key :: {Type}
-                 constraint key ~ [Thread, When, Who, Text, Closed]
+                 con thread :: Name
+                 constraint [thread] ~ [When, Who, Text, Closed]
+                 constraint key ~ [thread, When, Who, Text, Closed]
                  val fl : folder key
                  val kinj : $(map sql_injectable key)
 
@@ -25,7 +27,7 @@ functor Make(M : sig
                  type text_config
                  val text : Widget.t string text_internal text_config
 
-                 table message : (key ++ [Thread = time, When = time, Who = string, Text = string])
+                 table message : (key ++ [thread = time, When = time, Who = string, Text = string])
 
                  val access : $key -> transaction access
 
@@ -34,6 +36,8 @@ functor Make(M : sig
              end) : sig
     include Ui.S where type input = $M.key
 
+    con thread = M.thread
+
     (* Generate todo items for users tasked with responding to messages. *)
     functor Todo(N : sig
                      con tag :: Name
@@ -41,17 +45,17 @@ functor Make(M : sig
                      con aother :: {Type}
                      constraint M.key ~ aother
                      constraint [user] ~ (M.key ++ aother)
-                     constraint [Assignee, Due, Done, Kind] ~ (M.key ++ [Thread = time])
+                     constraint [Assignee, Due, Done, Kind] ~ (M.key ++ [thread = time])
                      val inj : $(map sql_injectable_prim M.key)
 
                      table assignments : (M.key ++ [user = option string] ++ aother)
                      (* Recording who is responsible for which items *)
 
                      val title : string
-                     val render : $(M.key ++ [Thread = time]) -> string (* username *) -> xbody
+                     val render : $(M.key ++ [thread = time]) -> string (* username *) -> xbody
                  end) : sig
         type private
         con tag = N.tag
-        val todo : Todo.t ([Thread = time] ++ M.key) [tag = private]
+        val todo : Todo.t ([thread = time] ++ M.key) [tag = private]
     end
 end

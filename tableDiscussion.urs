@@ -6,6 +6,9 @@ functor Make(M : sig
                  con keyR :: {Type}
                  constraint [key1] ~ keyR
                  con key = [key1 = keyT] ++ keyR
+                 con thread :: Name
+                 constraint [thread] ~ key
+                 constraint [thread] ~ [When, Who, Text]
                  constraint key ~ [Thread, When, Who, Text]
                  val fl : folder key
                  val kinj : $(map sql_injectable_prim key)
@@ -25,6 +28,8 @@ functor Make(M : sig
              end) : sig
     include Ui.S where type input = $M.key
 
+    con thread = M.thread
+
     (* Generate todo items for users tasked with responding to messages. *)
     functor Todo(N : sig
                      con tag :: Name
@@ -32,17 +37,17 @@ functor Make(M : sig
                      con aother :: {Type}
                      constraint M.key ~ aother
                      constraint [user] ~ (M.key ++ aother)
-                     constraint [Assignee, Due, Done, Kind] ~ (M.key ++ [Thread = time])
+                     constraint [Assignee, Due, Done, Kind] ~ (M.key ++ [thread = time])
                      val inj : $(map sql_injectable_prim M.key)
 
                      table assignments : (M.key ++ [user = option string] ++ aother)
                      (* Recording who is responsible for which items *)
 
                      val title : string
-                     val render : $(M.key ++ [Thread = time]) -> string (* username *) -> xbody
+                     val render : $(M.key ++ [thread = time]) -> string (* username *) -> xbody
                  end) : sig
         type private
         con tag = N.tag
-        val todo : Todo.t ([Thread = time] ++ M.key) [tag = private]
+        val todo : Todo.t ([thread = time] ++ M.key) [tag = private]
     end
 end

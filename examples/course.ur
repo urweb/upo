@@ -227,7 +227,8 @@ structure PsetCal = Calendar.FromTable(struct
                                            val ws = {Instructions = Widget.htmlbox,
                                                      Czar = Widget.foreignbox (SELECT (user.User)
                                                                                FROM user
-                                                                               WHERE user.IsInstructor OR user.IsStaff)} ++ _
+                                                                               WHERE user.IsInstructor OR user.IsStaff
+                                                                               ORDER BY user.User)} ++ _
 
                                            fun display ctx r =
                                                b <- rpc amStudent;
@@ -282,6 +283,8 @@ structure PsetTodo = Todo.WithDueDate(struct
                                       end)
 
 structure PsetForum = TableDiscussion.Make(struct
+                                               con thread = #PsetThread
+
                                                val parent = pset
                                                val text = Widget.htmlbox
 
@@ -299,7 +302,7 @@ structure PsetForum = TableDiscussion.Make(struct
                                                                    if r.IsInstructor || r.IsStaff then
                                                                        Discussion.Admin {User = u}
                                                                    else if r.IsStudent then
-                                                                       Discussion.Post {User = u, MayEdit = True, MayDelete = True, MayMarkClosed = True}
+                                                                       Discussion.Post {User = u, MayEdit = True, MayDelete = True, MayMarkClosed = False}
                                                                    else
                                                                        Discussion.Read)
 
@@ -337,11 +340,12 @@ fun psetInfo n =
 structure PsetForumTodo = PsetForum.Todo(struct
                                              con tag = #PsetForum
                                              con user = #Czar
+                                             con thread = #PsetThread
 
                                              val assignments = pset
 
                                              val title = "Pset Forum"
-                                             fun render r _ = <xml><a link={psetInfo r.PsetNum}>Pset #{[r.PsetNum]}, thread {[r.Thread]}</a></xml>
+                                             fun render r _ = <xml><a link={psetInfo r.PsetNum}>Pset #{[r.PsetNum]}, thread {[r.PsetThread]}</a></xml>
 
                                              val inj = _
                                          end)
