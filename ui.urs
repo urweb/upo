@@ -87,3 +87,6 @@ val modal : transaction unit     (* callback on clicking main button *)
 val simpleModal : xbody                (* main content *)
                   -> xml [Body] [] []  (* label on dismissal button *)
                   -> xbody
+
+(* Useful with tabbed pages: generate an optional text label based on a Boolean condition. *)
+val when : bool -> string -> option string

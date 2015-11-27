@@ -690,6 +690,7 @@ val main =
     u <- return (case c of
                      None => ""
                    | Some u => u);
+    st <- Sm.current;
     Theme.tabbed "Course Home Page"
               ((Some "TODO",
                 StudentTod.OneUser.ui u),
@@ -697,7 +698,11 @@ val main =
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
                         ToDay = readError "09/01/15 00:00:00"}),
                (Some "Grades",
-                StudentGrades.ui u))
+                StudentGrades.ui u),
+               (Ui.when (st = make [#FirstWeekOfClass] ()) "First week of class!",
+                Ui.const <xml>WOOOOOOO!</xml>),
+               (Ui.when (st >= make [#FirstWeekOfClass] ()) "Semester started",
+                Ui.const <xml>YEEEEEEAAAAHHHH!</xml>))
 
 fun setIt v =
     setCookie userC {Value = v,

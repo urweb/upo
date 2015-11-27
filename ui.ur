@@ -247,3 +247,5 @@ val h2 bod = const <xml><h2>{bod}</h2></xml>
 val h3 bod = const <xml><h3>{bod}</h3></xml>
 val h4 bod = const <xml><h4>{bod}</h4></xml>
 val hr = const <xml><hr/></xml>
+
+fun when b lab = if b then Some lab else None
