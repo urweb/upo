@@ -68,7 +68,7 @@ functor FromTable(M : sig
                       val flO : folder other
                       val flT : folder times
                       val inj : $(map (fn p => sql_injectable_prim p.1) key)
-                      val injO : $(map (fn p => sql_injectable_prim p.1) other)
+                      val injO : $(map (fn p => sql_injectable p.1) other)
                       val ws : $(map Widget.t' (key ++ other))
                       val tab : sql_table (map fst3 (key ++ other) ++ mapU time times) us
                       val labels : $(map (fn _ => string) (key ++ other) ++ mapU string times)
@@ -215,7 +215,7 @@ functor FromTable(M : sig
                if lv >= Write then
                    @Sql.easy_insert
                     (@map0 [fn _ => sql_injectable time] (fn [u ::_] => _ : sql_injectable time) flT
-                      ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst3] [_] (@Folder.concat ! fl flO)) (inj ++ injO))
+                      ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst3] [_] fl) inj ++ injO)
                     (@Folder.concat ! (@Folder.mp flT) (@Folder.mp (@Folder.concat ! fl flO))) tab r
                else
                    error <xml>Not authorized</xml>
@@ -245,7 +245,7 @@ functor FromTable(M : sig
                    @@Sql.easy_update' [map fst3 key] [mapU time times ++ map fst3 other] [_] !
                      (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst3] [_] fl) inj)
                      (@map0 [fn _ => sql_injectable time] (fn [u ::_] => _ : sql_injectable time) flT
-                       ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst3] [_] flO) injO)
+                       ++ injO)
                      (@Folder.mp fl) (@Folder.concat ! (@Folder.mp flT) (@Folder.mp flO)) tab k r
                else
                    error <xml>Not authorized</xml>

@@ -116,8 +116,9 @@ structure Sm = LinearStateMachine.Make(struct
                                            val mayChange = amInstructor
                                        end)
 
-table pset : { PsetNum : int, Released : time, Due : time, GradesDue : time, Instructions : string }
-  PRIMARY KEY PsetNum
+table pset : { PsetNum : int, Released : time, Due : time, GradesDue : time, Instructions : string, Czar : option string }
+  PRIMARY KEY PsetNum,
+  CONSTRAINT Czar FOREIGN KEY Czar REFERENCES user(User)
 
 val psetShow = mkShow (fn {PsetNum = n : int} => "Pset " ^ show n)
 val psetRead = mkRead' (fn s => case read s : option int of
@@ -211,17 +212,22 @@ structure PsetGraders = AssignTasks.Make(struct
 structure PsetCal = Calendar.FromTable(struct
                                            con tag = #Pset
                                            con key = [PsetNum = _]
-                                           con times = [Released, Due]
+                                           con times = [Released, Due, GradesDue]
                                            val tab = pset
                                            val title = "Pset"
                                            val labels = {PsetNum = "Pset#",
                                                          Released = "Released",
                                                          Due = "Due",
                                                          GradesDue = "Grades due",
+                                                         Czar = "Czar",
                                                          Instructions = "Instructions"}
                                            val kinds = {Released = "released",
-                                                        Due = "due"}
-                                           val ws = {Instructions = Widget.htmlbox} ++ _
+                                                        Due = "due",
+                                                        GradesDue = "grades due"}
+                                           val ws = {Instructions = Widget.htmlbox,
+                                                     Czar = Widget.foreignbox (SELECT (user.User)
+                                                                               FROM user
+                                                                               WHERE user.IsInstructor OR user.IsStaff)} ++ _
 
                                            fun display ctx r =
                                                b <- rpc amStudent;
@@ -327,6 +333,18 @@ fun psetInfo n =
                                      </xml>),
                     Ui.const <xml><hr/> <h2>Forum for this Pset</h2></xml>,
                     PsetForum.ui {PsetNum = n}))
+
+structure PsetForumTodo = PsetForum.Todo(struct
+                                             con tag = #PsetForum
+                                             con user = #Czar
+
+                                             val assignments = pset
+
+                                             val title = "Pset Forum"
+                                             fun render r _ = <xml><a link={psetInfo r.PsetNum}>Pset #{[r.PsetNum]}, thread {[r.Thread]}</a></xml>
+
+                                             val inj = _
+                                         end)
 
 table exam : { ExamNum : int, When : time, GradesDue : time }
   PRIMARY KEY ExamNum
@@ -559,6 +577,10 @@ structure StaffMeetingTodo = Todo.Happenings(struct
                                                  fun render r = <xml>{[r]}</xml>
                                              end)
 
+structure ForumTodo = Todo.Make(struct
+                                    val t = PsetForumTodo.todo
+                                end)
+
 structure StaffTod = Todo.Make(struct
                                    val t = PsetGradingTodo.todo
                                                |> Todo.compose ExamGradingTodo.todo
@@ -641,7 +663,8 @@ val staff =
 
     Theme.tabbed "Staff Dashboard"
               ((Some "TODO",
-                StaffTod.OneUser.ui u),
+                Ui.seq (ForumTodo.OneUser.ui u,
+                        StaffTod.OneUser.ui u)),
                (Some "Calendar",
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
                         ToDay = readError "09/01/15 00:00:00"}),

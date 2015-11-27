@@ -134,7 +134,7 @@ functor Make(M : sig
                                              tail <- source tail';
                                              msg <- source (r.Message -- #Thread);
                                              msgS <- source (Cons (msg, tail'));
-                                             cl' <- source False;
+                                             cl' <- source r.Threads.Closed;
 
                                              ts <- source (TCons ({Thread = thread, Subject = subj, Head = msgS, Tail = ttail, Closed = cl, FirstPoster = fp}, threads));
 
@@ -410,12 +410,12 @@ functor Make(M : sig
                       <coption value={show (toMilliseconds th.Thread)}>{[th.Subject]}</coption>
                     </xml>;
                     return <xml>
+                      {x}
                       {if not showOpenVsClosed || Option.isNone onlyClosed
                           || onlyClosed = Some cl then
                            copt
                        else
                            <xml></xml>}
-                      {x}
                     </xml>
 
             fun renderPostsOfThread (th : time) ls =
@@ -586,5 +586,42 @@ functor Make(M : sig
     fun ui k = {Create = create k,
                 Onload = onload,
                 Render = render}
+
+    functor Todo(N : sig
+                     con tag :: Name
+                     con user :: Name
+                     con aother :: {Type}
+                     constraint key ~ aother
+                     constraint [user] ~ (key ++ aother)
+                     constraint [Assignee, Due, Done, Kind] ~ (key ++ [Thread = time])
+                     val inj : $(map sql_injectable_prim M.key)
+
+                     table assignments : (key ++ [user = option string] ++ aother)
+                     (* Recording who is responsible for which items *)
+
+                     val title : string
+                     val render : $(key ++ [Thread = time]) -> string (* username *) -> xbody
+                 end) =
+            Todo.WithCompletionFlag(struct
+                                        open N
+
+                                        con key = key
+                                        con subkey = [Thread = time]
+                                        con done = #Closed
+                                        con other = [Text = string]
+                                        constraint key ~ [Thread = time]
+                                        constraint (key ++ [Thread = time]) ~ [Text = string]
+                                        constraint [Closed] ~ (key ++ [Thread = time] ++ [Text = string])
+
+                                        val fl = fl
+                                        val sfl = _
+                                        val inj = inj
+                                        val sinj = _
+
+                                        con items_hidden_constraints = _
+                                        con empty :: {Type} = []
+                                        constraint empty ~ items_hidden_constraints
+                                        val items = threads
+                                    end)
     
 end

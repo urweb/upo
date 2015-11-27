@@ -35,7 +35,6 @@ functor WithDueDate(M : sig
 
                         val title : string
                         val render : $key -> string (* username *) -> xbody
-
                     end) : sig
     con private
     con tag = M.tag
@@ -85,6 +84,39 @@ functor WithForeignDueDate(M : sig
                                val title : string
                                val render : $(key ++ subkey) -> string (* username *) -> xbody
                            end) : sig
+    con private
+    con tag = M.tag
+    val todo : t (M.key ++ M.subkey) [tag = private]
+end
+
+(* Every row in a table, whose Boolean flag is not set, must be done by the associated users, indicated by other table rows. *)
+functor WithCompletionFlag(M : sig
+                               con tag :: Name
+                               con key :: {Type}
+                               con subkey :: {Type}
+                               con done :: Name
+                               con other :: {Type}
+                               con user :: Name
+                               con aother :: {Type}
+                               constraint key ~ subkey
+                               constraint (key ++ subkey) ~ other
+                               constraint key ~ aother
+                               constraint [done] ~ (key ++ subkey ++ other)
+                               constraint [user] ~ (key ++ aother)
+                               constraint [Assignee, Due, Done, Kind] ~ (key ++ subkey)
+                               val fl : folder key
+                               val sfl : folder subkey
+                               val inj : $(map sql_injectable_prim key)
+                               val sinj : $(map sql_injectable_prim subkey)
+
+                               table items : (key ++ subkey ++ [done = bool] ++ other)
+                               (* The set of items that must be done *)
+                               table assignments : (key ++ [user = option string] ++ aother)
+                               (* Recording who is responsible for which items *)
+
+                               val title : string
+                               val render : $(key ++ subkey) -> string (* username *) -> xbody
+                    end) : sig
     con private
     con tag = M.tag
     val todo : t (M.key ++ M.subkey) [tag = private]

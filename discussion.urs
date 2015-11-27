@@ -31,4 +31,27 @@ functor Make(M : sig
 
                  val showOpenVsClosed : bool
                  (* Should we expose to users the idea of marking threads open/closed? *)
-             end) : Ui.S where type input = $M.key
+             end) : sig
+    include Ui.S where type input = $M.key
+
+    (* Generate todo items for users tasked with responding to messages. *)
+    functor Todo(N : sig
+                     con tag :: Name
+                     con user :: Name
+                     con aother :: {Type}
+                     constraint M.key ~ aother
+                     constraint [user] ~ (M.key ++ aother)
+                     constraint [Assignee, Due, Done, Kind] ~ (M.key ++ [Thread = time])
+                     val inj : $(map sql_injectable_prim M.key)
+
+                     table assignments : (M.key ++ [user = option string] ++ aother)
+                     (* Recording who is responsible for which items *)
+
+                     val title : string
+                     val render : $(M.key ++ [Thread = time]) -> string (* username *) -> xbody
+                 end) : sig
+        type private
+        con tag = N.tag
+        val todo : Todo.t ([Thread = time] ++ M.key) [tag = private]
+    end
+end

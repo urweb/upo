@@ -23,7 +23,7 @@ functor FromTable(M : sig
                       val flO : folder other
                       val flT : folder times
                       val inj : $(map (fn p => sql_injectable_prim p.1) key)
-                      val injO : $(map (fn p => sql_injectable_prim p.1) other)
+                      val injO : $(map (fn p => sql_injectable p.1) other)
                       val ws : $(map Widget.t' (key ++ other))
                       val tab : sql_table (map fst3 (key ++ other) ++ mapU time times) us
                       val labels : $(map (fn _ => string) (key ++ other) ++ mapU string times)

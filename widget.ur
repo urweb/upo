@@ -153,5 +153,7 @@ fun foreignbox [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : sql_quer
                     end,
       Value = fn me =>
                  v <- signal me.Source;
-                 return (read v),
+                 return (case v of
+                             "" => None
+                           | _ => read v),
       AsValue = txt }
