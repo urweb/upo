@@ -297,7 +297,7 @@ structure PsetForum = TableDiscussion.Make(struct
                                                                    else
                                                                        Discussion.Read)
 
-                                               val showOpenVsClosed = False
+                                               val showOpenVsClosed = True
                                            end)
 
 fun psetInfo n =
