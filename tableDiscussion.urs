@@ -21,4 +21,5 @@ functor Make(M : sig
                  val text : Widget.t string text_internal text_config
 
                  val access : $key -> transaction Discussion.access
+                 val showOpenVsClosed : bool
              end) : Ui.S where type input = $M.key

@@ -293,9 +293,11 @@ structure PsetForum = TableDiscussion.Make(struct
                                                                    if r.IsInstructor || r.IsStaff then
                                                                        Discussion.Admin {User = u}
                                                                    else if r.IsStudent then
-                                                                       Discussion.Post {User = u, MayEdit = True, MayDelete = True}
+                                                                       Discussion.Post {User = u, MayEdit = True, MayDelete = True, MayMarkClosed = True}
                                                                    else
                                                                        Discussion.Read)
+
+                                               val showOpenVsClosed = False
                                            end)
 
 fun psetInfo n =

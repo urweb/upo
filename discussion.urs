@@ -6,8 +6,8 @@ datatype access =
          (* May not have anything to do with this key *)
        | Read
          (* May only read posts *)
-       | Post of { User : string, MayEdit : bool, MayDelete : bool}
-         (* May read and make own posts, possibly with the ability to edit or delete own posts *)
+       | Post of { User : string, MayEdit : bool, MayDelete : bool, MayMarkClosed : bool}
+         (* May read and make own posts, possibly with the ability to edit, delete, or close own posts/threads *)
        | Admin of { User : string }
          (* Full privileges *)
 
@@ -17,7 +17,7 @@ style post_body
 
 functor Make(M : sig
                  con key :: {Type}
-                 constraint key ~ [Thread, When, Who, Text]
+                 constraint key ~ [Thread, When, Who, Text, Closed]
                  val fl : folder key
                  val kinj : $(map sql_injectable key)
 
@@ -28,4 +28,7 @@ functor Make(M : sig
                  table message : (key ++ [Thread = time, When = time, Who = string, Text = string])
 
                  val access : $key -> transaction access
+
+                 val showOpenVsClosed : bool
+                 (* Should we expose to users the idea of marking threads open/closed? *)
              end) : Ui.S where type input = $M.key
