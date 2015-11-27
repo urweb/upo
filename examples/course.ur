@@ -530,7 +530,9 @@ val admin =
     requireInstructor;
 
     Theme.tabbed "Instructor Dashboard"
-              ((Some "Users",
+              ((Some "Timeline",
+                Sm.ui),
+               (Some "Users",
                 EditUsers.ui),
                (Some "Sections",
                 EditSections.ui),
@@ -542,9 +544,7 @@ val admin =
                (Some "Assign Pset Grading",
                 PsetGraders.MakeAssignments.ui),
                (Some "Assign Exam Grading",
-                ExamGraders.MakeAssignments.ui),
-               (Some "Timeline",
-                Sm.ui))
+                ExamGraders.MakeAssignments.ui))
 
 structure StaffMeetingTodo = Todo.Happenings(struct
                                                  con tag = #StaffMeeting

@@ -93,24 +93,28 @@ functor Make(M : sig
         end
 
     fun change {From = fr, To = to} =
-        st <- current;
-        if st <> fr then
-            error <xml>Somebody else beat you to it!</xml>
+        mc <- mayChange;
+        if not mc then
+            error <xml>Access denied</xml>
         else
-            dml (UPDATE step
-                 SET Step = {[serialize to]}
-                 WHERE TRUE);
-            queryI1 (SELECT * FROM listeners)
-            (fn r => send r.Channel to);
+            st <- current;
+            if st <> fr then
+                error <xml>Somebody else beat you to it!</xml>
+            else
+                dml (UPDATE step
+                     SET Step = {[serialize to]}
+                     WHERE TRUE);
+                queryI1 (SELECT * FROM listeners)
+                (fn r => send r.Channel to);
 
-            @Record.select [fn _ => metadata] [fn _ => unit] fl
-            (fn [u] r () => r.WhenEntered (if next fr = Some to then
-                                               NextStep
-                                           else if to < fr then
-                                               Rewind
-                                           else
-                                               FastForward))
-            steps to
+                @Record.select [fn _ => metadata] [fn _ => unit] fl
+                (fn [u] r () => r.WhenEntered (if next fr = Some to then
+                                                   NextStep
+                                               else if to < fr then
+                                                   Rewind
+                                               else
+                                                   FastForward))
+                steps to
 
     val labelOf = @Record.select [fn _ => metadata] [fn _ => unit] fl
                    (fn [u] r () => r.Label)
