@@ -32,7 +32,7 @@ fun seq [ts] (fl : folder ts) (ts : $(map t ts)) = {
 }
 
 datatype moded a1 a2 = First of a1 | Second of a2
-fun moded [a1] [a2] (t1 : t a1) (t2 : t a2) (which : bool) = {
+fun moded [a1] [a2] (which : bool) (t1 : t a1) (t2 : t a2) = {
     Create = if which then
                  x <- t1.Create;
                  return (First x)

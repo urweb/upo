@@ -313,7 +313,7 @@ structure Admits = struct
 
                        InputAdmit.ui key,
 
-                       Ui.moded
+                       Ui.moded mode
                           (Ui.seq
                                (Ui.h2 <xml>Your meeting schedule (Friday, March 6)</xml>,
                                 explainMeetings,
@@ -323,8 +323,7 @@ structure Admits = struct
                                 Meetings.Away.Prefs.ui key,
                                 Ui.h2 <xml>Times when you are unavailable for 1-on-1 meetings (Friday, March 6)</xml>,
                                 explainMeetings,
-                                Meetings.Away.Unavail.ui key))
-                          mode,
+                                Meetings.Away.Unavail.ui key)),
 
                         Ui.h2 <xml>Research-area dinners (also Friday, March 6)</xml>,
 

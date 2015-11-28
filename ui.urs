@@ -29,8 +29,8 @@ val seq : ts ::: {Type} -> folder ts -> $(map t ts) -> t (seq ts)
 
 (* A widget that can be in one of two modes, indicated by a [bool] *)
 con moded :: Type -> Type -> Type
-val moded : a1 ::: Type -> a2 ::: Type -> t a1 -> t a2
-            -> bool (* use first one? *) -> t (moded a1 a2)
+val moded : a1 ::: Type -> a2 ::: Type -> bool (* use first one? *)
+            -> t a1 -> t a2 -> t (moded a1 a2)
 
 (* Boring "static" units *)
 type const
