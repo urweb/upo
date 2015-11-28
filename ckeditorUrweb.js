@@ -1,4 +1,4 @@
-window.CKEDITOR_BASEPATH = 'http://ckeditor.com/apps/ckeditor/4.5.5/';
+window.CKEDITOR_BASEPATH = 'https://cdn.ckeditor.com/4.5.5/';
 
 function toolbar_set(toolbars) {
     var toolbarsOut = [];

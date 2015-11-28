@@ -2,7 +2,7 @@ library .
 allow url https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css
 script https://code.jquery.com/jquery-2.1.4.min.js
 script https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js
-script http://ckeditor.com/apps/ckeditor/4.5.5/ckeditor.js
+script https://cdn.ckeditor.com/4.5.5/standard/ckeditor.js
 file /style.css style.css
 
 default

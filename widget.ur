@@ -92,7 +92,6 @@ val find = Ckeditor.Bar {Nam = Some "Find",
                          Buttons = Ckeditor.Find
                                        :: Ckeditor.Replace
                                        :: Ckeditor.SelectAll
-                                       :: Ckeditor.Scayt
                                        :: []}
 
 val basic = Ckeditor.Bar {Nam = Some "Basic Formatting",
