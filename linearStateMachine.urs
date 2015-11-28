@@ -12,8 +12,6 @@ functor Make(M : sig
                  con steps :: {Unit}
                  val fl : folder steps
 
-                 val steps : $(mapU metadata steps)
-
                  val mayChange : transaction bool
              end) : sig
     type step = variant (mapU unit M.steps)
@@ -21,5 +19,7 @@ functor Make(M : sig
     val step_ord : ord step
     val current : transaction step
 
-    include Ui.S0
+    functor MakeUi(N : sig
+                       val steps : $(mapU metadata M.steps)
+                   end) : Ui.S0
 end

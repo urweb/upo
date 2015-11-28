@@ -101,20 +101,24 @@ val profPrivate =
                 Calendar.Forbidden)
 
 structure Sm = LinearStateMachine.Make(struct
-                                           val steps =
-                                               {BeforeSemester = {Label = "Before semester starts",
-                                                                  WhenEntered = fn _ => debug "Back to square 1"},
-                                                FirstWeekOfClass = {Label = "First week of class",
-                                                                    WhenEntered = fn aa =>
-                                                                                     case aa of
-                                                                                         LinearStateMachine.NextStep => debug "Next step"
-                                                                                       | LinearStateMachine.FastForward => debug "Fast forward"
-                                                                                       | LinearStateMachine.Rewind => debug "Rewind"},
-                                                SemesterOver = {Label = "Semester ends",
-                                                                WhenEntered = fn _ => debug "All done!"}}
+                                           con steps = [BeforeSemester, FirstWeekOfClass, SemesterOver]
 
                                            val mayChange = amInstructor
                                        end)
+
+structure Smu = Sm.MakeUi(struct
+                              val steps =
+                                  {BeforeSemester = {Label = "Before semester starts",
+                                                     WhenEntered = fn _ => debug "Back to square 1"},
+                                   FirstWeekOfClass = {Label = "First week of class",
+                                                       WhenEntered = fn aa =>
+                                                                        case aa of
+                                                                            LinearStateMachine.NextStep => debug "Next step"
+                                                                          | LinearStateMachine.FastForward => debug "Fast forward"
+                                                                          | LinearStateMachine.Rewind => debug "Rewind"},
+                                   SemesterOver = {Label = "Semester ends",
+                                                   WhenEntered = fn _ => debug "All done!"}}
+                          end)
 
 table pset : { PsetNum : int, Released : time, Due : time, GradesDue : time, Instructions : string, Czar : option string }
   PRIMARY KEY PsetNum,
@@ -555,7 +559,7 @@ val admin =
 
     Theme.tabbed "Instructor Dashboard"
               ((Some "Timeline",
-                Sm.ui),
+                Smu.ui),
                (Some "Users",
                 EditUsers.ui),
                (Some "Sections",

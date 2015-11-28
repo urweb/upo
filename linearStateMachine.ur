@@ -14,8 +14,6 @@ functor Make(M : sig
                  con steps :: {Unit}
                  val fl : folder steps
 
-                 val steps : $(mapU metadata steps)
-
                  val mayChange : transaction bool
              end) = struct
     
@@ -70,98 +68,104 @@ functor Make(M : sig
                        FROM step);
         return (deserialize s)
 
-    table listeners : { Channel : channel step }
+    functor MakeUi(N : sig
+                       val steps : $(mapU metadata steps)
+                   end) = struct
+        open N
 
-    type a = {Step : source step,
-              Channel : channel step}
+        table listeners : { Channel : channel step }
 
-    val create =
-        st <- current;
-        sts <- source st;
-        ch <- channel;
-        dml (INSERT INTO listeners(Channel) VALUES ({[ch]}));
-        return {Step = sts, Channel = ch}
+        type a = {Step : source step,
+                  Channel : channel step}
 
-    fun onload a =
-        let
-            fun loop () =
-                st <- recv a.Channel;
-                set a.Step st;
-                loop ()
-        in
-            spawn (loop ())
-        end
-
-    fun change {From = fr, To = to} =
-        mc <- mayChange;
-        if not mc then
-            error <xml>Access denied</xml>
-        else
+        val create =
             st <- current;
-            if st <> fr then
-                error <xml>Somebody else beat you to it!</xml>
+            sts <- source st;
+            ch <- channel;
+            dml (INSERT INTO listeners(Channel) VALUES ({[ch]}));
+            return {Step = sts, Channel = ch}
+
+        fun onload a =
+            let
+                fun loop () =
+                    st <- recv a.Channel;
+                    set a.Step st;
+                    loop ()
+            in
+                spawn (loop ())
+            end
+
+        fun change {From = fr, To = to} =
+            mc <- mayChange;
+            if not mc then
+                error <xml>Access denied</xml>
             else
-                dml (UPDATE step
-                     SET Step = {[serialize to]}
-                     WHERE TRUE);
-                queryI1 (SELECT * FROM listeners)
-                (fn r => send r.Channel to);
+                st <- current;
+                if st <> fr then
+                    error <xml>Somebody else beat you to it!</xml>
+                else
+                    dml (UPDATE step
+                         SET Step = {[serialize to]}
+                         WHERE TRUE);
+                    queryI1 (SELECT * FROM listeners)
+                    (fn r => send r.Channel to);
 
-                @Record.select [fn _ => metadata] [fn _ => unit] fl
-                (fn [u] r () => r.WhenEntered (if next fr = Some to then
-                                                   NextStep
-                                               else if to < fr then
-                                                   Rewind
-                                               else
-                                                   FastForward))
-                steps to
+                    @Record.select [fn _ => metadata] [fn _ => unit] fl
+                    (fn [u] r () => r.WhenEntered (if next fr = Some to then
+                                                       NextStep
+                                                   else if to < fr then
+                                                       Rewind
+                                                   else
+                                                       FastForward))
+                    steps to
 
-    val labelOf = @Record.select [fn _ => metadata] [fn _ => unit] fl
-                   (fn [u] r () => r.Label)
-                   steps
+        val labelOf = @Record.select [fn _ => metadata] [fn _ => unit] fl
+                       (fn [u] r () => r.Label)
+                       steps
 
-    fun render ctx a = <xml>
-      <table>
-        {@Variant.withAllX fl
-          (fn st' => <xml>
-            <tr>
-              <td></td>
-              <td class={downArrow}><div class="glyphicon glyphicon-arrow-down"></div></td>
-            </tr>
-            <tr>
-              <td>
-                <div dynClass={cur <- signal a.Step;
-                               return (if cur = st' then
-                                           CLASS "glyphicon glyphicon-arrow-right"
-                                       else
-                                           CLASS "")}></div>
-              </td>
-              <td class={label}>
-                <dyn signal={cur <- signal a.Step;
-                             return (if cur = st' then
-                                         txt (labelOf cur)
-                                     else
-                                         Ui.modalButton ctx (CLASS "btn")
-                                                        (txt (labelOf st'))
-                                                        (return (Ui.modal
-                                                                     (rpc (change {From = cur, To = st'}))
-                                                                     (if next cur = Some st' then
-                                                                          <xml>Are you sure you want to advance to the next step?</xml>
-                                                                      else if st' < cur then
-                                                                          <xml>Warning: traveling back in time!</xml>
-                                                                      else
-                                                                          <xml>Warning: fast-forwarding through time!</xml>)
-                                                                     <xml>
-                                                                       You are about to move from <b>{[labelOf cur]}</b> to <b>{[labelOf st']}</b>.
-                                                                     </xml>
-                                                                     <xml>Change</xml>)))}/>
-              </td>
-            </tr>
-          </xml>)}
-      </table>
-    </xml>
+        fun render ctx a = <xml>
+          <table>
+            {@Variant.withAllX fl
+              (fn st' => <xml>
+                <tr>
+                  <td></td>
+                  <td class={downArrow}><div class="glyphicon glyphicon-arrow-down"></div></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div dynClass={cur <- signal a.Step;
+                                   return (if cur = st' then
+                                               CLASS "glyphicon glyphicon-arrow-right"
+                                           else
+                                               CLASS "")}></div>
+                  </td>
+                  <td class={label}>
+                    <dyn signal={cur <- signal a.Step;
+                                 return (if cur = st' then
+                                             txt (labelOf cur)
+                                         else
+                                             Ui.modalButton ctx (CLASS "btn")
+                                                            (txt (labelOf st'))
+                                                            (return (Ui.modal
+                                                                         (rpc (change {From = cur, To = st'}))
+                                                                         (if next cur = Some st' then
+                                                                              <xml>Are you sure you want to advance to the next step?</xml>
+                                                                          else if st' < cur then
+                                                                              <xml>Warning: traveling back in time!</xml>
+                                                                          else
+                                                                              <xml>Warning: fast-forwarding through time!</xml>)
+                                                                         <xml>
+                                                                           You are about to move from <b>{[labelOf cur]}</b> to <b>{[labelOf st']}</b>.
+                                                                         </xml>
+                                                                         <xml>Change</xml>)))}/>
+                  </td>
+                </tr>
+              </xml>)}
+          </table>
+        </xml>
 
-    val ui = {Create = create,
-              Onload = onload,
-              Render = render}
+        val ui = {Create = create,
+                  Onload = onload,
+                  Render = render}
+    end
 end
