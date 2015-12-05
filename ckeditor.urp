@@ -11,7 +11,6 @@ benignEffectful CkeditorFfi.editor
 benignEffectful CkeditorFfi.replace
 benignEffectful CkeditorFfi.content
 benignEffectful CkeditorFfi.setContent
-file /ckeditorUrweb.js ckeditorUrweb.js
-script /ckeditorUrweb.js
+jsFile ckeditorUrweb.js
 
 ckeditor

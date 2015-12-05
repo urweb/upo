@@ -3,8 +3,7 @@ library $/bootstrap/bootstrap3
 library $/ajaxUpload
 library ckeditor
 allow responseHeader Content-Disposition
-script /navbar.js
-file /navbar.js navbar.js
+jsFile navbar.js
 allow env SSL_CLIENT_S_DN
 
 $/list
