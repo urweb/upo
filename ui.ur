@@ -62,6 +62,7 @@ fun constM bod = {
 signature THEME = sig
     val bootstrap : url
     val custom : url
+    val icon : option url
 end
 
 functor Make(M : THEME) = struct
@@ -75,6 +76,9 @@ functor Make(M : THEME) = struct
             <title>{[titl]}</title>
             <link rel="stylesheet" href={M.bootstrap}/>
             <link rel="stylesheet" href={M.custom}/>
+            {case M.icon of
+                 None => <xml></xml>
+               | Some icon => <xml><link rel="shortcut icon" href={icon} type="image/vnd.microsoft.icon"></link></xml>}
           </head>
 
           <body onload={t.Onload state}>
@@ -129,6 +133,9 @@ functor Make(M : THEME) = struct
             <title>{[titl]}</title>
             <link rel="stylesheet" href={M.bootstrap}/>
             <link rel="stylesheet" href={M.custom}/>
+            {case M.icon of
+                 None => <xml></xml>
+               | Some icon => <xml><link rel="shortcut icon" href={icon} type="image/vnd.microsoft.icon"></link></xml>}
           </head>
 
           <body onload={@Monad.appR2 _ [fn a => option string * t a] [ident]

@@ -50,6 +50,8 @@ signature THEME = sig
     val bootstrap : url
     val custom : url
     (* Two CSS URLs *)
+    val icon : option url
+    (* Shortcut icon *)
 end
 
 functor Make(M : THEME) : sig
