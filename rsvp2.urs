@@ -68,10 +68,10 @@ functor Make(M : sig
                  con eventOtherConstraints :: {{Unit}}
                  constraint [eventKeyName] ~ eventOtherConstraints
                  val event : sql_table (eventKey ++ eventData ++ eventRest) ([eventKeyName = map (fn _ => ()) eventKey] ++ eventOtherConstraints)
+                 val render : $eventData -> xbody
                  val eventInj : $(map sql_injectable_prim eventKey)
                  val eventKeyFl : folder eventKey
                  val eventKeyShow : show $eventKey
-                 val eventDataShow : show $eventData
                  val eventKeyEq : $(map eq eventKey)
 
                  constraint homeKey ~ eventKey

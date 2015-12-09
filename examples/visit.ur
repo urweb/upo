@@ -203,8 +203,7 @@ structure Dinners = Rsvp2.Make(struct
                                    val homeSensitiveDataLabels = {PhoneNumber = "Phone Number"}
                                    val awayDataLabels = {DietaryRestriction = "Dietary Restriction"}
                                    val awaySensitiveDataLabels = {PhoneNumber = "Phone Number", Email = "E-mail Address"}
-                                   val eventDataShow : show {Description : string} =
-                                       mkShow (fn r => r.Description)
+                                   fun render {Description = d} = txt d
 
                                    val amHome = amHomeOrAdmin
                                    val amPrivilegedHome = amPiOrAdmin

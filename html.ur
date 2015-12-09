@@ -78,14 +78,14 @@ fun format [tags] (fl : folder tags) (tags : $(map tag tags)) [ctx] [[Body] ~ ct
                                 if meta.Nam = tname then
                                     let
                                         fun doAttrs (ch, post, ats : $(map option ts)) =
-                                            if String.length post > 0 && Char.isSpace (String.sub post 0) then
-                                                doAttrs (ch, String.substring post {Start = 1,
-                                                                                    Len = String.length post - 1},
-                                                         ats)
-                                            else 
-                                                case ch of
-                                                    #"\x3E" => Good (ats, post)
-                                                  | _ =>
+                                            case ch of
+                                                #"\x3E" => Good (ats, post)
+                                              | _ =>
+                                                if String.length post > 0 && Char.isSpace (String.sub post 0) then
+                                                    doAttrs (ch, String.substring post {Start = 1,
+                                                                                        Len = String.length post - 1},
+                                                             ats)
+                                                else 
                                                     case String.split post #"=" of
                                                         None =>
                                                         (case String.split post #"\x3E" of

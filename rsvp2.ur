@@ -68,10 +68,10 @@ functor Make(M : sig
                  con eventOtherConstraints :: {{Unit}}
                  constraint [eventKeyName] ~ eventOtherConstraints
                  val event : sql_table (eventKey ++ eventData ++ eventRest) ([eventKeyName = map (fn _ => ()) eventKey] ++ eventOtherConstraints)
+                 val render : $eventData -> xbody
                  val eventInj : $(map sql_injectable_prim eventKey)
                  val eventKeyFl : folder eventKey
                  val eventKeyShow : show $eventKey
-                 val eventDataShow : show $eventData
                  val eventKeyEq : $(map eq eventKey)
 
                  constraint homeKey ~ eventKey
@@ -307,7 +307,7 @@ functor Make(M : sig
                                                aws <- signal ev.Away;
                                                count <- return (List.length hos + List.length aws);
                                                return <xml>
-                                                 <div>{[ev.Data]}</div>
+                                                 <div>{M.render ev.Data}</div>
                                                  <div>({[count]} attendee{[if count = 1 then "" else "s"]})</div>
                                                  {if List.exists (fn ho => ho.Home = t.Self) hos then
                                                       <xml>
@@ -569,7 +569,7 @@ functor Make(M : sig
                                            else
                                                regd <- signal ev.Registered;
                                                return <xml>
-                                                 <div>{[ev.Data]}</div>
+                                                 <div>{M.render ev.Data}</div>
                                                  {if regd then
                                                       <xml>
                                                         <span class="glyphicon glyphicon-ok"/>
