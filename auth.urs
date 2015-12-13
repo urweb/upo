@@ -5,10 +5,17 @@ signature S = sig
 
     val whoami : transaction (option string)
     (* Which user (by name), if any, is logged in? *)
+    val whoamiWithMasquerade : transaction (option string)
+    (* Might return a fake, if the user is masquerading. *)
 
     val getUser : transaction string
+    val getUserWithMasquerade : transaction string
     val requireUser : transaction unit
     (* Like above, but fails if not logged in *)
+
+    val masqueradeAs : string -> transaction unit
+    val unmasquerade : transaction unit
+    (* Begin/end masquerading *)
 
     val inGroup : variant (mapU unit groups) -> transaction bool
     (* Does the current user belong to the specified group? *)
@@ -18,6 +25,8 @@ signature S = sig
 
     val getGroup : variant (mapU unit groups) -> transaction string
     (* Like above, but also returns username. *)
+    val getGroupWithMasquerade : variant (mapU unit groups) -> transaction string
+    (* Like last one, but will return fake name if masquerading. *)
 
     val inGroups : dummy ::: {Unit} -> folder dummy
                    -> $(mapU (variant (mapU unit groups)) dummy) -> transaction bool
@@ -25,7 +34,9 @@ signature S = sig
                         -> $(mapU (variant (mapU unit groups)) dummy) -> transaction unit
     val getGroups : dummy ::: {Unit} -> folder dummy
                     -> $(mapU (variant (mapU unit groups)) dummy) -> transaction string
-    (* Like the above, but based on checking whether the user belongs to at least one of a set of groups *)        
+    val getGroupsWithMasquerade : dummy ::: {Unit} -> folder dummy
+                                  -> $(mapU (variant (mapU unit groups)) dummy) -> transaction string
+    (* Like the above, but based on checking whether the user belongs to at least one of a set of groups *)
 end
 
 functor Make(M : sig
@@ -54,6 +65,12 @@ functor Make(M : sig
                  val defaults : option $(mapU bool groups ++ others)
                  (* If provided, automatically creates accounts for unknown usernames.
                   * Fields are initialized from these defaults. *)
+
+                 val allowMasquerade : option (variant (mapU unit groups))
+                 (* If present, members of this group can pretend to be anyone else.
+                  * We assume that this is an uber-group that will always pass access-control checks! *)
+
+                 val requireSsl : bool
 
                  val fls : folder setThese
                  val flg : folder groups
