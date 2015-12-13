@@ -37,7 +37,7 @@ style post_body
 functor Make(M : sig
                  con key :: {Type}
                  con thread :: Name
-                 constraint [thread] ~ [When, Who, Text, Closed, Private]
+                 constraint [thread] ~ [When, Who, Text, Closed, Private, Subject]
                  constraint key ~ [thread, When, Who, Text, Closed, Private]
                  val fl : folder key
                  val kinj : $(map sql_injectable key)
@@ -52,6 +52,7 @@ functor Make(M : sig
 
                  val showOpenVsClosed : bool
                  val allowPrivate : bool
+                 val onNewMessage : {thread : time, Subject : string, Who : string, Text : string} -> transaction unit
              end) = struct
 
     open M
@@ -348,7 +349,7 @@ functor Make(M : sig
         case mayPost acc of
             None => error <xml>Access denied</xml>
           | Some u =>
-            row <- oneOrNoRows1 (SELECT threads.Who, threads.Private
+            row <- oneOrNoRows1 (SELECT threads.Who, threads.Private, threads.Text
                                  FROM threads
                                  WHERE {@Sql.easy_where [#Threads] ! ! kinj fl k}
                                    AND threads.{thread} = {[thread]});
@@ -365,7 +366,9 @@ functor Make(M : sig
                   (k ++ {thread = thread, When = tm, Who = u, Text = text});
 
                 broadcast (fn ch => send ch (New {Thread = thread, When = tm, Who = u, Text = text}))
-                          k row.Private row.Who
+                          k row.Private row.Who;
+
+                onNewMessage {thread = thread, Subject = row.Text, Who = u, Text = text}
 
     fun saveMsg k thread msg text =
         acc <- access k;

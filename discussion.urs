@@ -18,7 +18,7 @@ style post_body
 functor Make(M : sig
                  con key :: {Type}
                  con thread :: Name
-                 constraint [thread] ~ [When, Who, Text, Closed, Private]
+                 constraint [thread] ~ [When, Who, Text, Closed, Private, Subject]
                  constraint key ~ [thread, When, Who, Text, Closed, Private]
                  val fl : folder key
                  val kinj : $(map sql_injectable key)
@@ -36,6 +36,9 @@ functor Make(M : sig
 
                  val allowPrivate : bool
                  (* May users create threads visible only to themselves and admins? *)
+
+                 val onNewMessage : {thread : time, Subject : string, Who : string, Text : string} -> transaction unit
+                 (* Callback for every new message posted in any thread *)
              end) : sig
     include Ui.S where type input = $M.key
 

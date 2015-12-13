@@ -312,6 +312,7 @@ structure PsetForum = TableDiscussion.Make(struct
 
                                                val showOpenVsClosed = True
                                                val allowPrivate = True
+                                               fun onNewMessage r = debug ("New message in " ^ r.Subject ^ ": " ^ r.Text)
                                            end)
 
 fun psetInfo n =
