@@ -38,6 +38,9 @@ structure Auth = Auth.Make(struct
                                    case lo of
                                        None => return None
                                      | Some r => return (Some {User = r})
+
+                               val allowMasquerade = None
+                               val requireSsl = False
                            end)
 
 val instructor = make [#IsInstructor] ()
@@ -236,7 +239,7 @@ structure PsetCal = Calendar.FromTable(struct
                                                                                WHERE user.IsInstructor OR user.IsStaff
                                                                                ORDER BY user.User)} ++ _
 
-                                           fun display ctx r =
+                                           val display = Some (fn ctx r =>
                                                b <- rpc amStudent;
                                                content <- source <xml/>;
                                                (if b then
@@ -270,9 +273,10 @@ structure PsetCal = Calendar.FromTable(struct
                                                                      <xml>Close</xml>));
                                                return <xml>
                                                  <dyn signal={signal content}/>
-                                               </xml>
+                                               </xml>)
 
                                            val auth = profOnly
+                                           val showTime = True
                                        end)
 
 structure PsetTodo = Todo.WithDueDate(struct
@@ -396,10 +400,12 @@ structure ExamCal = Calendar.FromTable(struct
                                                          GradesDue = "Grades due"}
                                            val kinds = {When = ""}
 
-                                           fun display _ r = return (Ui.simpleModal
-                                                                         <xml>Exam #{[r.ExamNum]}</xml>
-                                                                         <xml>Close</xml>)
+                                           val display = Some (fn _ r =>
+                                                               return (Ui.simpleModal
+                                                                           <xml>Exam #{[r.ExamNum]}</xml>
+                                                                           <xml>Close</xml>))
                                            val auth = profOnly
+                                           val showTime = True
                                        end)
 
 structure ExamTodo = Todo.Happenings(struct
@@ -476,10 +482,12 @@ structure MeetingCal = Calendar.FromTable(struct
                                                          When = "When"}
                                            val kinds = {When = ""}
 
-                                           fun display _ r = return (Ui.simpleModal
-                                                                         <xml>Staff Meeting #{[r.MeetingNum]}</xml>
-                                                                         <xml>Close</xml>)
+                                           val display = Some (fn _ r =>
+                                                                  return (Ui.simpleModal
+                                                                              <xml>Staff Meeting #{[r.MeetingNum]}</xml>
+                                                                              <xml>Close</xml>))
                                            val auth = profPrivate
+                                           val showTime = True
                                        end)
 
 structure EditSections = EditableTable.Make(struct

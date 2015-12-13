@@ -18,7 +18,7 @@ functor FromTable(M : sig
                       constraint key ~ times
                       constraint key ~ other
                       constraint times ~ other
-                      constraint [When, Kind] ~ key
+                      constraint [When, Kind, ShowTime] ~ key
                       val fl : folder key
                       val flO : folder other
                       val flT : folder times
@@ -29,8 +29,9 @@ functor FromTable(M : sig
                       val labels : $(map (fn _ => string) (key ++ other) ++ mapU string times)
                       val eqs : $(map (fn p => eq p.1) key)
                       val title : string
-                      val display : Ui.context -> $(map fst3 key) -> transaction xbody
+                      val display : option (Ui.context -> $(map fst3 key) -> transaction xbody)
                       val auth : transaction level
+                      val showTime : bool (* If [False], then only associate events with days. *)
                       val kinds : $(mapU string times)
                       val sh : show $(map fst3 key)
                   end) : sig
@@ -50,7 +51,7 @@ val compose : keys1 ::: {Type} -> keys2 ::: {Type}
 functor Make(M : sig
                  con keys :: {Type}
                  con tags :: {(Type * Type * Type)}
-                 constraint [When, Kind] ~ keys
+                 constraint [When, Kind, ShowTime] ~ keys
                  val t : t keys tags
                  val fl : folder tags
              end) : Ui.S where type input = {FromDay : time,
