@@ -37,8 +37,8 @@ style post_body
 functor Make(M : sig
                  con key :: {Type}
                  con thread :: Name
-                 constraint [thread] ~ [When, Who, Text, Closed]
-                 constraint key ~ [thread, When, Who, Text, Closed]
+                 constraint [thread] ~ [When, Who, Text, Closed, Private]
+                 constraint key ~ [thread, When, Who, Text, Closed, Private]
                  val fl : folder key
                  val kinj : $(map sql_injectable key)
 
@@ -67,6 +67,7 @@ functor Make(M : sig
 
     type threadr = {Thread : time,
                     Subject : string,
+                    Private : bool,
                     Head : source messages,
                     Tail : source (source messages),
                     Closed : source bool,
@@ -77,7 +78,7 @@ functor Make(M : sig
            | TCons of threadr * source threads
 
     datatype update =
-             NewThread of { Thread : time, Subject : string, FirstPoster : string }
+             NewThread of { Thread : time, Subject : string, Private : bool, FirstPoster : string }
            | SetClosed of { Thread : time, Closed : bool }
            | New of { Thread : time, When : time, Who : string, Text : string }
            | Edit of { Thread: time, When : time, Text : string }
@@ -89,13 +90,21 @@ functor Make(M : sig
               Head : source threads,
               Tail : source (source threads),
               Thread : source string,
-              NewThread : source (option (source string)),
+              NewThread : source (option (source string * source bool)),
               NewPost : text_internal,
               Channel : channel update,
               ShowWhich : source string}
 
-    table threads : (key ++ [thread = time, Text = string, Closed = bool])
-    table listeners : (key ++ [Who = channel update])
+    table threads : (key ++ [thread = time, Who = string, Text = string, Closed = bool, Private = bool])
+
+    table adminListeners : (key ++ [Who = channel update])
+    (* These listeners can see all threads. *)
+
+    table readonlyListeners : (key ++ [Who = channel update])
+    (* These listeners can only see public threads. *)
+
+    table loggedinListeners : (key ++ [Who = channel update, Private = string])
+    (* These listeners can see public threads as well as private threads that they started. *)
 
     fun create k =
         acc <- access k;
@@ -109,11 +118,11 @@ functor Make(M : sig
 
         tail' <- source TNil;
         tail <- source tail';
-        (threads, unfinished) <- query (SELECT message.{thread}, message.When, message.Who, message.Text, threads.Text, threads.Closed
+        (threads, unfinished) <- query (SELECT message.{thread}, message.When, message.Who, message.Text, threads.Text, threads.Closed, threads.Private
                                         FROM message JOIN threads ON threads.{thread} = message.{thread}
                                           AND {@@Sql.easy_join [#Message] [#Threads] [key]
                                             [[thread = _, When = _, Who = _, Text = _]]
-                                            [[thread = _, Text = _, Closed = _]] [_] [_] [[]]
+                                            [[thread = _, Text = _, Closed = _, Who = _, Private = _]] [_] [_] [[]]
                                             ! ! ! ! fl}
                                         WHERE {@Sql.easy_where [#Message] ! ! kinj fl k}
                                         ORDER BY message.{thread} DESC, message.When DESC)
@@ -125,12 +134,12 @@ functor Make(M : sig
                                          msg <- source (r.Message -- thread);
                                          msgS <- source (Cons (msg, tail'));
                                          cl <- source r.Threads.Closed;
-                                         return (threads, Some (r.Message.thread, r.Threads.Text, tail, msgS, cl, r.Message.Who))
-                                       | Some (thread, subj, ttail, msgS, cl, fp) =>
+                                         return (threads, Some (r.Message.thread, r.Threads.Text, tail, msgS, cl, r.Message.Who, r.Threads.Private))
+                                       | Some (thread, subj, ttail, msgS, cl, fp, priv) =>
                                          if thread = r.Message.thread then
                                              msg <- source (r.Message -- thread);
                                              msgS' <- source (Cons (msg, msgS));
-                                             return (threads, Some (thread, subj, ttail, msgS', cl, r.Message.Who))
+                                             return (threads, Some (thread, subj, ttail, msgS', cl, r.Message.Who, r.Threads.Private))
                                          else
                                              tail' <- source Nil;
                                              tail <- source tail';
@@ -138,21 +147,36 @@ functor Make(M : sig
                                              msgS <- source (Cons (msg, tail'));
                                              cl' <- source r.Threads.Closed;
 
-                                             ts <- source (TCons ({Thread = thread, Subject = subj, Head = msgS, Tail = ttail, Closed = cl, FirstPoster = fp}, threads));
+                                             ts <- source (TCons ({Thread = thread, Subject = subj, Private = priv, Head = msgS, Tail = ttail, Closed = cl, FirstPoster = fp}, threads));
 
-                                             return (ts, Some (r.Message.thread, r.Threads.Text, tail, msgS, cl', r.Message.Who)))
+                                             return (ts, Some (r.Message.thread, r.Threads.Text, tail, msgS, cl', r.Message.Who, r.Threads.Private)))
                                  (tail', None);
         threads <- (case unfinished of
                         None => return threads
-                      | Some (thread, subj, ttail, msgS, cl, fp) =>
-                        source (TCons ({Thread = thread, Subject = subj, Head = msgS, Tail = ttail, Closed = cl, FirstPoster = fp}, threads)));
+                      | Some (thread, subj, ttail, msgS, cl, fp, priv) =>
+                        source (TCons ({Thread = thread, Subject = subj, Private = priv, Head = msgS, Tail = ttail, Closed = cl, FirstPoster = fp}, threads)));
 
         ch <- channel;
-        @@Sql.easy_insert [key ++ [Who = _]] [_]
-              (kinj ++ {Who = _})
-              (@Folder.concat ! _ fl)
-              listeners
-              (k ++ {Who = ch});
+        (case acc of
+             Admin _ =>
+             @@Sql.easy_insert [key ++ [Who = _]] [_]
+               (kinj ++ {Who = _})
+               (@Folder.concat ! _ fl)
+               adminListeners
+               (k ++ {Who = ch})
+           | Read =>
+             @@Sql.easy_insert [key ++ [Who = _]] [_]
+               (kinj ++ {Who = _})
+               (@Folder.concat ! _ fl)
+               readonlyListeners
+               (k ++ {Who = ch})
+           | Post {User = u, ...} =>
+             @@Sql.easy_insert [key ++ [Who = _, Private = _]] [_]
+               (kinj ++ {Who = _, Private = _})
+               (@Folder.concat ! _ fl)
+               loggedinListeners
+               (k ++ {Who = ch, Private = u})
+           | Forbidden => error <xml>Discussion: impossible Forbidden</xml>);
 
         thread <- source "";
         sw <- source "Only show open";
@@ -195,6 +219,7 @@ functor Make(M : sig
                                   cl <- source False;
                                   cell <- return (TCons ({Thread = r.Thread,
                                                           Subject = r.Subject,
+                                                          Private = r.Private,
                                                           Head = head,
                                                           Tail = tail,
                                                           Closed = cl,
@@ -272,24 +297,43 @@ functor Make(M : sig
             spawn (loop ())
         end
 
-    fun newThread k subj =
+    fun broadcast f k isPrivate u =
+        if isPrivate then
+            queryI (      SELECT (adminListeners.Who)
+                          FROM adminListeners
+                          WHERE {@Sql.easy_where [#AdminListeners] ! ! kinj fl k}
+                    UNION SELECT (loggedinListeners.Who)
+                          FROM loggedinListeners
+                          WHERE {@Sql.easy_where [#LoggedinListeners] ! ! kinj fl k}
+                            AND loggedinListeners.Private = {[u]})
+                   (fn r => f r.1)
+        else
+            queryI (      SELECT (adminListeners.Who)
+                          FROM adminListeners
+                          WHERE {@Sql.easy_where [#AdminListeners] ! ! kinj fl k}
+                    UNION SELECT (loggedinListeners.Who)
+                          FROM loggedinListeners
+                          WHERE {@Sql.easy_where [#LoggedinListeners] ! ! kinj fl k}
+                    UNION SELECT (readonlyListeners.Who)
+                          FROM readonlyListeners
+                          WHERE {@Sql.easy_where [#ReadonlyListeners] ! ! kinj fl k})
+                   (fn r => f r.1)
+
+    fun newThread k subj isPrivate =
         acc <- access k;
         case mayPost acc of
             None => error <xml>Access denied</xml>
           | Some u =>
             tm <- now;
 
-            @@Sql.easy_insert [key ++ [thread = _, Text = _, Closed = _]] [_]
-              (kinj ++ {thread = _, Text = _, Closed = _})
+            @@Sql.easy_insert [key ++ [thread = _, Text = _, Closed = _, Who = _, Private = _]] [_]
+              (kinj ++ {thread = _, Text = _, Closed = _, Who = _, Private = _})
               (@Folder.concat ! _ fl)
               threads
-              (k ++ {thread = tm, Text = subj, Closed = False});
+              (k ++ {thread = tm, Text = subj, Who = u, Closed = False, Private = isPrivate});
 
-            queryI1 (SELECT listeners.Who
-                     FROM listeners
-                     WHERE {@Sql.easy_where [#Listeners] ! ! kinj fl k})
-            (fn r => send r.Who (NewThread {Thread = tm, Subject = subj, FirstPoster = u}));
-
+            broadcast (fn ch => send ch (NewThread {Thread = tm, Subject = subj, Private = isPrivate, FirstPoster = u}))
+                      k isPrivate u;
             return tm
 
     fun postMsg k thread text =
@@ -297,14 +341,14 @@ functor Make(M : sig
         case mayPost acc of
             None => error <xml>Access denied</xml>
           | Some u =>
-            b <- oneRowE1 (SELECT COUNT( * ) = 0
-                           FROM threads
-                           WHERE {@Sql.easy_where [#Threads] ! ! kinj fl k}
-                             AND threads.{thread} = {[thread]});
+            row <- oneOrNoRows1 (SELECT threads.Who, threads.Private
+                                 FROM threads
+                                 WHERE {@Sql.easy_where [#Threads] ! ! kinj fl k}
+                                   AND threads.{thread} = {[thread]});
 
-            if b then
-                error <xml>Trying to post to nonexistent thread</xml>
-            else
+            case row of
+                None => error <xml>Trying to post to nonexistent thread</xml>
+              | Some row =>
                 tm <- now;
 
                 @@Sql.easy_insert [key ++ [thread = _, When = _, Who = _, Text = _]] [_]
@@ -313,10 +357,8 @@ functor Make(M : sig
                   message
                   (k ++ {thread = thread, When = tm, Who = u, Text = text});
 
-                queryI1 (SELECT listeners.Who
-                         FROM listeners
-                         WHERE {@Sql.easy_where [#Listeners] ! ! kinj fl k})
-                        (fn r => send r.Who (New {Thread = thread, When = tm, Who = u, Text = text}))
+                broadcast (fn ch => send ch (New {Thread = thread, When = tm, Who = u, Text = text}))
+                          k row.Private row.Who
 
     fun saveMsg k thread msg text =
         acc <- access k;
@@ -340,10 +382,16 @@ functor Make(M : sig
                        (@Folder.concat ! _ fl)
                        (k ++ {thread = thread, When = msg})});
 
-                queryI1 (SELECT listeners.Who
-                         FROM listeners
-                         WHERE {@Sql.easy_where [#Listeners] ! ! kinj fl k})
-                        (fn r => send r.Who (Edit {Thread = thread, When = msg, Text = text}))
+                row <- oneOrNoRows1 (SELECT threads.Who, threads.Private
+                                     FROM threads
+                                     WHERE {@Sql.easy_where [#Threads] ! ! kinj fl k}
+                                       AND threads.{thread} = {[thread]});
+
+                case row of
+                    None => error <xml>Trying to save message in nonexistent thread</xml>
+                  | Some row =>
+                    broadcast (fn ch => send ch (Edit {Thread = thread, When = msg, Text = text}))
+                    k row.Private row.Who
 
     fun deleteMsg k thread msg =
         acc <- access k;
@@ -366,10 +414,16 @@ functor Make(M : sig
                        (@Folder.concat ! _ fl)
                        (k ++ {thread = thread, When = msg})});
 
-                queryI1 (SELECT listeners.Who
-                         FROM listeners
-                         WHERE {@Sql.easy_where [#Listeners] ! ! kinj fl k})
-                        (fn r => send r.Who (Delete {Thread = thread, When = msg}))
+                row <- oneOrNoRows1 (SELECT threads.Who, threads.Private
+                                     FROM threads
+                                     WHERE {@Sql.easy_where [#Threads] ! ! kinj fl k}
+                                       AND threads.{thread} = {[thread]});
+
+                case row of
+                    None => error <xml>Trying to delete message in nonexistent thread</xml>
+                  | Some row =>
+                    broadcast (fn ch => send ch (Delete {Thread = thread, When = msg}))
+                    k row.Private row.Who
 
     fun setClosed k th cl =
         acc <- access k;
@@ -388,16 +442,22 @@ functor Make(M : sig
               | Some u =>
                 dml (UPDATE threads
                      SET Closed = {[cl]}
-                     WHERE {@@Sql.easy_where [#T] [key ++ [thread = _]] [[Text = _, Closed = _]]
+                     WHERE {@@Sql.easy_where [#T] [key ++ [thread = _]] [[Text = _, Closed = _, Who = _, Private = _]]
                        [[]] [[]] [[]] ! !
                        (kinj ++ {thread = _})
                        (@Folder.concat ! _ fl)
                        (k ++ {thread = th})});
 
-                queryI1 (SELECT listeners.Who
-                         FROM listeners
-                         WHERE {@Sql.easy_where [#Listeners] ! ! kinj fl k})
-                        (fn r => send r.Who (SetClosed {Thread = th, Closed = cl}))
+                row <- oneOrNoRows1 (SELECT threads.Who, threads.Private
+                                     FROM threads
+                                     WHERE {@Sql.easy_where [#Threads] ! ! kinj fl k}
+                                       AND threads.{thread} = {[th]});
+
+                case row of
+                    None => error <xml>Trying to close nonexistent thread</xml>
+                  | Some row =>
+                    broadcast (fn ch => send ch (SetClosed {Thread = th, Closed = cl}))
+                    k row.Private row.Who
 
     fun render ctx a =
         let
@@ -409,7 +469,10 @@ functor Make(M : sig
                     x <- renderThreads onlyClosed ls';
                     cl <- signal th.Closed;
                     copt <- return <xml>
-                      <coption value={show (toMilliseconds th.Thread)}>{[th.Subject]}</coption>
+                      <coption value={show (toMilliseconds th.Thread)}>{[th.Subject]}{[if th.Private then
+                                                                                           " [private]"
+                                                                                       else
+                                                                                           ""]}</coption>
                     </xml>;
                     return <xml>
                       {x}
@@ -490,13 +553,13 @@ functor Make(M : sig
                                 else if cl then <xml>
                                   <b>Closed</b>
                                   <button class="btn"
-                                          value="Mark open"
-                                          onclick={fn _ => rpc (setClosed a.Key th False)}/>
+                                  value="Mark open"
+                                  onclick={fn _ => rpc (setClosed a.Key th False)}/>
                                 </xml> else <xml>
                                   <b>Open</b>
                                   <button class="btn"
-                                          value="Mark closed"
-                                          onclick={fn _ => rpc (setClosed a.Key th True)}/>
+                                  value="Mark closed"
+                                  onclick={fn _ => rpc (setClosed a.Key th True)}/>
                                 </xml>)
                     else
                         renderOpennessOfThread th ls'
@@ -530,17 +593,20 @@ functor Make(M : sig
                                                  value="New Thread"
                                                  onclick={fn _ =>
                                                              s <- source "";
-                                                             set a.NewThread (Some s)}/>
+                                                             p <- source False;
+                                                             set a.NewThread (Some (s, p))}/>
                                        </xml>
-                                     | Some s => <xml>
+                                     | Some (s, priv) => <xml>
                                        New thread:
                                        <ctextbox source={s}/>
+                                       Private? <ccheckbox source={priv}/>
                                        <button class="btn btn-primary"
                                                value="Create"
                                                onclick={fn _ =>
                                                            subj <- get s;
+                                                           priv <- get priv;
                                                            set a.NewThread None;
-                                                           th <- rpc (newThread a.Key subj);
+                                                           th <- rpc (newThread a.Key subj priv);
                                                            set a.Thread (show (toMilliseconds th))}/>
                                        <button class="btn"
                                                value="Cancel"
@@ -612,10 +678,10 @@ functor Make(M : sig
                                         con key = key
                                         con subkey = [thread = time]
                                         con done = #Closed
-                                        con other = [Text = string]
+                                        con other = [Text = string, Private = bool, Who = string]
                                         constraint key ~ [thread = time]
-                                        constraint (key ++ [thread = time]) ~ [Text = string]
-                                        constraint [Closed] ~ (key ++ [thread = time] ++ [Text = string])
+                                        constraint (key ++ [thread = time]) ~ [Text = string, Private = bool, Who = string]
+                                        constraint [Closed] ~ (key ++ [thread = time] ++ [Text = string, Private = bool, Who = string])
 
                                         val fl = fl
                                         val sfl = _

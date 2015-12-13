@@ -8,8 +8,8 @@ functor Make(M : sig
                  con key = [key1 = keyT] ++ keyR
                  con thread :: Name
                  constraint [thread] ~ key
-                 constraint [thread] ~ [When, Who, Text]
-                 constraint key ~ [Thread, When, Who, Text]
+                 constraint [thread] ~ [When, Who, Text, Closed, Private]
+                 constraint key ~ [Thread, When, Who, Text, Closed, Private]
                  val fl : folder key
                  val kinj : $(map sql_injectable_prim key)
                  con rest :: {Type}

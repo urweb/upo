@@ -18,8 +18,8 @@ style post_body
 functor Make(M : sig
                  con key :: {Type}
                  con thread :: Name
-                 constraint [thread] ~ [When, Who, Text, Closed]
-                 constraint key ~ [thread, When, Who, Text, Closed]
+                 constraint [thread] ~ [When, Who, Text, Closed, Private]
+                 constraint key ~ [thread, When, Who, Text, Closed, Private]
                  val fl : folder key
                  val kinj : $(map sql_injectable key)
 
