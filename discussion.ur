@@ -51,6 +51,7 @@ functor Make(M : sig
                  val access : $key -> transaction access
 
                  val showOpenVsClosed : bool
+                 val allowPrivate : bool
              end) = struct
 
     open M
@@ -125,6 +126,11 @@ functor Make(M : sig
                                             [[thread = _, Text = _, Closed = _, Who = _, Private = _]] [_] [_] [[]]
                                             ! ! ! ! fl}
                                         WHERE {@Sql.easy_where [#Message] ! ! kinj fl k}
+                                          AND {case acc of
+                                                   Admin _ => (SQL TRUE)
+                                                 | Read => (SQL NOT threads.Private)
+                                                 | Post {User = u, ...} => (SQL NOT threads.Private OR threads.Who = {[u]})
+                                                 | Forbidden => error <xml>Discussion: impossible Forbidden</xml>}
                                         ORDER BY message.{thread} DESC, message.When DESC)
                                  (fn r (threads, unfinished) =>
                                      case unfinished of
@@ -320,6 +326,7 @@ functor Make(M : sig
                    (fn r => f r.1)
 
     fun newThread k subj isPrivate =
+        isPrivate <- return (isPrivate && allowPrivate);
         acc <- access k;
         case mayPost acc of
             None => error <xml>Access denied</xml>
@@ -599,7 +606,10 @@ functor Make(M : sig
                                      | Some (s, priv) => <xml>
                                        New thread:
                                        <ctextbox source={s}/>
-                                       Private? <ccheckbox source={priv}/>
+                                       {if allowPrivate then
+                                            <xml>Private? <ccheckbox source={priv}/></xml>
+                                        else
+                                            <xml></xml>}
                                        <button class="btn btn-primary"
                                                value="Create"
                                                onclick={fn _ =>

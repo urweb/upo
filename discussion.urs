@@ -33,6 +33,9 @@ functor Make(M : sig
 
                  val showOpenVsClosed : bool
                  (* Should we expose to users the idea of marking threads open/closed? *)
+
+                 val allowPrivate : bool
+                 (* May users create threads visible only to themselves and admins? *)
              end) : sig
     include Ui.S where type input = $M.key
 

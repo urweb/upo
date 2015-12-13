@@ -23,6 +23,7 @@ functor Make(M : sig
 
                  val access : $key -> transaction Discussion.access
                  val showOpenVsClosed : bool
+                 val allowPrivate : bool
              end) = struct
 
     open M

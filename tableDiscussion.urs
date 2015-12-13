@@ -25,6 +25,7 @@ functor Make(M : sig
 
                  val access : $key -> transaction Discussion.access
                  val showOpenVsClosed : bool
+                 val allowPrivate : bool
              end) : sig
     include Ui.S where type input = $M.key
 
