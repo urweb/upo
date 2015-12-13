@@ -1,5 +1,33 @@
 (* Generic authentication backed by a database table *)
 
+signature S = sig
+    con groups :: {Unit}
+
+    val whoami : transaction (option string)
+    (* Which user (by name), if any, is logged in? *)
+
+    val getUser : transaction string
+    val requireUser : transaction unit
+    (* Like above, but fails if not logged in *)
+
+    val inGroup : variant (mapU unit groups) -> transaction bool
+    (* Does the current user belong to the specified group? *)
+
+    val requireGroup : variant (mapU unit groups) -> transaction unit
+    (* Fail if the current user doesn't to the group. *)
+
+    val getGroup : variant (mapU unit groups) -> transaction string
+    (* Like above, but also returns username. *)
+
+    val inGroups : dummy ::: {Unit} -> folder dummy
+                   -> $(mapU (variant (mapU unit groups)) dummy) -> transaction bool
+    val requireGroups : dummy ::: {Unit} -> folder dummy
+                        -> $(mapU (variant (mapU unit groups)) dummy) -> transaction unit
+    val getGroups : dummy ::: {Unit} -> folder dummy
+                    -> $(mapU (variant (mapU unit groups)) dummy) -> transaction string
+    (* Like the above, but based on checking whether the user belongs to at least one of a set of groups *)        
+end
+
 functor Make(M : sig
                  con name :: Name
                  (* Which column gives us the primary identifier for a user? *)
@@ -35,15 +63,4 @@ functor Make(M : sig
                  val injo : $(map sql_injectable others)
 
                  val eqs : $(map eq setThese)
-             end) : sig
-
-    val whoami : transaction (option string)
-    (* Which user (by name), if any, is logged in? *)
-
-    val inGroup : variant (mapU unit M.groups) -> transaction bool
-    (* Does the current user belong to the specified group? *)
-
-    val requireGroup : variant (mapU unit M.groups) -> transaction unit
-    (* Fail if the current user doesn't to the group. *)
-
-end
+             end) : S where con groups = M.groups

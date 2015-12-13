@@ -25,59 +25,35 @@ task initialize = fn () =>
 
 cookie userC : string
 
-val auth =
-    lo <- getCookie userC;
-    case lo of
-        None => error <xml>You haven't set the cookie with your name.</xml>
-      | Some r => return r
+structure Auth = Auth.Make(struct
+                               con name = #User
+                               con setThese = []
+                               con groups = [IsStudent, IsInstructor, IsStaff]
+                               con others = [Section = _]
+                               val users = user
+                               val defaults = None
 
-val requireAuth = Monad.ignore auth
+                               val underlying =
+                                   lo <- getCookie userC;
+                                   case lo of
+                                       None => return None
+                                     | Some r => return (Some {User = r})
+                           end)
 
-val amInstructor =
-    u <- auth;
-    oneRowE1 (SELECT COUNT( * ) > 0
-              FROM user
-              WHERE user.User = {[u]}
-                AND user.IsInstructor)
+val instructor = make [#IsInstructor] ()
+val staff = (make [#IsStaff] (), make [#IsInstructor] ())
+val student = make [#IsStudent] ()
 
-val amStaff =
-    u <- auth;
-    oneRowE1 (SELECT COUNT( * ) > 0
-              FROM user
-              WHERE user.User = {[u]}
-                AND (user.IsStaff OR user.IsInstructor))
+val auth = Auth.getUser
+val requireAuth = Auth.requireUser
+val amInstructor = Auth.inGroup instructor
+val amStaff = Auth.inGroups staff
+val amStudent = Auth.inGroup student
 
-val amStudent =
-    u <- auth;
-    oneRowE1 (SELECT COUNT( * ) > 0
-              FROM user
-              WHERE user.User = {[u]}
-                AND user.IsStudent)
+val requireInstructor = Auth.requireGroup instructor
+val requireStaff = Auth.requireGroups staff
 
-val requireInstructor =
-    isInstructor <- amInstructor;
-    if isInstructor then
-        return ()
-    else
-        error <xml>Access denied</xml>
-
-val requireStaff =
-    isStaff <- amStaff;
-    if isStaff then
-        return ()
-    else
-        error <xml>Access denied</xml>
-
-val getStaff =
-    isStaff <- amStaff;
-    if isStaff then
-        u <- getCookie userC;
-        case u of
-            None => error <xml>!</xml>
-          | Some u => return u
-    else
-        error <xml>Access denied</xml>
-
+val getStaff = Auth.getGroups staff
 val amUser = user <- auth; return (Some {User = user})
 
 val instructorPermission =
