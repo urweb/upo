@@ -120,6 +120,32 @@ structure Smu = Sm.MakeUi(struct
                                                    WhenEntered = fn _ => debug "All done!"}}
                           end)
 
+structure GlobalForum = GlobalDiscussion.Make(struct
+                                                  val text = Widget.htmlbox
+
+                                                  val access =
+                                                      u <- getCookie userC;
+                                                      case u of
+                                                          None => return Discussion.Read
+                                                     | Some u =>
+                                                       flags <- oneOrNoRows1 (SELECT user.IsInstructor, user.IsStaff, user.IsStudent
+                                                                              FROM user
+                                                                              WHERE user.User = {[u]});
+                                                       return (case flags of
+                                                                   None => Discussion.Read
+                                                                 | Some r =>
+                                                                   if r.IsInstructor || r.IsStaff then
+                                                                       Discussion.Admin {User = u}
+                                                                   else if r.IsStudent then
+                                                                       Discussion.Post {User = u, MayEdit = True, MayDelete = True, MayMarkClosed = True}
+                                                                   else
+                                                                       Discussion.Read)
+
+                                               val showOpenVsClosed = True
+                                               val allowPrivate = True
+                                               fun onNewMessage r = debug ("New GLOBAL message in " ^ r.Subject ^ ": " ^ r.Text)
+                                           end)
+
 table pset : { PsetNum : int, Released : time, Due : time, GradesDue : time, Instructions : string, Czar : option string }
   PRIMARY KEY PsetNum,
   CONSTRAINT Czar FOREIGN KEY Czar REFERENCES user(User)
@@ -569,6 +595,8 @@ val admin =
                (Some "Calendar",
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
                         ToDay = readError "09/01/15 00:00:00"}),
+               (Some "Forum",
+                GlobalForum.ui),
                (Some "Global TODO",
                 ProfTod.AllUsers.ui),
                (Some "Assign Pset Grading",
@@ -678,6 +706,8 @@ val staff =
                (Some "Calendar",
                 Cal.ui {FromDay = readError "06/01/15 00:00:00",
                         ToDay = readError "09/01/15 00:00:00"}),
+               (Some "Forum",
+                GlobalForum.ui),
                (Some "Grades",
                 AllGrades.ui),
                (Some "Final Grades",
@@ -732,6 +762,8 @@ val main =
                         ToDay = readError "09/01/15 00:00:00"}),
                (Some "Grades",
                 StudentGrades.ui u),
+               (Some "Forum",
+                GlobalForum.ui),
                (Ui.when (st = make [#FirstWeekOfClass] ()) "First week of class!",
                 Ui.const <xml>WOOOOOOO!</xml>),
                (Ui.when (st >= make [#FirstWeekOfClass] ()) "Semester started",

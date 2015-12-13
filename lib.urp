@@ -38,5 +38,6 @@ assignTasks
 grades
 finalGrades
 discussion
+globalDiscussion
 tableDiscussion
 linearStateMachine
