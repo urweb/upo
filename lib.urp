@@ -22,6 +22,8 @@ ui
 widget
 simpleQuery
 simpleQuery1
+paramQuery
+paramQuery1
 inputStrings
 editGrid
 chooseForeign
