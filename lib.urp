@@ -26,6 +26,7 @@ inputStrings
 editGrid
 chooseForeign
 meetingGrid
+toggle
 rsvp2
 editableTable
 openBallot
