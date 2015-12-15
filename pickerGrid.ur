@@ -9,6 +9,7 @@ functor Make(M : sig
 
                  table t : (hidden ++ static ++ map fst3 dynamic)
                  val shows : $(map show static)
+                 val eqs : $(map eq static)
                  val widgets : $(map Widget.t' dynamic)
                  val labels : $(map (fn _ => string) static ++ map (fn _ => string) dynamic)
 
@@ -25,7 +26,10 @@ functor Make(M : sig
     type input = _
 
     type a = {Config : $(map thd3 dynamic),
-              Rows : list (source $(static ++ map snd3 dynamic))}
+              Rows : list (source $(static ++ map snd3 dynamic)),
+              Channel : channel (list $(static ++ map fst3 dynamic))}
+
+    table listeners : { Channel : channel (list $(static ++ map fst3 dynamic)) }
 
     fun create filter =
         config <- @Monad.mapR _ [Widget.t'] [thd3]
@@ -44,10 +48,34 @@ functor Make(M : sig
                             fld widgets config (r.T --- static);
                     source (r.T --- (map fst3 dynamic) ++ dyns));
 
-        return {Config = config,
-                Rows = rows}
+        ch <- channel;
+        dml (INSERT INTO listeners(Channel) VALUES({[ch]}));
 
-    fun onload _ = return ()
+        return {Config = config,
+                Rows = rows,
+                Channel = ch}
+
+    val eqs' = @Record.eq eqs fls
+
+    fun onload a =
+        let
+            fun loop () =
+                ls <- recv a.Channel;
+                List.app (fn r =>
+                             List.app (fn rs =>
+                                          rv <- get rs;
+                                          if rv --- (map snd3 dynamic) = r --- (map fst3 dynamic) then
+                                              dyns <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                       (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (x : p.1) =>
+                                                           @Widget.initialize w cfg x)
+                                                       fld widgets a.Config (r --- static);
+                                              set rs (rv --- (map snd3 dynamic) ++ dyns)
+                                          else
+                                              return ()) a.Rows) ls;
+                loop ()
+        in
+            spawn (loop ())
+        end
 
     fun save rs =
         b <- amAuthorized;
@@ -56,7 +84,9 @@ functor Make(M : sig
         else
             List.app (fn r => @@Sql.easy_update'' [static] [map fst3 dynamic] [_] [_] ! !
                                 injs injd fls (@Folder.mp fld)
-                                t (r --- (map fst3 dynamic)) (r --- static)) rs
+                                t (r --- (map fst3 dynamic)) (r --- static)) rs;
+            queryI1 (SELECT * FROM listeners)
+            (fn r => send r.Channel rs)
 
     fun render _ a = <xml>
       <table class="bs3-table table-striped">

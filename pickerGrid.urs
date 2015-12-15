@@ -10,6 +10,7 @@ functor Make(M : sig
 
                  table t : (hidden ++ static ++ map fst3 dynamic)
                  val shows : $(map show static)
+                 val eqs : $(map eq static)
                  val widgets : $(map Widget.t' dynamic)
                  val labels : $(map (fn _ => string) static ++ map (fn _ => string) dynamic)
 
