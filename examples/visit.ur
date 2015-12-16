@@ -214,6 +214,7 @@ structure Meetings = MeetingGrid.Make(struct
                                           con homeKey = [LocalName = _]
                                           con homeOffice = [Office = _]
                                           con awayKey = [AdmitName = _]
+                                          con awayFilter = []
 
                                           val home = local
                                           val away = admit
@@ -541,7 +542,7 @@ structure Locals = struct
                    (if schMode then Some "Meetings by PI" else None,
                     Meetings.Home.FullGrid.ui),
                    (if schMode then Some "Meetings by Admit" else None,
-                    Meetings.Away.FullGrid.ui),
+                    Meetings.Away.FullGrid.ui (fn _ => return True)),
                    (Some "Dinner RSVP",
                     Ui.seq
                         (Ui.h3 <xml>All dinners are on Friday, March 6.</xml>,

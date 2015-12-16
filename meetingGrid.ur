@@ -43,13 +43,15 @@ functor Make(M : sig
                  constraint [awayKey1] ~ awayKeyR
                  con awayKey = [awayKey1 = awayKeyT] ++ awayKeyR
                  con awayConst :: {Type}
+                 con awayFilter :: {Type}
                  con awayRest :: {Type}
                  constraint awayKey ~ awayRest
                  constraint (awayKey ++ awayRest) ~ awayConst
+                 constraint (awayKey ++ awayRest ++ awayConst) ~ awayFilter
                  con awayKeyName :: Name
                  con awayOtherConstraints :: {{Unit}}
                  constraint [awayKeyName] ~ awayOtherConstraints
-                 val away : sql_table (awayKey ++ awayConst ++ awayRest) ([awayKeyName = map (fn _ => ()) awayKey] ++ awayOtherConstraints)
+                 val away : sql_table (awayKey ++ awayConst ++ awayFilter ++ awayRest) ([awayKeyName = map (fn _ => ()) awayKey] ++ awayOtherConstraints)
                  val awayInj : $(map sql_injectable_prim awayKey)
                  val awayKeyFl : folder awayKey
                  val awayKeyShow : show $awayKey
@@ -59,6 +61,7 @@ functor Make(M : sig
                  val awayConstFl : folder awayConst
                  val awayConstInj : $(map sql_injectable awayConst)
                  val awayConst : $awayConst
+                 val awayFilterFl : folder awayFilter
 
                  con timeKey1 :: Name
                  type timeKeyT
@@ -205,6 +208,8 @@ functor Make(M : sig
                      con themHardConst :: {Type}
                      con themOther :: {Type}
 
+                     (* Note: the "office" fields here do double-duty as "filter" fields in the eventual invocation! *)
+
                      constraint usKey ~ usOther
                      constraint (usKey ++ usOther) ~ usOffice
                      constraint (usKey ++ usOther ++ usOffice) ~ usSoftConst
@@ -277,7 +282,23 @@ functor Make(M : sig
                      val byHome : bool
 
                      val amUs : transaction (option $usKey)
-                 end) = struct
+                 end) : sig
+        (* Display a full, editable grid of all meetings (rows: aways, columns: times).
+         * The signal function can be used to control which rows are displayed. *)
+        structure FullGrid : Ui.S where type input = $(N.usKey ++ N.usOffice) -> signal bool
+
+        (* Display a read-only record of all records for an away. *)
+        structure One : Ui.S where type input = $N.usKey
+
+        (* Inputing meeting preferences for an away *)
+        structure Prefs : Ui.S where type input = $N.usKey
+
+        (* Inputing schedule constraints for an away *)
+        structure Unavail : Ui.S where type input = $N.usKey
+
+        (* Delete all of this person's meetings. *)
+        val deleteFor : $N.usKey -> transaction unit
+    end = struct
 
         open N
 
@@ -302,6 +323,7 @@ functor Make(M : sig
             type themSet = list ($themKey * int (* number of meetings this them has at this time *))
             type timeMap = list ($timeKey * bool (* available? *) * themSet)
             type usMap = list ($usKey * $usOffice * timeMap)
+            type input = _
             type a = _
 
             val create =
@@ -499,7 +521,7 @@ functor Make(M : sig
                     delMeeting (r.Them ++ r.OldUs ++ r.OldTime);
                     addMeeting (r.Them ++ r.NewUs ++ r.NewTime)
 
-            fun render ctx t = <xml>
+            fun render filt ctx t = <xml>
               <table class="bs3-table table-striped">
                 <tr>
                   <th/>
@@ -509,7 +531,7 @@ functor Make(M : sig
 
                 (* One row per us *)
                 {List.mapX (fn (us, off, tms) => <xml>
-                  <tr>
+                  <tr dynStyle={b <- filt (us ++ off); return (if b then STYLE "" else STYLE "display: none")}>
                     <th>{[us]}{[off]}</th>
 
                     (* One column per time *)
@@ -688,10 +710,10 @@ functor Make(M : sig
                     spawn (loop ())
                 end
 
-            val ui = {
+            fun ui filt = {
                 Create = create,
                 Onload = onload,
-                Render = render
+                Render = render filt
             }
 
         end
@@ -883,56 +905,63 @@ functor Make(M : sig
 
     val show_unit : show unit = mkShow (fn () => "")
 
-    structure Home = Side(struct
-                              con usKey = homeKey
-                              con usOffice = homeOffice
-                              con usHardConst = homeHardConst
-                              con usSoftConst = homeSoftConst
-                              con themKey = awayKey
-                              con themOffice = []
-                              con themHardConst = []
-                              con themSoftConst = awayConst
+    structure Home = struct
+        open Side(struct
+                      con usKey = homeKey
+                      con usOffice = homeOffice
+                      con usHardConst = homeHardConst
+                      con usSoftConst = homeSoftConst
+                      con themKey = awayKey
+                      con themOffice = []
+                      con themHardConst = []
+                      con themSoftConst = awayConst
 
-                              fun localized r = {Us = r.Home, Them = r.Away}
-                              fun canonical r = {Home = r.Us, Away = r.Them}
+                      fun localized r = {Us = r.Home, Them = r.Away}
+                      fun canonical r = {Home = r.Us, Away = r.Them}
 
-                              val us = home
-                              val them = away
+                      val us = home
+                      val them = away
 
-                              val preference = preference
-                              val byHome = True
+                      val preference = preference
+                      val byHome = True
 
-                              val meeting = meeting
+                      val meeting = meeting
 
-                              fun usChannel r = r -- #Away ++ {Them = r.Away}
-                              val usListeners = homeListeners
-                              val unavailable = homeUnavailable
+                      fun usChannel r = r -- #Away ++ {Them = r.Away}
+                      val usListeners = homeListeners
+                      val unavailable = homeUnavailable
 
-                              val usInj = homeInj
-                              val themInj = awayInj
+                      val usInj = homeInj
+                      val themInj = awayInj
 
-                              val usFl = homeKeyFl
-                              val themFl = awayKeyFl
-                              val usOfficeFl = officeFl
+                      val usFl = homeKeyFl
+                      val themFl = awayKeyFl
+                      val usOfficeFl = officeFl
 
-                              val amUs = amHome
+                      val amUs = amHome
 
-                              val usHardConst = homeHardConst
-                              val usSoftConst = homeSoftConst
-                              val themHardConst = {}
-                              val themSoftConst = awayConst
+                      val usHardConst = homeHardConst
+                      val usSoftConst = homeSoftConst
+                      val themHardConst = {}
+                      val themSoftConst = awayConst
 
-                              val usHardConstInj = homeHardConstInj
-                              val usHardConstFl = homeHardConstFl
-                              val usSoftConstInj = homeSoftConstInj
-                              val usSoftConstFl = homeSoftConstFl
-                              val themSoftConstInj = awayConstInj
-                              val themSoftConstFl = awayConstFl
-                          end)
+                      val usHardConstInj = homeHardConstInj
+                      val usHardConstFl = homeHardConstFl
+                      val usSoftConstInj = homeSoftConstInj
+                      val usSoftConstFl = homeSoftConstFl
+                      val themSoftConstInj = awayConstInj
+                      val themSoftConstFl = awayConstFl
+                  end)
+
+        structure FullGrid = struct
+            open FullGrid
+            val ui = ui (fn _ => return True)
+        end
+    end
 
     structure Away = Side(struct
                               con usKey = awayKey
-                              con usOffice = []
+                              con usOffice = awayFilter
                               con usHardConst = []
                               con usSoftConst = awayConst
                               con themKey = homeKey
@@ -974,6 +1003,9 @@ functor Make(M : sig
                               val themHardConstFl = homeHardConstFl
                               val themSoftConstInj = homeSoftConstInj
                               val themSoftConstFl = homeSoftConstFl
+
+                              val usOfficeShow = mkShow (fn _ => "")
+                              val usOfficeFl = awayFilterFl
                           end)
 
     val scheduleSome =

@@ -40,13 +40,15 @@ functor Make(M : sig
                  constraint [awayKey1] ~ awayKeyR
                  con awayKey = [awayKey1 = awayKeyT] ++ awayKeyR
                  con awayConst :: {Type}
+                 con awayFilter :: {Type}
                  con awayRest :: {Type}
                  constraint awayKey ~ awayRest
                  constraint (awayKey ++ awayRest) ~ awayConst
+                 constraint (awayKey ++ awayRest ++ awayConst) ~ awayFilter
                  con awayKeyName :: Name
                  con awayOtherConstraints :: {{Unit}}
                  constraint [awayKeyName] ~ awayOtherConstraints
-                 val away : sql_table (awayKey ++ awayConst ++ awayRest) ([awayKeyName = map (fn _ => ()) awayKey] ++ awayOtherConstraints)
+                 val away : sql_table (awayKey ++ awayConst ++ awayFilter ++ awayRest) ([awayKeyName = map (fn _ => ()) awayKey] ++ awayOtherConstraints)
                  val awayInj : $(map sql_injectable_prim awayKey)
                  val awayKeyFl : folder awayKey
                  val awayKeyShow : show $awayKey
@@ -56,6 +58,7 @@ functor Make(M : sig
                  val awayConstFl : folder awayConst
                  val awayConstInj : $(map sql_injectable awayConst)
                  val awayConst : $awayConst
+                 val awayFilterFl : folder awayFilter
 
                  con timeKey1 :: Name
                  type timeKeyT
@@ -104,7 +107,7 @@ functor Make(M : sig
 
     structure Away : sig
         (* Display a full, editable grid of all meetings (rows: aways, columns: times). *)
-        structure FullGrid : Ui.S0
+        structure FullGrid : Ui.S where type input = $(M.awayKey ++ M.awayFilter) -> signal bool
 
         (* Display a read-only record of all records for an away. *)
         structure One : Ui.S where type input = $M.awayKey
