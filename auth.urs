@@ -43,7 +43,7 @@ functor Make(M : sig
                  con name :: Name
                  (* Which column gives us the primary identifier for a user? *)
 
-                 con setThese :: {Type}
+                 con key :: {Type}
                  (* Based on the underlying authentication method, we also learn the values of these fields.
                   * Example: client SSL certificate gives additional personal data. *)
 
@@ -53,13 +53,13 @@ functor Make(M : sig
                  con others :: {Type}
                  (* Miscellaneous remaining fields of the users table *)
 
-                 constraint [name] ~ setThese
-                 constraint ([name] ++ map (fn _ => ()) setThese) ~ groups
-                 constraint ([name] ++ map (fn _ => ()) setThese ++ groups) ~ others
+                 constraint [name] ~ key
+                 constraint ([name] ++ map (fn _ => ()) key) ~ groups
+                 constraint ([name] ++ map (fn _ => ()) key ++ groups) ~ others
 
-                 table users : ([name = string] ++ setThese ++ mapU bool groups ++ others)
+                 table users : ([name = string] ++ key ++ mapU bool groups ++ others)
 
-                 val underlying : transaction (option $([name = string] ++ setThese))
+                 val underlying : transaction (option $([name = string] ++ key))
                  (* Data of confirmed current user, if any *)
 
                  val defaults : option $(mapU bool groups ++ others)
@@ -72,12 +72,12 @@ functor Make(M : sig
 
                  val requireSsl : bool
 
-                 val fls : folder setThese
+                 val fls : folder key
                  val flg : folder groups
                  val flo : folder others
 
-                 val injs : $(map sql_injectable setThese)
+                 val injs : $(map sql_injectable key)
                  val injo : $(map sql_injectable others)
 
-                 val eqs : $(map eq setThese)
+                 val eqs : $(map eq key)
              end) : S where con groups = M.groups

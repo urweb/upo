@@ -32,29 +32,29 @@ end
 
 functor Make(M : sig
                  con name :: Name
-                 con setThese :: {Type}
+                 con key :: {Type}
                  con groups :: {Unit}
                  con others :: {Type}
 
-                 constraint [name] ~ setThese
-                 constraint ([name] ++ map (fn _ => ()) setThese) ~ groups
-                 constraint ([name] ++ map (fn _ => ()) setThese ++ groups) ~ others
+                 constraint [name] ~ key
+                 constraint ([name] ++ map (fn _ => ()) key) ~ groups
+                 constraint ([name] ++ map (fn _ => ()) key ++ groups) ~ others
 
-                 table users : ([name = string] ++ setThese ++ mapU bool groups ++ others)
+                 table users : ([name = string] ++ key ++ mapU bool groups ++ others)
 
-                 val underlying : transaction (option $([name = string] ++ setThese))
+                 val underlying : transaction (option $([name = string] ++ key))
                  val defaults : option $(mapU bool groups ++ others)
                  val allowMasquerade : option (variant (mapU unit groups))
                  val requireSsl : bool
 
-                 val fls : folder setThese
+                 val fls : folder key
                  val flg : folder groups
                  val flo : folder others
 
-                 val injs : $(map sql_injectable setThese)
+                 val injs : $(map sql_injectable key)
                  val injo : $(map sql_injectable others)
 
-                 val eqs : $(map eq setThese)
+                 val eqs : $(map eq key)
              end) = struct
 
     open M
@@ -65,18 +65,18 @@ functor Make(M : sig
 
     val anyToSet = @fold [fn _ => bool] (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] _ => True) False fls
 
-    con schema = [Users = [name = string] ++ setThese ++ mapU bool groups ++ others]
+    con schema = [Users = [name = string] ++ key ++ mapU bool groups ++ others]
 
     fun variantToExp (g : variant (mapU unit groups))
         : sql_exp schema schema [] bool =
           @@match [mapU unit groups] [sql_exp schema schema [] bool] g
-          (@fold [fn gs => gso :: {Unit} -> [gso ~ gs] => [[name = string] ++ setThese ++ others ~ gso ++ gs] => $(mapU (unit -> sql_exp [Users = [name = string] ++ setThese ++ mapU bool (gs ++ gso) ++ others] [Users = [name = string] ++ setThese ++ mapU bool (gs ++ gso) ++ others] [] bool) gs)]
+          (@fold [fn gs => gso :: {Unit} -> [gso ~ gs] => [[name = string] ++ key ++ others ~ gso ++ gs] => $(mapU (unit -> sql_exp [Users = [name = string] ++ key ++ mapU bool (gs ++ gso) ++ others] [Users = [name = string] ++ key ++ mapU bool (gs ++ gso) ++ others] [] bool) gs)]
             (fn [nm ::_] [u ::_] [gs ::_] [[nm] ~ gs]
-                         (acc : gso :: {Unit} -> [gso ~ gs] => [[name = string] ++ setThese ++ others ~ gso ++ gs] => $(mapU (unit -> sql_exp [Users = [name = string] ++ setThese ++ mapU bool (gs ++ gso) ++ others] [Users = [name = string] ++ setThese ++ mapU bool (gs ++ gso) ++ others] [] bool) gs))
-                         [gso ::_] [gso ~ [nm] ++ gs] [[name = string] ++ setThese ++ others ~ gso ++ [nm] ++ gs] =>
+                         (acc : gso :: {Unit} -> [gso ~ gs] => [[name = string] ++ key ++ others ~ gso ++ gs] => $(mapU (unit -> sql_exp [Users = [name = string] ++ key ++ mapU bool (gs ++ gso) ++ others] [Users = [name = string] ++ key ++ mapU bool (gs ++ gso) ++ others] [] bool) gs))
+                         [gso ::_] [gso ~ [nm] ++ gs] [[name = string] ++ key ++ others ~ gso ++ [nm] ++ gs] =>
                 {nm = fn () => (SQL users.{nm})}
                     ++ acc [[nm] ++ gso])
-            (fn [gso ::_] [gso ~ []] [[name = string] ++ setThese ++ others ~ gso] => {}) flg [[]] ! !)
+            (fn [gso ::_] [gso ~ []] [[name = string] ++ key ++ others ~ gso] => {}) flg [[]] ! !)
 
     fun whoami' masq =
         data <- underlying;
@@ -101,20 +101,29 @@ functor Make(M : sig
                              error <xml>Access denied</xml>)
               | None =>
                 if anyToSet then
-                    inDb <- oneOrNoRows1 (SELECT users.{{setThese}}
+                    inDb <- oneOrNoRows1 (SELECT users.{{key}}
                                           FROM users
                                           WHERE users.{name} = {[data.name]});
                     case inDb of
                         None =>
-                        (case defaults of
-                             None => return None
-                           | Some defaults =>
-                             @@Sql.easy_insert [[name = _] ++ setThese ++ mapU bool groups ++ others] [_]
-                               ({name = _} ++ injs ++ injo ++ @map0 [fn _ => sql_injectable bool] (fn [u ::_] => _) flg)
-                               (@Folder.cons [name] [_] ! (@Folder.concat ! (@Folder.mp flg)
-                                                            (@Folder.concat ! fls flo)))
-                               users (data ++ defaults);
-                             return (Some data.name))
+                        alreadyPresent <- oneRowE1 (SELECT COUNT( * ) > 0
+                                                    FROM users
+                                                    WHERE {@Sql.easy_where [#Users] ! !
+                                                      injs fls (data -- name)});
+                        if alreadyPresent then
+                            @@Sql.easy_update'' [key] [[name = _]] [_] [_] ! ! injs {name = _} fls _
+                              users (data -- name) (data --- key);
+                            return (Some data.name)
+                        else
+                            (case defaults of
+                                 None => return None
+                               | Some defaults =>
+                                 @@Sql.easy_insert [[name = _] ++ key ++ mapU bool groups ++ others] [_]
+                                   ({name = _} ++ injs ++ injo ++ @map0 [fn _ => sql_injectable bool] (fn [u ::_] => _) flg)
+                                   (@Folder.cons [name] [_] ! (@Folder.concat ! (@Folder.mp flg)
+                                                                (@Folder.concat ! flo fls)))
+                                   users (data ++ defaults);
+                                 return (Some data.name))
                       | Some r =>
                         (if r = data -- name then
                              return ()
@@ -131,7 +140,7 @@ functor Make(M : sig
                         case defaults of
                             None => return None
                           | Some defaults =>
-                            @@Sql.easy_insert [[name = _] ++ setThese ++ mapU bool groups ++ others] [_]
+                            @@Sql.easy_insert [[name = _] ++ key ++ mapU bool groups ++ others] [_]
                               ({name = _} ++ injs ++ injo ++ @map0 [fn _ => sql_injectable bool] (fn [u ::_] => _) flg)
                               (@Folder.cons [name] [_] ! (@Folder.concat ! (@Folder.mp flg)
                                                            (@Folder.concat ! fls flo)))
