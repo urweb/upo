@@ -156,3 +156,33 @@ fun foreignbox [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : sql_quer
                              "" => None
                            | _ => read v),
       AsValue = txt }
+
+con foreignbox_default = foreignbox
+con foreignbox_default_config = foreignbox_config
+
+fun foreignbox_default [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : sql_query [] [] [] [f = a]) (default : a) =
+    { Configure = List.mapQuery q (fn r => r.f),
+      Create = fn ls =>
+                  s <- source "";
+                  return {Choices = ls, Source = s},
+      Initialize = fn ls v =>
+                      s <- source (show v);
+                      return {Choices = ls, Source = s},
+      Reset = fn me => set me.Source "",
+      AsWidget = fn me id =>
+                    let
+                        val inner = <xml>
+                          <coption></coption>
+                          {List.mapX (fn v => <xml><coption>{[v]}</coption></xml>) me.Choices}
+                        </xml>
+                    in
+                        case id of
+                            None => <xml><cselect class={Bootstrap3.form_control} source={me.Source}>{inner}</cselect></xml>
+                          | Some id => <xml><cselect class={Bootstrap3.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
+                    end,
+      Value = fn me =>
+                 v <- signal me.Source;
+                 return (case v of
+                             "" => default
+                           | _ => Option.get default (read v)),
+      AsValue = txt }

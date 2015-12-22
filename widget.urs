@@ -61,3 +61,12 @@ val foreignbox : a ::: Type -> f ::: Name ->
                  -> read a
                  -> sql_query [] [] [] [f = a]
                  -> t (option a) (foreignbox a) (foreignbox_config a)
+
+con foreignbox_default :: Type -> Type
+con foreignbox_default_config :: Type -> Type
+val foreignbox_default : a ::: Type -> f ::: Name ->
+                           show a
+                           -> read a
+                           -> sql_query [] [] [] [f = a]
+                           -> a (* default value *)
+                           -> t a (foreignbox_default a) (foreignbox_default_config a)
