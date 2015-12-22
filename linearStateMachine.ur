@@ -24,19 +24,19 @@ functor Make(M : sig
     fun toInt (s : step) =
         match s
               (@fold [fn r => int * $(mapU (unit -> int) r)]
-                (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] (n, r) =>
-                    (n-1,
-                     r ++ {nm = fn () => n}))
+                (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] p =>
+                    (p.1-1,
+                     p.2 ++ {nm = fn () => p.1}))
                 (0, {}) fl).2
 
     fun fromInt (n : int) =
         (@fold [fn r => int * (r' :: {Unit} -> [r' ~ r] => option (variant (mapU unit (r ++ r'))))]
-          (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] (n', r : r' :: {Unit} -> [r' ~ r] => option (variant (mapU unit (r ++ r')))) =>
-              (n'-1,
-               if n' = n then
+          (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] (p : int * (r' :: {Unit} -> [r' ~ r] => option (variant (mapU unit (r ++ r'))))) =>
+              (p.1-1,
+               if p.1 = n then
                 fn [r' ::_] [r' ~ [nm] ++ r] => Some (make [nm] ())
                else
-                fn [r' ::_] [r' ~ [nm] ++ r] => r [[nm] ++ r']))
+                fn [r' ::_] [r' ~ [nm] ++ r] => p.2 [[nm] ++ r'] !))
           (0, fn [r' ::_] [r' ~ []] => None) fl).2 [[]] !
 
     val step_eq = mkEq (fn s1 s2 => toInt s1 = toInt s2)

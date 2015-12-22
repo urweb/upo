@@ -33,6 +33,7 @@ rsvp2
 editableTable
 pickerGrid
 openBallot
+closedBallot
 withComments
 calendar
 todo

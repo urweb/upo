@@ -1,4 +1,4 @@
-(* Generalized voting, where every authorized user may see who voted for what *)
+(* Generalized voting, where we keep secret who voted for what, but we reveal the tally for each choice *)
 
 functor Make(M : sig
                  con voterKey1 :: Name
@@ -40,24 +40,17 @@ functor Make(M : sig
 
                  constraint voterKey ~ (choiceBallot ++ choiceKey)
                  constraint (voterKey ++ choiceBallot ++ choiceKey) ~ [Votes]
-                 constraint choiceBallot ~ [Channel]
+                 constraint (voterKey ++ choiceBallot) ~ [Client, Channel]
 
                  val amVoter : transaction (option $voterKey)
                  val maxVotesPerVoter : option int
                  (* This is the max votes on a single choice. *)
                  val keyFilter : sql_exp [Choice = choiceBallot ++ choiceKey ++ choiceRest] [] [] bool
                  (* Only show choices matching this filter. *)
-
-                 val alwaysShowVotes : bool
-                 (* Next to each item, show who votes for it, without requiring user to click a button first? *)
              end) : sig
 
     include Ui.S where type input = {Ballot : $M.choiceBallot, Voter : $M.voterKey}
 
     val removeVotesFor : $(M.choiceBallot ++ M.choiceKey) -> transaction unit
-
-    structure OneChoice : Ui.S where type input = {Ballot : $M.choiceBallot,
-                                                   Choice : $M.choiceKey,
-                                                   Voter : $M.voterKey}
 
 end
