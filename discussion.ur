@@ -151,12 +151,12 @@ functor Make(M : sig
                                              tail' <- source Nil;
                                              tail <- source tail';
                                              msg <- source (r.Message -- thread);
-                                             msgS <- source (Cons (msg, tail'));
+                                             msgS' <- source (Cons (msg, tail'));
                                              cl' <- source r.Threads.Closed;
 
                                              ts <- source (TCons ({Thread = thread, Subject = subj, Private = priv, Head = msgS, Tail = ttail, Closed = cl, FirstPoster = fp}, threads));
 
-                                             return (ts, Some (r.Message.thread, r.Threads.Text, tail, msgS, cl', r.Message.Who, r.Threads.Private)))
+                                             return (ts, Some (r.Message.thread, r.Threads.Text, tail, msgS', cl', r.Message.Who, r.Threads.Private)))
                                  (tail', None);
         threads <- (case unfinished of
                         None => return threads
