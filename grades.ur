@@ -35,7 +35,7 @@ functor OneStudent(M : sig
             ts' <- List.mapM toWidget ts;
             return (WCategory (exp, lab, min, max, ts'))
 
-    fun render w =
+    fun render' w =
         case w of
             WAtomic (lab, no) => <xml>
               <li> {[lab]}{case no of
@@ -53,7 +53,7 @@ functor OneStudent(M : sig
                                                         else
                                                             <xml>-{[max]}</xml>})
                                        <ul>
-                                         {List.mapX render ws}
+                                         {List.mapX render' ws}
                                        </ul>
                                      </li></xml>
                                  else
@@ -66,6 +66,8 @@ functor OneStudent(M : sig
                                                             <xml>-{[max]}</xml>})
                                      </li></xml>)}/>
             </xml>
+
+    fun render w = <xml><ul>{render' w}</ul></xml>
 
     fun ui stid = {Create = tr <- oneStudent t stid; toWidget tr,
                    Onload = fn _ => return (),

@@ -40,7 +40,7 @@ functor Make(M : sig
                  val labels : $(map (fn _ => string) fs)
 
                  val makeFilename : $key -> string (* username *) -> string
-                 val mayInspect : transaction bool
+                 val mayInspect : option string (* username, or [None] for all users *) -> transaction bool
              end) : sig
     val newUpload : $M.key -> transaction xbody
     (* Form to upload a new submission for a key *)

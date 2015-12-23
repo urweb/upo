@@ -27,7 +27,7 @@ cookie userC : string
 
 structure Auth = Auth.Make(struct
                                con name = #User
-                               con setThese = []
+                               con key = []
                                con groups = [IsStudent, IsInstructor, IsStaff]
                                con others = [Section = _]
                                val users = user
@@ -144,7 +144,7 @@ structure PsetSub = Submission.Make(struct
                                                       Aggravation = "Aggravation"}
 
                                         fun makeFilename k u = "ps" ^ show k.PsetNum ^ "_" ^ u ^ ".pdf"
-                                        val mayInspect = amStaff
+                                        fun mayInspect _ = amStaff
                                     end)
 
 fun getPset id =

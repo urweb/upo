@@ -37,7 +37,7 @@ functor Make(M : sig
                  val labels : $(map (fn _ => string) fs)
 
                  val makeFilename : $key -> string (* username *) -> string
-                 val mayInspect : transaction bool
+                 val mayInspect : option string (* username *) -> transaction bool
              end) = struct
 
     open M
@@ -129,7 +129,7 @@ functor Make(M : sig
     fun latests f k =
         let
             fun retrieveLatest u =
-                b <- mayInspect;
+                b <- mayInspect (Some u);
                 if not b then
                     error <xml>Submission: not authorized to retrieve submissions</xml>
                 else
@@ -148,7 +148,7 @@ functor Make(M : sig
                         returnBlob r.Content mt
 
             val listLatest =
-                b <- mayInspect;
+                b <- mayInspect None;
                 if not b then
                     error <xml>Submission: not authorized to list submissions</xml>
                 else
@@ -187,7 +187,7 @@ functor Make(M : sig
         fun onload _ = return ()
 
         fun retrieve k u wh =
-            b <- mayInspect;
+            b <- mayInspect (Some u);
             if not b then
                 error <xml>Submission: not authorized to retrieve submissions</xml>
             else
