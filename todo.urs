@@ -152,6 +152,50 @@ functor Happenings(M : sig
     val todo : t M.key [tag = private]
 end
 
+(* For every combination of rows from two tables, a row must exist in another table.
+ * If it doesn't, then every user in a given set has a todo!
+ * The canonical example is grading assignments. *)
+functor Grading(M : sig
+                    con tag :: Name
+                    con akey :: {Type}
+                    con due :: Name
+                    con aother :: {Type}
+                    con ukey :: Name
+                    con uother :: {Type}
+                    con guser :: Name
+                    con gother :: {Type}
+                    constraint akey ~ aother
+                    constraint [due] ~ (akey ++ aother)
+                    constraint [ukey] ~ uother
+                    constraint akey ~ gother
+                    constraint [guser] ~ (akey ++ gother)
+                    constraint [guser] ~ akey
+                    constraint [Assignee, Due, Done, Kind] ~ ([guser = string] ++ akey)
+                    val fl : folder akey
+                    val inj : $(map sql_injectable_prim akey)
+
+                    table assignments : (akey ++ [due = time] ++ aother)
+                    (* The set of assignments to be graded *)
+                    val acond : sql_exp [Assignments = akey ++ [due = time] ++ aother] [] [] bool
+                    (* Condition to narrow down to the ones ready for grading *)
+                    table users : ([ukey = string] ++ uother)
+                    (* Full set of users *)
+                    val ucond : sql_exp [Users = [ukey = string] ++ uother] [] [] bool
+                    (* Condition to narrow down to the ones who get graded *)
+                    table grades : ([guser = string] ++ akey ++ gother)
+                    (* Recorded grades; if missing, generate a todo. *)
+                    val gcond : sql_exp [Graders = [ukey = string] ++ uother] [] [] bool
+                    (* Which users are responsible for grading? *)
+
+                    val title : string
+                    val render : $([guser = string] ++ akey) -> string (* username *) -> xbody
+                end) : sig
+    con private
+    con tag = M.tag
+    con guser = M.guser
+    val todo : t ([guser = string] ++ M.akey) [tag = private]
+end
+
 val compose : keys1 ::: {Type} -> keys2 ::: {Type}
               -> tags1 ::: {Type} -> tags2 ::: {Type}
               -> [keys1 ~ keys2] => [tags1 ~ tags2]

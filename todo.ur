@@ -351,6 +351,93 @@ functor Happenings(M : sig
        Label = title}
 end
 
+functor Grading(M : sig
+                    con tag :: Name
+                    con akey :: {Type}
+                    con due :: Name
+                    con aother :: {Type}
+                    con ukey :: Name
+                    con uother :: {Type}
+                    con guser :: Name
+                    con gother :: {Type}
+                    constraint akey ~ aother
+                    constraint [due] ~ (akey ++ aother)
+                    constraint [ukey] ~ uother
+                    constraint akey ~ gother
+                    constraint [guser] ~ (akey ++ gother)
+                    constraint [guser] ~ akey
+                    constraint [Assignee, Due, Done, Kind] ~ ([guser = string] ++ akey)
+                    val fl : folder akey
+                    val inj : $(map sql_injectable_prim akey)
+
+                    table assignments : (akey ++ [due = time] ++ aother)
+                    (* The set of assignments to be graded *)
+                    val acond : sql_exp [Assignments = akey ++ [due = time] ++ aother] [] [] bool
+                    (* Condition to narrow down to the ones ready for grading *)
+                    table users : ([ukey = string] ++ uother)
+                    (* Full set of users *)
+                    val ucond : sql_exp [Users = [ukey = string] ++ uother] [] [] bool
+                    (* Condition to narrow down to the ones who get graded *)
+                    table grades : ([guser = string] ++ akey ++ gother)
+                    (* Recorded grades; if missing, generate a todo. *)
+                    val gcond : sql_exp [Graders = [ukey = string] ++ uother] [] [] bool
+                    (* Which users are responsible for grading? *)
+
+                    val title : string
+                    val render : $([guser = string] ++ akey) -> string (* username *) -> xbody
+                end) = struct
+    open M
+
+    con private = $([guser = string] ++ akey)
+
+    type window_env = [Assignments = akey ++ [due = time] ++ aother,
+                       Users = [ukey = string] ++ uother,
+                       Graders = [ukey = string] ++ uother]
+
+    con expw = sql_expw window_env window_env []
+    con exp = sql_exp window_env window_env []
+
+    val todo : t ([guser = string] ++ akey) [tag = private] =
+        @@create [tag] [[guser = string] ++ akey] ! (@Folder.cons [guser] [_] ! fl)
+        (fn [otherKeys :: {Type}] [([Assignee = option string, Due = option time, Done = option bool, Kind = string, guser = string] ++ akey) ~ otherKeys]
+            (flo : folder otherKeys)
+            (primo : $(map sql_injectable_prim otherKeys)) uo =>
+            sql_forget_tables (sql_query1 [[Assignments, Users, Graders]]
+                                          {Distinct = False,
+                                           From = (FROM assignments JOIN users ON {sql_exp_weaken ucond}
+                                                     JOIN users AS Graders ON {sql_exp_weaken gcond}
+                                                       AND {sql_exp_weaken acond}),
+                                           Where = case uo of
+                                                       None => (WHERE TRUE)
+                                                     | Some u => (WHERE graders.{ukey} = {[u]}),
+                                           GroupBy = sql_subset_all [_],
+                                           Having = (WHERE TRUE),
+                                           SelectFields = sql_subset [[Assignments = ([], _), Users = ([], _), Graders = ([], _)]],
+                                           SelectExps = {Assignee = (sql_window (sql_nullable (SQL graders.{ukey})) : expw (option string)),
+                                                         Due = (sql_window (sql_nullable (SQL assignments.{due})) : expw (option time)),
+                                                         Done = (sql_window (SQL (SELECT COUNT( * ) > 0
+                                                                                  FROM grades
+                                                                                  WHERE grades.{guser} = users.{ukey}
+                                                                                    AND {@@Sql.easy_join [#Grades] [#Assignments] [akey] [_] [_] [_] [_] [_] ! ! ! ! fl})) : expw (option bool)),
+                                                         Kind = (sql_window (SQL {[title]}) : expw string),
+                                                         guser = (sql_window (sql_nullable (SQL users.{ukey})) : expw (option string))}
+                                                         ++ @map2 [sql_injectable_prim] [exp] [fn t => expw (option t)]
+                                                           (fn [t] prim e => sql_window (@sql_nullable prim e) : expw (option t)) fl inj
+                                                           (@@Sql.some_fields [#Assignments] [akey]
+                                                              [[due = _] ++ aother]
+                                                              [[Users = [ukey = string] ++ uother, Graders = [ukey = string] ++ uother]] [window_env] [[]] ! ! fl)
+                                                         ++ @mp [sql_injectable_prim]
+                                                           [fn t => expw (option t)]
+                                                           (fn [t] (pr : sql_injectable_prim t) =>
+                                                               sql_window (SQL NULL) : expw (option t))
+                                                           flo primo}))
+      {Render = fn r u =>
+                   case u of
+                       None => error <xml>Todo: impossible lack of user</xml>
+                     | Some u => render r u,
+       Label = title}
+end
+
 fun compose [keys1] [keys2] [tags1] [tags2] [keys1 ~ keys2] [tags1 ~ tags2]
             (fl1 : folder keys1) (fl2 : folder keys2)
             (prim1 : $(map sql_injectable_prim keys1))
