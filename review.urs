@@ -25,6 +25,11 @@ functor Make(M : sig
     structure One : Ui.S where type input = $M.reviewed
     (* Viewing all reviews of one thing *)
 
+    con hidden_fields :: {Type}
+    constraint hidden_fields ~ M.reviewed
+    structure Several : Ui.S where type input = sql_exp [T = M.reviewed ++ hidden_fields] [] [] bool
+    (* Viewing all reviews matching a condition on the reviewed items *)
+
     style summary
     (* For one <div> of a review that isn't expanded to full detail *)
 

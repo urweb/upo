@@ -243,9 +243,9 @@ functor Make(M : sig
                                                         (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, v : p.1) => <xml>
                                                           <div class="form-group">
                                                             <label class="control-label" for={id}>{[lab]}</label>
-                                                            <span class="form-control" id={id}>
+                                                            <div id={id}>
                                                               {@Widget.asValue w v}
-                                                            </span>
+                                                            </div>
                                                           </div>
                                                         </xml>)
                                                         otherFl labels widgets o}
@@ -309,6 +309,49 @@ functor Make(M : sig
         fun ui inp = {Create = create inp,
                       Onload = onload,
                       Render = render}
+    end
+
+    con hidden_fields = _
+    constraint hidden_fields ~ reviewed
+
+    structure Several = struct
+        type input = _
+        type a = _
+
+        fun create e =
+            queryL1 (SELECT *
+                     FROM tab AS T
+                     WHERE {e}
+                     ORDER BY T.When)
+
+        fun onload _ = return ()
+
+        fun render _ rs = <xml>
+          {List.mapX (fn r => <xml>
+            <div class={full}>
+              <div class={fullHeader}>
+                {[r -- #When -- reviewer --- (map fst3 other)]}
+                -- {[r.reviewer]}
+                ({[r.When]})
+              </div>
+
+              {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
+                (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (v : p.1) => <xml>
+                  <div class="form-group">
+                    <label class="control-label">{[lab]}</label>
+                    <div>
+                      {@Widget.asValue w v}
+                    </div>
+                  </div>
+                </xml>)
+                otherFl labels widgets (r -- #When -- reviewer --- reviewed)}
+            </div>
+          </xml>) rs}
+        </xml>
+
+        fun ui e = {Create = create e,
+                    Onload = onload,
+                    Render = render}
     end
 
 end
