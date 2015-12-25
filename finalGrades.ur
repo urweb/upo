@@ -167,7 +167,7 @@ functor Make(M : sig
         checkAccess;
         dml (DELETE FROM ranges
              WHERE TRUE);
-        List.app (fn (min, max, g) => dml (INSERT INTO ranges(Min, Max, Grade)
+        List.app (fn (min, max, g) => debug ("[" ^ show min ^ "," ^ show max ^ "]"); dml (INSERT INTO ranges(Min, Max, Grade)
                                            VALUES ({[min]}, {[max]}, {[serialize g]}))) rs;
         queryI1 (SELECT * FROM listeners)
                 (fn r => send r.Channel (Ranges rs))
@@ -229,21 +229,21 @@ functor Make(M : sig
                                                                                        case ranges of
                                                                                            [] => (sm, sm, g) :: []
                                                                                          | (min, max, g') :: ranges' =>
-                                                                                           if min > sm then
-                                                                                               (sm, sm, g) :: ranges'
+                                                                                           if min < sm then
+                                                                                               (sm, sm, g) :: ranges
                                                                                            else
                                                                                                (min, max, g') :: setFirst' ranges'
 
-                                                                                   fun setFirst ranges =
+                                                                                   fun setFirst ranges acc =
                                                                                        case ranges of
                                                                                            [] => setFirst' ar
                                                                                          | (min, max, g') :: ranges' =>
                                                                                            if g' = g then
-                                                                                               (sm, max, g) :: ranges'
+                                                                                               List.revAppend acc ((sm, max, g) :: ranges')
                                                                                            else
-                                                                                               (min, max, g') :: setFirst ranges'
+                                                                                               setFirst ranges' ((min, max, g') :: acc)
 
-                                                                                   val ar' = setFirst ar
+                                                                                   val ar' = setFirst ar []
                                                                                in
                                                                                    set allRanges ar';
                                                                                    rpc (setRanges ar')
@@ -255,21 +255,20 @@ functor Make(M : sig
                                                                                        case ranges of
                                                                                            [] => (sm, sm, g) :: []
                                                                                          | (min, max, g') :: ranges' =>
-                                                                                           if min > sm then
-                                                                                               (sm, sm, g) :: ranges'
+                                                                                           if min < sm then
+                                                                                               (sm, sm, g) :: ranges
                                                                                            else
                                                                                                (min, max, g') :: setLast' ranges'
 
-                                                                                   fun setLast ranges =
+                                                                                   fun setLast ranges acc =
                                                                                        case ranges of
                                                                                            [] => setLast' ar
                                                                                          | (min, max, g') :: ranges' =>
                                                                                            if g' = g then
-                                                                                               (min, sm, g) :: ranges'
+                                                                                               List.revAppend acc ((min, sm, g) :: ranges')
                                                                                            else
-                                                                                               (min, max, g') :: setLast ranges'
-
-                                                                                   val ar' = setLast ar
+                                                                                               setLast ranges' ((min, max, g') :: acc)
+                                                                                   val ar' = setLast ar []
                                                                                in
                                                                                    set allRanges ar';
                                                                                    rpc (setRanges ar')

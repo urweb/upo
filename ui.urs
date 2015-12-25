@@ -32,6 +32,11 @@ con moded :: Type -> Type -> Type
 val moded : a1 ::: Type -> a2 ::: Type -> bool (* use first one? *)
             -> t a1 -> t a2 -> t (moded a1 a2)
 
+(* Compute a UI's input (on the server). *)
+con computed :: Type -> Type -> Type
+val computed : a ::: Type -> b ::: Type -> (a -> t b) -> transaction a -> t (computed a b)
+
+
 (* Boring "static" units *)
 type const
 val const : xbody -> t const

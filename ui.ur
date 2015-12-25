@@ -47,6 +47,13 @@ fun moded [a1] [a2] (which : bool) (t1 : t a1) (t2 : t a2) = {
                             | Second x => t2.Render ctx x
 }
 
+type computed a b = a * b
+fun computed [a] [b] (f : a -> t b) (x : transaction a) : t (computed a b) = {
+    Create = v <- x; st <- (f v).Create; return (v, st),
+    Onload = fn (v, st) => (f v).Onload st,
+    Render = fn ctx (v, st) => (f v).Render ctx st
+}
+
 type const = unit
 fun const bod = {
     Create = return (),
