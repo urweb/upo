@@ -41,6 +41,10 @@ type textbox
 type textbox_config
 val textbox : t string textbox textbox_config
 
+type opt_textbox
+type opt_textbox_config
+val opt_textbox : t (option string) opt_textbox opt_textbox_config
+
 type checkbox
 type checkbox_config
 val checkbox : t bool checkbox checkbox_config

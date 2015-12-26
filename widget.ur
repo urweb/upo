@@ -31,6 +31,23 @@ val textbox = { Configure = return (),
                 Value = signal,
                 AsValue = txt }
 
+val opt_textbox = { Configure = return (),
+                    Create = fn () => source "",
+                    Initialize = fn () o => source (Option.get "" o),
+                    Reset = fn s => set s "",
+                    AsWidget = fn s ido =>
+                                  case ido of
+                                      None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
+                                    | Some id => <xml><ctextbox class={Bootstrap3.form_control} source={s} id={id}/></xml>,
+                Value = fn s =>
+                           v <- signal s;
+                           return (case v of
+                                       "" => None
+                                     | _ => Some v),
+                AsValue = fn o => case o of
+                                      None => <xml></xml>
+                                    | Some s => txt s }
+
 val checkbox = { Configure = return (),
                  Create = fn () => source False,
                  Initialize = fn () => source,
