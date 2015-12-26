@@ -50,6 +50,7 @@ functor Make(M : sig
      * Passed a function to generate some extra content for each row (username). *)
 
     structure AllFiles : Ui.S where type input = {Key : $M.key, User : string}
+    structure AllFilesAllUsers : Ui.S where type input = $M.key
 
     con others :: {Type}
     con ukey = M.ukey
