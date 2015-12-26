@@ -35,6 +35,9 @@ functor WithDueDate(M : sig
 
                         val title : string
                         val render : $key -> string (* username *) -> xbody
+
+                        val allowAnyUser : bool
+                        (* Only one user, not necessarily this one, needs to have done the task. *)
                     end) : sig
     con private
     con tag = M.tag

@@ -56,6 +56,7 @@ functor WithDueDate(M : sig
                         val title : string
                         val render : $key -> string -> xbody
                         val ucond : sql_exp [Users = [ukey = string] ++ uother] [] [] bool
+                        val allowAnyUser : bool
                     end) = struct
     open M
 
@@ -86,7 +87,7 @@ functor WithDueDate(M : sig
                                                          Due = (sql_window (sql_nullable (SQL items.{due})) : expw (option time)),
                                                          Done = (sql_window (SQL (SELECT COUNT( * ) > 0
                                                                                   FROM done
-                                                                                  WHERE done.{user} = users.{ukey}
+                                                                                  WHERE {if allowAnyUser then (WHERE TRUE) else (WHERE done.{user} = users.{ukey})}
                                                                                     AND {@@Sql.easy_join [#Done] [#Items] [key] [_] [_] [_] [_] [_] ! ! ! ! fl}))
                                                                  : expw (option bool)),
                                                          Kind = (sql_window (SQL {[title]}) : expw string)}

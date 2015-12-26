@@ -288,6 +288,7 @@ structure PsetTodo = Todo.WithDueDate(struct
                                           val users = user
                                           val title = "Pset"
                                           val ucond = (WHERE Users.IsStudent)
+                                          val allowAnyUser = False
 
                                           fun render r u = <xml><a link={psetGrades r.PsetNum u}>{[r]}</a></xml>
                                       end)
@@ -721,6 +722,7 @@ structure PsetTodoStudent = Todo.WithDueDate(struct
                                                  val users = user
                                                  val title = "Pset"
                                                  val ucond = (WHERE Users.IsStudent)
+                                                 val allowAnyUser = False
 
                                                  fun render r _ = <xml><a link={psetInfo r.PsetNum}>{[r]}</a></xml>
                                              end)
