@@ -37,7 +37,10 @@ functor Make(M : sig
                  val allowPrivate : bool
                  (* May users create threads visible only to themselves and admins? *)
 
-                 val onNewMessage : {thread : time, Subject : string, Who : string, Text : string} -> transaction unit
+                 val onNewMessage : transaction (list string)
+                    (* Run to get list of all users who have posted in the thread. *)
+                    -> {thread : time, Subject : string, Who : string, Text : string}
+                    -> transaction unit
                  (* Callback for every new message posted in any thread *)
              end) : sig
     include Ui.S where type input = $M.key

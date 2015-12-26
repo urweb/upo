@@ -60,7 +60,6 @@ functor Make(M : sig
     val keyInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim keyFl keyInj
 
     table listeners : (key ++ [ukey = option string, Channel = channel {Filename : option string, When : time, ukey : string}])
-      {{one_constraint [#Key] (@Sql.easy_foreign ! ! ! ! ! ! keyFl tab)}}
 
     fun upload k h vs =
         cl <- AjaxUpload.claim h;

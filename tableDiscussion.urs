@@ -26,7 +26,9 @@ functor Make(M : sig
                  val access : $key -> transaction Discussion.access
                  val showOpenVsClosed : bool
                  val allowPrivate : bool
-                 val onNewMessage : {thread : time, Subject : string, Who : string, Text : string} -> transaction unit
+                 val onNewMessage : transaction (list string)
+                    -> {thread : time, Subject : string, Who : string, Text : string}
+                    -> transaction unit
              end) : sig
     include Ui.S where type input = $M.key
 

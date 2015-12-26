@@ -8,7 +8,9 @@ functor Make(M : sig
                  val access : transaction Discussion.access
                  val showOpenVsClosed : bool
                  val allowPrivate : bool
-                 val onNewMessage : {Thread : time, Subject : string, Who : string, Text : string} -> transaction unit
+                 val onNewMessage : transaction (list string)
+                    -> {Thread : time, Subject : string, Who : string, Text : string}
+                    -> transaction unit
              end) : sig
     include Ui.S0
 

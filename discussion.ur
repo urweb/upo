@@ -52,7 +52,9 @@ functor Make(M : sig
 
                  val showOpenVsClosed : bool
                  val allowPrivate : bool
-                 val onNewMessage : {thread : time, Subject : string, Who : string, Text : string} -> transaction unit
+                 val onNewMessage : transaction (list string)
+                    -> {thread : time, Subject : string, Who : string, Text : string}
+                    -> transaction unit
              end) = struct
 
     open M
@@ -368,7 +370,17 @@ functor Make(M : sig
                 broadcast (fn ch => send ch (New {Thread = thread, When = tm, Who = u, Text = text}))
                           k row.Private row.Who;
 
-                onNewMessage {thread = thread, Subject = row.Text, Who = u, Text = text}
+                onNewMessage
+                    (List.mapQuery (SELECT DISTINCT message.Who
+                                    FROM message
+                                    WHERE {@@Sql.easy_where [#Message] [key ++ [thread = _]]
+                                      [[When = _, Who = _, Text = _]]
+                                      [[]] [[]] [[]] ! !
+                                      (kinj ++ {thread = _})
+                                      (@Folder.concat ! _ fl)
+                                      (k ++ {thread = thread})})
+                                   (fn {Message = {Who = w}} => w))
+                    {thread = thread, Subject = row.Text, Who = u, Text = text}
 
     fun saveMsg k thread msg text =
         acc <- access k;
