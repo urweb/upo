@@ -6,7 +6,7 @@ functor Make(M : sig
                  con keyR :: {Type}
                  constraint [key1] ~ keyR
                  con key = [key1 = keyT] ++ keyR
-                 constraint [Filename, Content, MimeType, When] ~ key
+                 constraint [Filename, Content, MimeType, When, Channel] ~ key
                  con other :: {Type}
                  constraint other ~ key
                  con keyName :: Name
@@ -22,7 +22,7 @@ functor Make(M : sig
                  con ukeyName :: Name
                  con uotherConstraints :: {{Unit}}
                  constraint [ukeyName] ~ uotherConstraints
-                 constraint [ukey] ~ [Filename, Content, MimeType, When]
+                 constraint [ukey] ~ [Filename, Content, MimeType, When, Channel]
                  constraint [ukey] ~ uother
                  constraint [ukey] ~ key
                  val user : sql_table ([ukey = string] ++ uother) ([ukeyName = [ukey]] ++ uotherConstraints)
@@ -59,6 +59,9 @@ functor Make(M : sig
 
     val keyInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim keyFl keyInj
 
+    table listeners : (key ++ [ukey = option string, Channel = channel {Filename : option string, When : time, ukey : string}])
+      {{one_constraint [#Key] (@Sql.easy_foreign ! ! ! ! ! ! keyFl tab)}}
+
     fun upload k h vs =
         cl <- AjaxUpload.claim h;
         case cl of
@@ -73,7 +76,14 @@ functor Make(M : sig
                   [key ++ map fst3 fs ++ [Filename = _, Content = _, MimeType = _, When = _, ukey = _]] [_]
                   (_ ++ injs ++ keyInj')
                   (@Folder.concat ! _ (@Folder.concat ! keyFl (@Folder.mp fl))) submission
-                  (k ++ up ++ {When = tm, ukey = u} ++ vs)
+                  (k ++ up ++ {When = tm, ukey = u} ++ vs);
+
+                queryI1 (SELECT listeners.Channel
+                         FROM listeners
+                         WHERE {@@Sql.easy_where [#Listeners] [key] [_] [_] [_] [_] ! ! keyInj' keyFl k}
+                           AND (listeners.{ukey} IS NULL
+                             OR listeners.{ukey} = {[Some u]}))
+                (fn {Channel = ch} => send ch {Filename = up.Filename, When = tm, ukey = u})
 
     fun newUpload k =
         id <- fresh;
@@ -199,21 +209,40 @@ functor Make(M : sig
                            WHERE {@@Sql.easy_where [#Submission] [key] [_] [_] [_] [_] ! ! keyInj' keyFl k}
                              AND submission.{ukey} = {[u]}
                            ORDER BY submission.When);
+            ls <- source ls;
+
+            ch <- channel;
+            @@Sql.easy_insert [[Channel = _, ukey = _] ++ key] [_]
+              ({Channel = _, ukey = _} ++ keyInj')
+              (@Folder.concat ! _ keyFl)
+              listeners ({Channel = ch, ukey = Some u} ++ k);
+
             return {Key = k,
                     User = u,
-                    Files = ls}
+                    Files = ls,
+                    Channel = ch}
 
-        fun onload _ = return ()
+        fun onload me =
+            let
+                fun loop () =
+                    msg <- recv me.Channel;
+                    fs <- get me.Files;
+                    set me.Files ((msg -- ukey) :: fs);
+                    loop ()
+            in
+                spawn (loop ())
+            end
 
         fun render _ me = <xml><div class="file">
           <h2>Submissions</h2>
 
-          <table class="bs3-table table-striped">
-            {List.mapX (fn r => <xml><tr>
-              <td>{[r.When]}</td>
-              <td><a link={retrieve me.Key me.User r.When}><tt>{[r.Filename]}</tt></a></td>
-            </tr></xml>) me.Files}
-            </table>
+          <dyn signal={fs <- signal me.Files;
+                       return <xml><table class="bs3-table table-striped">
+                         {List.mapX (fn r => <xml><tr>
+                           <td>{[r.When]}</td>
+                           <td><a link={retrieve me.Key me.User r.When}><tt>{[r.Filename]}</tt></a></td>
+                         </tr></xml>) fs}
+                       </table></xml>}/>
         </div></xml>
 
         fun ui x = {Create = create x,
@@ -230,18 +259,37 @@ functor Make(M : sig
                            FROM submission
                            WHERE {@@Sql.easy_where [#Submission] [key] [_] [_] [_] [_] ! ! keyInj' keyFl k}
                            ORDER BY submission.When);
-            return {Key = k,
-                    Files = ls}
+            ls <- source ls;
 
-        fun onload _ = return ()
+            ch <- channel;
+            @@Sql.easy_insert [[Channel = _, ukey = _] ++ key] [_]
+              ({Channel = _, ukey = _} ++ keyInj')
+              (@Folder.concat ! _ keyFl)
+              listeners ({Channel = ch, ukey = None} ++ k);
+
+            return {Key = k,
+                    Files = ls,
+                    Channel = ch}
+
+        fun onload me =
+            let
+                fun loop () =
+                    msg <- recv me.Channel;
+                    fs <- get me.Files;
+                    set me.Files (msg :: fs);
+                    loop ()
+            in
+                spawn (loop ())
+            end
 
         fun render _ me = <xml><div class="file">
-          <table class="bs3-table table-striped">
-            {List.mapX (fn r => <xml><tr>
-              <td>{[r.When]}</td>
-              <td><a link={retrieve me.Key r.ukey r.When}><tt>{[r.Filename]}</tt></a></td>
-            </tr></xml>) me.Files}
-            </table>
+          <dyn signal={fs <- signal me.Files;
+                       return <xml><table class="bs3-table table-striped">
+                         {List.mapX (fn r => <xml><tr>
+                           <td>{[r.When]}</td>
+                           <td><a link={retrieve me.Key r.ukey r.When}><tt>{[r.Filename]}</tt></a></td>
+                         </tr></xml>) fs}
+                       </table></xml>}/>
         </div></xml>
 
         fun ui x = {Create = create x,

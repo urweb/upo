@@ -7,7 +7,7 @@ functor Make(M : sig
                  con keyR :: {Type}
                  constraint [key1] ~ keyR
                  con key = [key1 = keyT] ++ keyR
-                 constraint [Filename, Content, MimeType, When] ~ key
+                 constraint [Filename, Content, MimeType, When, Channel] ~ key
                  con other :: {Type}
                  constraint other ~ key
                  con keyName :: Name
@@ -24,7 +24,7 @@ functor Make(M : sig
                  con ukeyName :: Name
                  con uotherConstraints :: {{Unit}}
                  constraint [ukeyName] ~ uotherConstraints
-                 constraint [ukey] ~ [Filename, Content, MimeType, When]
+                 constraint [ukey] ~ [Filename, Content, MimeType, When, Channel]
                  constraint [ukey] ~ uother
                  constraint [ukey] ~ key
                  val user : sql_table ([ukey = string] ++ uother) ([ukeyName = [ukey]] ++ uotherConstraints)
