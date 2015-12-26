@@ -53,6 +53,6 @@ functor Make(M : sig
 
     con others :: {Type}
     con ukey = M.ukey
-    constraint others ~ (M.key ++ [ukey = string])
-    table submission : (M.key ++ [ukey = string] ++ others)
+    constraint others ~ (M.key ++ [ukey = string] ++ map fst3 M.fs)
+    table submission : (M.key ++ [ukey = string] ++ map fst3 M.fs ++ others)
 end

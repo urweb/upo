@@ -42,8 +42,8 @@ functor Make(M : sig
 
     open M
 
-    con others = map fst3 fs ++ [Filename = option string, Content = blob, MimeType = string, When = time]
-    constraint others ~ (key ++ [ukey = string])
+    con others = [Filename = option string, Content = blob, MimeType = string, When = time]
+    constraint others ~ (key ++ [ukey = string] ++ map fst3 fs)
     con submission_hidden_constraints = [Pkey = [ukey, When] ++ map (fn _ => ()) key,
                                          Key = [],
                                          User = []]
