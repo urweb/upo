@@ -1,7 +1,7 @@
 val user =
     s <- getenv (blessEnvVar "SSL_CLIENT_S_DN");
     case s of
-        None => error <xml>No client certificate information found</xml>
+        None => return None
       | Some s =>
         let
             val delimiter =
@@ -15,9 +15,9 @@ val user =
                 case s of
                     "" =>
                     (case (email, cname) of
-                         (Some email, Some cname) => {Email = email,
-                                                      CommonName = cname}
-                       | _ => error <xml>Client certificate missing either emailAddress or CN</xml>)
+                         (Some email, Some cname) => Some {Email = email,
+                                                           CommonName = cname}
+                       | _ => None)
                   | _ =>
                     let
                         val (this, rest) =
