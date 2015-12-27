@@ -23,4 +23,8 @@ functor Make(M : sig
                  val body_inj : sql_injectable body
 
                  val access : transaction access
+
+                 val onNewPost : {Title : title, Poster : string, Body : body}
+                                 -> transaction unit
+                 (* Callback for every new post *)
              end) : Ui.S0

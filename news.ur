@@ -23,6 +23,9 @@ functor Make(M : sig
                  val body_inj : sql_injectable body
 
                  val access : transaction access
+
+                 val onNewPost : {Title : title, Poster : string, Body : body}
+                                 -> transaction unit
              end) = struct
 
     open M
@@ -176,7 +179,9 @@ functor Make(M : sig
             dml (INSERT INTO post(Poster, When, Title, Body)
                  VALUES ({[u]}, {[tm]}, {[p.Title]}, {[p.Body]}));
             queryI1 (SELECT listeners.Channel FROM listeners)
-            (fn {Channel = ch} => send ch (Add p))
+            (fn {Channel = ch} => send ch (Add p));
+
+            onNewPost {Title = p.Title, Body = p.Body, Poster = u}
 
     fun delete tm =
         currentUser <- oneRowE1 (SELECT (post.Poster)

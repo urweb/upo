@@ -154,3 +154,50 @@ val a = simpleTag' "a" @@a {Href = url "href"}
 val strong = simpleTag "strong" @@strong
 val em = simpleTag "em" @@em
 val p = simpleTag "p" @@p
+
+fun unhtml s =
+    case String.msplit {Haystack = s, Needle = "&<"} of
+        None => s
+      | Some (pre, ch, post) =>
+        case ch of
+            #"&" =>
+            (case String.split post #";" of
+                 None => s
+               | Some (code, post) =>
+                 let
+                     val ch =
+                         case code of
+                             "lt" => #"<"
+                           | "gt" => #">"
+                           | "amp" => #"&"
+                           | _ =>
+                             if String.length code > 0 && String.sub code 0 = #"#" then
+                                 case read (String.suffix code 1) of
+                                     None => #" "
+                                   | Some 0 => #" "
+                                   | Some n => Char.fromInt n
+                             else
+                                 #" "
+                 in
+                     pre ^ String.str ch ^ unhtml post
+                 end)
+          | _ =>
+            if String.length post > 0 && String.sub post 0 = #"/" then
+                case String.split post #">" of
+                    None => s
+                  | Some (_, post) => pre ^ unhtml post
+            else
+                let
+                    fun passHtmlStuff post =
+                        case String.msplit {Haystack = post, Needle = "\">"} of
+                            None => s
+                          | Some (_, ch, post) =>
+                            case ch of
+                                #">" => pre ^ unhtml post
+                              | _ =>
+                                case String.split post #"\"" of
+                                    None => s
+                                  | Some (_, post) => passHtmlStuff post
+                in
+                    passHtmlStuff post
+                end

@@ -34,3 +34,6 @@ val a : tag [Href = url]
 val strong : tag []
 val em : tag []
 val p : tag []
+
+val unhtml : string -> string
+(* Remove all HTML formatting. *)
