@@ -149,10 +149,10 @@ type choicebox_config (a :: Type) = unit
 
 fun choicebox [a ::: Type] (_ : show a) (_ : read a) (choice : a) (choices : list a) =
     { Configure = return (),
-      Create = fn ls =>
+      Create = fn () =>
                   s <- source (show choice);
                   return {Choices = choice :: choices, Source = s},
-      Initialize = fn ls v =>
+      Initialize = fn () v =>
                       s <- source (show v);
                       return {Choices = choice :: choices, Source = s},
       Reset = fn me => set me.Source (show choice),
