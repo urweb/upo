@@ -57,6 +57,14 @@ type timebox
 type timebox_config
 val timebox : t time timebox timebox_config
 
+con choicebox :: Type -> Type
+con choicebox_config :: Type -> Type
+val choicebox : a ::: Type ->
+                 show a
+                 -> read a
+                 -> a -> list a
+                 -> t a (choicebox a) (choicebox_config a)
+
 (* A widget that only allows selection from a finite list, computed via an SQL query *)
 con foreignbox :: Type -> Type
 con foreignbox_config :: Type -> Type
