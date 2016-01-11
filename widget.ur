@@ -145,16 +145,16 @@ type choicebox (a :: Type) =
     { Choices : list a,
       Source : source string }
 
-type choicebox_config (a :: Type) = list a
+type choicebox_config (a :: Type) = unit
 
 fun choicebox [a ::: Type] (_ : show a) (_ : read a) (choice : a) (choices : list a) =
-    { Configure = return (choice :: choices),
+    { Configure = return (),
       Create = fn ls =>
                   s <- source (show choice);
-                  return {Choices = ls, Source = s},
+                  return {Choices = choice :: choices, Source = s},
       Initialize = fn ls v =>
                       s <- source (show v);
-                      return {Choices = ls, Source = s},
+                      return {Choices = choice :: choices, Source = s},
       Reset = fn me => set me.Source (show choice),
       AsWidget = fn me id =>
                     let
