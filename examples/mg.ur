@@ -75,7 +75,8 @@ val main = Theme.simple "MG"
                            </xml>))
 
 val mainRev = Theme.simple "MG"
-                        S.Away.FullGrid.ui
+                           (S.Away.FullGrid.ui (fn {Company = _, EmployeeId = _, Something = _, SomethingElse = _} =>
+                                                   return True))
 
 fun away s =
     case read s of

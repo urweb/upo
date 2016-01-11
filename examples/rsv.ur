@@ -52,6 +52,8 @@ structure S = Rsvp2.Make(struct
                              val amHome = getCookie homeC
                              val amPrivilegedHome = amHome
                              val amAway = getCookie awayC
+
+                             fun render {Description = d} = txt d
                          end)
 
 fun home s =

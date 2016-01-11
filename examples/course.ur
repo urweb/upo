@@ -122,7 +122,7 @@ structure GlobalForum = GlobalDiscussion.Make(struct
 
                                                val showOpenVsClosed = True
                                                val allowPrivate = True
-                                               fun onNewMessage r = debug ("New GLOBAL message in " ^ r.Subject ^ ": " ^ r.Text)
+                                               fun onNewMessage _ r = debug ("New GLOBAL message in " ^ r.Subject ^ ": " ^ r.Text)
                                            end)
 
 table pset : { PsetNum : int, Released : time, Due : time, GradesDue : time, Instructions : string, Czar : option string }
@@ -247,7 +247,7 @@ structure PsetCal = Calendar.FromTable(struct
                                                    set content (Ui.simpleModal
                                                                     <xml>
                                                                       <h2>Pset #{[r.PsetNum]}</h2>
-                                                                      
+
                                                                       <button class="btn btn-primary"
                                                                               onclick={fn _ =>
                                                                                           xm <- PsetSub.newUpload r;
@@ -258,7 +258,7 @@ structure PsetCal = Calendar.FromTable(struct
                                                                       <hr/>
 
                                                                       <h2>Instructions</h2>
-                                                                      
+
                                                                       {Widget.html ps.Instructions}
                                                                     </xml>
                                                                     <xml>Close</xml>)
@@ -267,7 +267,7 @@ structure PsetCal = Calendar.FromTable(struct
                                                     set content (Ui.simpleModal
                                                                      <xml>
                                                                        <h2>Pset #{[r.PsetNum]}</h2>
-                                                                       
+
                                                                        {xm}
                                                                      </xml>
                                                                      <xml>Close</xml>));
@@ -319,12 +319,12 @@ structure PsetForum = TableDiscussion.Make(struct
 
                                                val showOpenVsClosed = True
                                                val allowPrivate = True
-                                               fun onNewMessage r = debug ("New message in " ^ r.Subject ^ ": " ^ r.Text)
+                                               fun onNewMessage _ r = debug ("New message in " ^ r.Subject ^ ": " ^ r.Text)
                                            end)
 
 fun psetInfo n =
     ps <- getPset n;
-    
+
     Theme.simple ("Pset #" ^ show n)
               (Ui.seq
                    (Ui.constM (fn ctx => <xml>

@@ -141,6 +141,38 @@ val htmlbox = { Configure = return (),
                 Value = Ckeditor.content,
                 AsValue = html }
 
+type choicebox (a :: Type) =
+    { Choices : list a,
+      Source : source string }
+
+type choicebox_config (a :: Type) = list a
+
+fun choicebox [a ::: Type] (_ : show a) (_ : read a) (choice : a) (choices : list a) =
+    { Configure = return (choice :: choices),
+      Create = fn ls =>
+                  s <- source (show choice);
+                  return {Choices = ls, Source = s},
+      Initialize = fn ls v =>
+                      s <- source (show v);
+                      return {Choices = ls, Source = s},
+      Reset = fn me => set me.Source (show choice),
+      AsWidget = fn me id =>
+                    let
+                        val inner = <xml>
+                          {List.mapX (fn v => <xml><coption>{[v]}</coption></xml>) me.Choices}
+                        </xml>
+                    in
+                        case id of
+                            None => <xml><cselect class={Bootstrap3.form_control} source={me.Source}>{inner}</cselect></xml>
+                          | Some id => <xml><cselect class={Bootstrap3.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
+                    end,
+      Value = fn me =>
+                 s <- signal me.Source;
+                 return (case read s of
+                             None => choice
+                           | Some v => v),
+      AsValue = txt }
+
 type foreignbox (a :: Type) =
     { Choices : list a,
       Source : source string }
