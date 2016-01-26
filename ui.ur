@@ -212,6 +212,17 @@ fun modalButton ctx cls bod onclick = <xml>
   </button>
 </xml>
 
+fun modalAnchor ctx cls bod onclick = <xml>
+  <a class={cls}
+     data-toggle="modal"
+     data-target={"#" ^ show ctx.ModalId}
+     onclick={fn _ =>
+                 ms <- onclick;
+                 set ctx.ModalSpot ms}>
+    {bod}
+  </a>
+</xml>
+
 fun modal bcode titl bod blab = <xml>
   <div class="modal-dialog">
     <div class="modal-content">

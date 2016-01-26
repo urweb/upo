@@ -83,6 +83,13 @@ val modalButton : context
                   -> transaction xbody (* content of modal dialog *)
                   -> xbody
 
+(* The same, but uses <a> instead of <button>. Useful for button dropdowns. *)
+val modalAnchor : context
+                  -> css_class         (* additional styling *)
+                  -> xbody             (* text label *)
+                  -> transaction xbody (* content of modal dialog *)
+                  -> xbody
+
 (* A standard template for creating the modal form *)
 val modal : transaction unit     (* callback on clicking main button *)
             -> xbody             (* main prompt *)
