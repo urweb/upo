@@ -67,8 +67,9 @@ fun constM bod = {
 }
 
 signature THEME = sig
-    val bootstrap : url
-    val custom : url
+    con r :: {Unit}
+    val fl : folder r
+    val css : $(mapU url r)
     val icon : option url
 end
 
@@ -81,8 +82,10 @@ functor Make(M : THEME) = struct
         return <xml>
           <head>
             <title>{[titl]}</title>
-            <link rel="stylesheet" href={M.bootstrap}/>
-            <link rel="stylesheet" href={M.custom}/>
+            {@mapUX [url] [_]
+              (fn [nm ::_] [rest ::_] [_~_] url =>
+                  <xml><link rel="stylesheet" href={url}/></xml>)
+              M.fl M.css}
             {case M.icon of
                  None => <xml></xml>
                | Some icon => <xml><link rel="shortcut icon" href={icon} type="image/vnd.microsoft.icon"></link></xml>}
@@ -138,8 +141,10 @@ functor Make(M : THEME) = struct
         return <xml>
           <head>
             <title>{[titl]}</title>
-            <link rel="stylesheet" href={M.bootstrap}/>
-            <link rel="stylesheet" href={M.custom}/>
+            {@mapUX [url] [_]
+              (fn [nm ::_] [rest ::_] [_~_] url =>
+                  <xml><link rel="stylesheet" href={url}/></xml>)
+              M.fl M.css}
             {case M.icon of
                  None => <xml></xml>
                | Some icon => <xml><link rel="shortcut icon" href={icon} type="image/vnd.microsoft.icon"></link></xml>}
