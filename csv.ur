@@ -47,3 +47,60 @@ fun parse [fs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : 
 fun importTable [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs)
                 (tab : sql_table fs cs) (input : string) =
     List.app (@Sql.easy_insert injs fl tab) (@parse injs reads fl input)
+
+open Bootstrap3
+
+functor Generate1(M : sig
+                      con fs :: {Type}
+                      con tab :: Name
+                      val query : sql_query [] [] [tab = fs] []
+                      val fl : folder fs
+                      val shows : $(map show fs)
+                      val labels : $(map (fn _ => string) fs)
+
+                      val mayAccess : transaction bool
+                  end) = struct
+
+    open M
+
+    type a = unit
+
+    val build =
+        Basis.query query (fn r acc =>
+                              return
+                                  (acc ^ @foldR2 [show] [ident] [fn _ => string]
+                                          (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) acc =>
+                                              case acc of
+                                                  "" => show x
+                                                | _ => acc ^ "," ^ show x)
+                                          "" fl shows r.tab ^ "\n"))
+        (@foldR [fn _ => string] [fn _ => string]
+          (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] s acc =>
+              case acc of
+                  "" => s
+                | _ => acc ^ "," ^ s)
+          "" fl labels ^ "\n")
+
+    fun generate () : transaction page =
+        ma <- mayAccess;
+        if not ma then
+            error <xml>Access denied</xml>
+        else
+            csv <- build;
+            returnBlob (textBlob csv) (blessMime "text/csv")
+
+    val create = return ()
+
+    fun onload () = return ()
+
+    fun render _ () = <xml>
+      <form>
+        <submit value="Generate" class="btn btn-primary" action={generate}/>
+      </form>
+    </xml>
+
+    val ui = {Create = create,
+              Onload = onload,
+              Render = render}
+
+end

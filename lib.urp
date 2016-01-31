@@ -5,6 +5,7 @@ library ckeditor
 allow responseHeader Content-Disposition
 jsFile navbar.js
 allow env SSL_CLIENT_S_DN
+allow mime text/csv
 
 $/list
 $/char
@@ -15,10 +16,10 @@ $/datetime
 record
 variant
 sql
-csv
 html
 clientCert
 ui
+csv
 widget
 simpleQuery
 simpleQuery1

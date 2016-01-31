@@ -10,3 +10,16 @@ val parse : fs ::: {Type}
             -> $(map sql_injectable fs) -> $(map read fs) -> folder fs
             -> string
             -> list $fs
+
+(* And we can also generate CSV data: *)
+functor Generate1(M : sig
+                      con fs :: {Type}
+                      con tab :: Name
+                      val query : sql_query [] [] [tab = fs] []
+                      val fl : folder fs
+                      val shows : $(map show fs)
+                      val labels : $(map (fn _ => string) fs)
+
+                      val mayAccess : transaction bool
+                  end) : Ui.S0
+(* To-do: escape commas, etc. *)
