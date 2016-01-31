@@ -1,5 +1,9 @@
 (* Generic authentication backed by a database table *)
 
+open Bootstrap3
+
+style alert_fixed
+
 signature S = sig
     con groups :: {Unit}
 
@@ -28,6 +32,15 @@ signature S = sig
                     -> $(mapU (variant (mapU unit groups)) dummy) -> transaction string
     val getGroupsWithMasquerade : dummy ::: {Unit} -> folder dummy
                                   -> $(mapU (variant (mapU unit groups)) dummy) -> transaction string
+
+    functor Masquerade(N : sig
+                           con fs :: {Type}
+                           con tab :: Name
+                           val query : sql_query [] [] [tab = fs] []
+                           val fl : folder fs
+                           val render : $fs -> xbody
+                           val target : $fs -> transaction page
+                       end) : Ui.S0
 end
 
 functor Make(M : sig
@@ -274,5 +287,51 @@ functor Make(M : sig
                                       Secure = requireSsl}
             else
                 error <xml>Access denied</xml>
+
+    functor Masquerade(N : sig
+                           con fs :: {Type}
+                           con tab :: Name
+                           val query : sql_query [] [] [tab = fs] []
+                           val fl : folder fs
+                           val render : $fs -> xbody
+                           val target : $fs -> transaction page
+                       end) = struct
+
+        open N
+
+        type a = {Rows : list $fs,
+                  ShowAlert : source bool}
+
+        val create =
+            rs <- queryL1 query;
+            sa <- source False;
+            return {Rows = rs, ShowAlert = sa}
+
+        fun onload _ = return ()
+
+        fun render ctx me = <xml>
+          <table class="bs3-table table-striped">
+            {List.mapX (fn r => <xml>
+              <tr><td><a link={target r}
+                         onclick={fn _ => set me.ShowAlert True}>{N.render r}</a></td></tr>
+            </xml>) me.Rows}
+          </table>
+
+          <div dynClass={b <- signal me.ShowAlert;
+                         return (if b then
+                                     CLASS "alert-fixed"
+                                 else
+                                     CLASS "hidden")}>
+            <h3>Masquerading!</h3>
+
+            <h4>Before resuming any further admin activities (beside more masquerades), please <b>reload</b> this page.</h4>
+          </div>
+        </xml>
+
+        val ui = {Create = create,
+                  Onload = onload,
+                  Render = render}
+
+    end
 
 end

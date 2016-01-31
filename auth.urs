@@ -37,6 +37,17 @@ signature S = sig
     val getGroupsWithMasquerade : dummy ::: {Unit} -> folder dummy
                                   -> $(mapU (variant (mapU unit groups)) dummy) -> transaction string
     (* Like the above, but based on checking whether the user belongs to at least one of a set of groups *)
+
+
+    (* Help setting up masquerades with nice UIs *)
+    functor Masquerade(N : sig
+                           con fs :: {Type}
+                           con tab :: Name
+                           val query : sql_query [] [] [tab = fs] []
+                           val fl : folder fs
+                           val render : $fs -> xbody
+                           val target : $fs -> transaction page
+                       end) : Ui.S0
 end
 
 functor Make(M : sig
