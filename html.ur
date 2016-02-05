@@ -109,8 +109,14 @@ fun format [tags] (fl : folder tags) (tags : $(map tag tags)) [ctx] [[Body] ~ ct
                                                                              else
                                                                                  v)
                                                                          meta.Folder meta.Attributes ats
+
+                                                                    val (ch, post) =
+                                                                        if String.length post > 0 && String.sub post 0 = #"\x3E" then
+                                                                            (#"\x3E", String.suffix post 1)
+                                                                        else
+                                                                            (#" ", post)
                                                                 in
-                                                                    doAttrs (#" ", post, ats)
+                                                                    doAttrs (ch, post, ats)
                                                                 end
                                                         else
                                                             Bad "Attribute value doesn't begin with quote"
