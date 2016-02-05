@@ -51,6 +51,7 @@ fun format [tags] (fl : folder tags) (tags : $(map tag tags)) [ctx] [[Body] ~ ct
                                    | "gt" => <xml>&gt;</xml>
                                    | "amp" => <xml>&amp;</xml>
                                    | "nbsp" => <xml>&nbsp;</xml>
+                                   | "quot" => <xml>&quot;</xml>
                                    | _ =>
                                      if String.length code > 0 && String.sub code 0 = #"#" then
                                          case read (String.suffix code 1) of
