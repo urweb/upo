@@ -71,27 +71,37 @@ fun format [tags] (fl : folder tags) (tags : $(map tag tags)) [ctx] [[Body] ~ ct
                             None => Bad "No '>' after '</'"
                           | Some (_, post) => Good (<xml>{[pre]}</xml>, post)
                     else
-                        case String.msplit {Haystack = post, Needle = " >"} of
+                        case String.msplit {Haystack = post, Needle = " >/"} of
                             None => Bad "No '>' after '<'"
                           | Some (tname, ch, post) =>
                             @foldR [tag] [fn _ => unit -> error (xml ([Body] ++ ctx) [] [] * string)]
                             (fn [nm :: Name] [ts :: {Type}] [r :: {{Type}}] [[nm] ~ r] (meta : tag ts) acc () =>
                                 if meta.Nam = tname then
                                     let
-                                        fun doAttrs (ch, post, ats : $(map option ts)) =
+                                        fun doAttrs (ch, post, ats : $(map option ts), isClosed) =
                                             case ch of
-                                                #"\x3E" => Good (ats, post)
+                                                #"\x3E" => (Good (ats, post), isClosed)
+                                              | #"/" =>
+                                                if String.length post > 0 then
+                                                    doAttrs (String.sub post 0, String.suffix post 1, ats, True)
+                                                else
+                                                    (Bad "Tag-ending '/' followed by nothing", True)
+                                              | #" " =>
+                                                if String.length post = 0 then
+                                                    (Bad "Unclosed tag", isClosed)
+                                                else
+                                                    doAttrs (String.sub post 0, String.suffix post 1, ats, isClosed)
                                               | _ =>
                                                 if String.length post > 0 && Char.isSpace (String.sub post 0) then
                                                     doAttrs (ch, String.substring post {Start = 1,
                                                                                         Len = String.length post - 1},
-                                                             ats)
+                                                             ats, isClosed)
                                                 else 
                                                     case String.split post #"=" of
                                                         None =>
                                                         (case String.split post #"\x3E" of
-                                                             None => Bad "No tag ender '\x3E'"
-                                                           | Some (_, post) => Good (ats, post))
+                                                             None => (Bad "No tag ender '\x3E'", isClosed)
+                                                           | Some (_, post) => (Good (ats, post), isClosed))
                                                       | Some (aname, post) =>
                                                         if String.length post >= 1 && String.sub post 0 = #"\"" then
                                                             case String.split (String.substring post
@@ -99,7 +109,7 @@ fun format [tags] (fl : folder tags) (tags : $(map tag tags)) [ctx] [[Body] ~ ct
                                                                                                  Len = String.length post
                                                                                                        - 1})
                                                                               #"\"" of
-                                                                None => Bad "No '\"' to end attribute value"
+                                                                None => (Bad "No '\"' to end attribute value", isClosed)
                                                               | Some (aval, post) =>
                                                                 let
                                                                     val ats =
@@ -112,19 +122,19 @@ fun format [tags] (fl : folder tags) (tags : $(map tag tags)) [ctx] [[Body] ~ ct
                                                                          meta.Folder meta.Attributes ats
 
                                                                     val (ch, post) =
-                                                                        if String.length post > 0 && String.sub post 0 = #"\x3E" then
-                                                                            (#"\x3E", String.suffix post 1)
+                                                                        if String.length post > 0 && String.sub post 0 <> #" " then
+                                                                            (String.sub post 0, String.suffix post 1)
                                                                         else
                                                                             (#" ", post)
                                                                 in
-                                                                    doAttrs (ch, post, ats)
+                                                                    doAttrs (ch, post, ats, isClosed)
                                                                 end
                                                         else
-                                                            Bad "Attribute value doesn't begin with quote"
+                                                            (Bad "Attribute value doesn't begin with quote", isClosed)
                                     in
                                         case doAttrs (ch, post, @map0 [option] (fn [t :: Type] => None)
-                                                                 meta.Folder) of
-                                            Good (ats, post) =>
+                                                                 meta.Folder, False) of
+                                            (Good (ats, post), isClosed) =>
                                             let
                                                 val ats =
                                                     @map2 [attribute] [option] [ident]
@@ -135,7 +145,7 @@ fun format [tags] (fl : folder tags) (tags : $(map tag tags)) [ctx] [[Body] ~ ct
                                                            | Some v => v)
                                                      meta.Folder meta.Attributes ats
                                             in
-                                                case loop post of
+                                                case (if isClosed then Good (<xml></xml>, post) else loop post) of
                                                     Good (inner, post) =>
                                                     (case loop post of
                                                          Good (after, post) =>
@@ -144,7 +154,7 @@ fun format [tags] (fl : folder tags) (tags : $(map tag tags)) [ctx] [[Body] ~ ct
                                                        | x => x)
                                                   | x => x
                                             end
-                                          | Bad s => Bad s
+                                          | (Bad s, _) => Bad s
                                     end
                                 else
                                     acc ())
@@ -161,6 +171,11 @@ val a = simpleTag' "a" @@a {Href = url "href"}
 val strong = simpleTag "strong" @@strong
 val em = simpleTag "em" @@em
 val p = simpleTag "p" @@p
+
+val br = {Nam = "br",
+          Attributes = {},
+          Folder = _,
+          Construct = fn [ctx ::: {Unit}] [[Body] ~ ctx] () _ => <xml><br/></xml>}
 
 fun unhtml s =
     case String.msplit {Haystack = s, Needle = "&<"} of
