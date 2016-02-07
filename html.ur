@@ -86,13 +86,10 @@ fun format [tags] (fl : folder tags) (tags : $(map tag tags)) [ctx] [[Body] ~ ct
                                                     doAttrs (String.sub post 0, String.suffix post 1, ats, True)
                                                 else
                                                     (Bad "Tag-ending '/' followed by nothing", True)
-                                              | #" " =>
-                                                if String.length post = 0 then
-                                                    (Bad "Unclosed tag", isClosed)
-                                                else
-                                                    doAttrs (String.sub post 0, String.suffix post 1, ats, isClosed)
                                               | _ =>
-                                                if String.length post > 0 && Char.isSpace (String.sub post 0) then
+                                                if ch = #" " && String.length post > 0 && String.sub post 0 = #"/" then
+                                                    doAttrs (String.sub post 0, String.suffix post 1, ats, isClosed)
+                                                else if String.length post > 0 && Char.isSpace (String.sub post 0) then
                                                     doAttrs (ch, String.substring post {Start = 1,
                                                                                         Len = String.length post - 1},
                                                              ats, isClosed)
