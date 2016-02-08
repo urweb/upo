@@ -51,12 +51,15 @@ val h4 : xbody -> t const
 val hr : t const
 
 (* Themes control where to get CSS and JavaScript from, etc. *)
+
 signature THEME = sig
-    val bootstrap : url
-    val custom : url
-    (* Two CSS URLs *)
-    val icon : option url
+    (* CSS URLs *)
+    con r :: {Unit}
+    val fl : folder r
+    val css : $(mapU url r)
+
     (* Shortcut icon *)
+    val icon : option url
 end
 
 functor Make(M : THEME) : sig
