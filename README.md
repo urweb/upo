@@ -11,3 +11,7 @@ No doubt more documentation will materialize here soon.  For now, see the `Ui` m
 * Finally, pretty Bootstrap **modal dialogs** are supported via function `Ui.modalButton` that creates HTML for the button, given a computation that decides which HTML to display in the dialog when the button is clicked.  Function `Ui.modal` is useful for creating that content.
 
 Those are the basics!  The other modules of the library define more complex UI elements, usually parameterized in a variety of ways.  See the `examples` directory, which includes the [showcase apps](http://upo.csail.mit.edu/) and some simpler demos.
+
+## Installation
+
+Two other Ur/Web libraries are required: [Bootstrap](http://hg.impredicative.com/bootstrap) and [AjaxUpload](http://hg.impredicative.com/ajaxUpload).
