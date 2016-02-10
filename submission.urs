@@ -51,6 +51,7 @@ functor Make(M : sig
 
     structure AllFiles : Ui.S where type input = {Key : $M.key, User : string}
     structure AllFilesAllUsers : Ui.S where type input = $M.key
+    structure AllFilesAllKeys : Ui.S0
 
     con others :: {Type}
     con ukey = M.ukey

@@ -295,4 +295,28 @@ functor Make(M : sig
                     Onload = onload,
                     Render = render}
     end
+
+    structure AllFilesAllKeys = struct
+        type a = _
+
+        val create =
+            queryL1 (SELECT submission.{{key}}, submission.Filename, submission.When, submission.{ukey}
+                     FROM submission
+                     ORDER BY {{{@Sql.order_by (@Folder.concat ! keyFl _) (@Sql.some_fields [#Submission] [key ++ [Filename = _]] ! ! (@Folder.concat ! keyFl _)) sql_desc}}})
+
+        fun onload _ = return ()
+
+        fun render _ fs = <xml>
+          <table class="bs3-table table-striped">
+            {List.mapX (fn r => <xml><tr>
+              <td>{[(r -- #Filename -- #When -- ukey) : $key]}</td>
+              <td><a link={retrieve (r -- #Filename -- #When -- ukey) r.ukey r.When}><tt>{[r.Filename]}</tt></a></td>
+            </tr></xml>) fs}
+          </table>
+        </xml>
+
+        val ui = {Create = create,
+                  Onload = onload,
+                  Render = render}
+    end
 end
