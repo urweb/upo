@@ -153,7 +153,7 @@ functor Make(M : sig
                         None => error <xml>Submission: bad MIME type on retrieve</xml>
                       | Some mt =>
                         setHeader (blessResponseHeader "Content-Disposition")
-                                  ("attachment; filename=" ^ makeFilename k u);
+                                  ("attachment; filename=\"" ^ makeFilename k u ^ "\"");
                         returnBlob r.Content mt
 
             val listLatest =
@@ -195,7 +195,7 @@ functor Make(M : sig
                 None => error <xml>Submission: bad MIME type on retrieve</xml>
               | Some mt =>
                 setHeader (blessResponseHeader "Content-Disposition")
-                          ("attachment; filename=" ^ makeFilename k u);
+                          ("attachment; filename=\"" ^ makeFilename k u ^ "\"");
                 returnBlob r.Content mt
 
     structure AllFiles = struct
