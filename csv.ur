@@ -59,6 +59,7 @@ functor Generate1(M : sig
                       val labels : $(map (fn _ => string) fs)
 
                       val mayAccess : transaction bool
+                      val filename : string
                   end) = struct
 
     open M
@@ -87,6 +88,8 @@ functor Generate1(M : sig
             error <xml>Access denied</xml>
         else
             csv <- build;
+            setHeader (blessResponseHeader "Content-Disposition")
+                      ("attachment; filename=" ^ filename);
             returnBlob (textBlob csv) (blessMime "text/csv")
 
     val create = return ()
