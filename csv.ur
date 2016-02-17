@@ -66,20 +66,42 @@ functor Generate1(M : sig
 
     type a = unit
 
+    fun escape' s =
+        case s of
+            "" => ""
+          | _ =>
+            let
+                val ch = String.sub s 0
+                val rest = String.suffix s 1
+            in
+                case ch of
+                    #"\"" => "\"\"" ^ escape' rest
+                  | _ => String.str ch ^ escape' rest
+            end
+
+    fun escape s =
+        if String.all (fn ch => ch <> #"," && ch <> #"\"" && ch <> #"\n" && ch <> #"\r") s then
+            s
+        else
+            if String.all (fn ch => ch <> #"\"") s then
+                "\"" ^ s ^ "\""
+            else
+                "\"" ^ escape' s ^ "\""
+
     val build =
         Basis.query query (fn r acc =>
                               return
                                   (acc ^ @foldR2 [show] [ident] [fn _ => string]
                                           (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) acc =>
                                               case acc of
-                                                  "" => show x
-                                                | _ => acc ^ "," ^ show x)
+                                                  "" => escape (show x)
+                                                | _ => acc ^ "," ^ escape (show x))
                                           "" fl shows r.tab ^ "\n"))
         (@foldR [fn _ => string] [fn _ => string]
           (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] s acc =>
               case acc of
-                  "" => s
-                | _ => acc ^ "," ^ s)
+                  "" => escape s
+                | _ => acc ^ "," ^ escape s)
           "" fl labels ^ "\n")
 
     fun generate () : transaction page =

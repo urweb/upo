@@ -23,4 +23,3 @@ functor Generate1(M : sig
                       val mayAccess : transaction bool
                       val filename : string (* Tell browsers this is the name of the file being downloaded. *)
                   end) : Ui.S0
-(* To-do: escape commas, etc. *)
