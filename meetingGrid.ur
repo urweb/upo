@@ -439,7 +439,15 @@ functor Make(M : sig
                                         (@Sql.some_fields [#Them] [themKey] ! ! themFl)
                                         sql_desc}}});
                     unavails <- queryL1 (SELECT unavailable.{{usKey}}, unavailable.{{timeKey}}
-                                         FROM unavailable
+                                         FROM unavailable JOIN us
+                                           ON {@@Sql.easy_join [#Unavailable] [#Us]
+                                             [usKey] [timeKey] [usOffice ++ usSoftConst ++ usHardConst ++ usOther]
+                                             [_] [_] [_] ! ! ! ! usFl}
+                                         WHERE {@@Sql.easy_where [#Us] [usHardConst ++ usSoftConst]
+                                           [usKey ++ usOffice ++ usOther] [_] [_] [_]
+                                           ! ! (usHardConstInj ++ usSoftConstInj)
+                                           (@Folder.concat ! usHardConstFl usSoftConstFl)
+                                           (usHardConst ++ usSoftConst)}
                                          ORDER BY {{{@Sql.order_by (@Folder.concat ! usFl timeKeyFl)
                                            (@Sql.some_fields [#Unavailable] [usKey ++ timeKey] ! !
                                              (@Folder.concat ! usFl timeKeyFl))
