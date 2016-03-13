@@ -235,13 +235,12 @@ fun assignments [aks ::: {{Unit}}] [sks ::: {{Unit}}] [gks ::: {{Unit}}]
                                                 WHERE {@Sql.easy_join [#Asn] [#Gra]
                                                   ! ! ! ! afl}
                                                   AND Gra.{student} = {[stid]}
-                                                  AND {eqNullable
-                                                  (sql_nullable (SQL gra.{when}))
-                                                  (SQL (SELECT MAX(gra2.{when})
-                                                        FROM gra AS Gra2
-                                                        WHERE {@Sql.easy_join [#Asn] [#Gra2]
-                                                          ! ! ! ! afl}
-                                                          AND Gra2.{student} = {[stid]}))})
+                                                  AND {sql_nullable (SQL gra.{when})}
+                                                    = (SELECT MAX(gra2.{when})
+                                                       FROM gra AS Gra2
+                                                       WHERE {@Sql.easy_join [#Asn] [#Gra2]
+                                                         ! ! ! ! afl}
+                                                         AND Gra2.{student} = {[stid]}))
                                                AS Grade
                                              FROM asn
                                              ORDER BY {{{@Sql.order_by afl

@@ -122,84 +122,91 @@ functor Make(M : sig
 
         tail' <- source TNil;
         tail <- source tail';
-        (threads, unfinished) <- query (SELECT message.{thread}, message.When, message.Who, message.Text, threads.Text, threads.Closed, threads.Private
-                                        FROM message JOIN threads ON threads.{thread} = message.{thread}
-                                          AND {@@Sql.easy_join [#Message] [#Threads] [key]
-                                            [[thread = _, When = _, Who = _, Text = _]]
-                                            [[thread = _, Text = _, Closed = _, Who = _, Private = _]] [_] [_] [[]]
-                                            ! ! ! ! fl}
-                                        WHERE {@Sql.easy_where [#Message] ! ! kinj fl k}
-                                          AND {case acc of
-                                                   Admin _ => (SQL TRUE)
-                                                 | Read => (SQL NOT threads.Private)
-                                                 | Post {User = u, ...} => (SQL NOT threads.Private OR threads.Who = {[u]})
-                                                 | Forbidden => error <xml>Discussion: impossible Forbidden</xml>}
-                                        ORDER BY message.{thread} DESC, message.When DESC)
-                                 (fn r (threads, unfinished) =>
-                                     case unfinished of
-                                         None =>
-                                         tail' <- source Nil;
-                                         tail <- source tail';
-                                         msg <- source (r.Message -- thread);
-                                         msgS <- source (Cons (msg, tail'));
-                                         cl <- source r.Threads.Closed;
-                                         return (threads, Some (r.Message.thread, r.Threads.Text, tail, msgS, cl, r.Message.Who, r.Threads.Private))
-                                       | Some (thread, subj, ttail, msgS, cl, fp, priv) =>
-                                         if thread = r.Message.thread then
-                                             msg <- source (r.Message -- thread);
-                                             msgS' <- source (Cons (msg, msgS));
-                                             return (threads, Some (thread, subj, ttail, msgS', cl, r.Message.Who, r.Threads.Private))
-                                         else
-                                             tail' <- source Nil;
-                                             tail <- source tail';
-                                             msg <- source (r.Message -- thread);
-                                             msgS' <- source (Cons (msg, tail'));
-                                             cl' <- source r.Threads.Closed;
-
-                                             ts <- source (TCons ({Thread = thread, Subject = subj, Private = priv, Head = msgS, Tail = ttail, Closed = cl, FirstPoster = fp}, threads));
-
-                                             return (ts, Some (r.Message.thread, r.Threads.Text, tail, msgS', cl', r.Message.Who, r.Threads.Private)))
-                                 (tail', None);
-        threads <- (case unfinished of
-                        None => return threads
+        let
+            fun thatBigQuery wc =
+                queryL (SELECT message.{thread}, message.When, message.Who, message.Text, threads.Text, threads.Closed, threads.Private
+                        FROM message JOIN threads ON threads.{thread} = message.{thread}
+                          AND {@@Sql.easy_join [#Message] [#Threads] [key]
+                          [[thread = _, When = _, Who = _, Text = _]]
+                          [[thread = _, Text = _, Closed = _, Who = _, Private = _]] [_] [_] [[]]
+                          ! ! ! ! fl}
+                        WHERE {@Sql.easy_where [#Message] ! ! kinj fl k}
+                          AND {wc}
+                        ORDER BY message.{thread}, message.When)
+        in
+            rows <- (case acc of
+                         Admin _ => thatBigQuery (SQL TRUE)
+                       | Read => thatBigQuery (SQL NOT threads.Private)
+                       | Post {User = u, ...} => thatBigQuery (SQL NOT threads.Private OR threads.Who = {[u]})
+                       | Forbidden => error <xml>Discussion: impossible Forbidden</xml>);
+            (threads, unfinished) <- List.foldlM
+                (fn r (threads, unfinished) =>
+                    case unfinished of
+                        None =>
+                        tail' <- source Nil;
+                        tail <- source tail';
+                        msg <- source (r.Message -- thread);
+                        msgS <- source (Cons (msg, tail'));
+                        cl <- source r.Threads.Closed;
+                        return (threads, Some (r.Message.thread, r.Threads.Text, tail, msgS, cl, r.Message.Who, r.Threads.Private))
                       | Some (thread, subj, ttail, msgS, cl, fp, priv) =>
-                        source (TCons ({Thread = thread, Subject = subj, Private = priv, Head = msgS, Tail = ttail, Closed = cl, FirstPoster = fp}, threads)));
+                        if thread = r.Message.thread then
+                            msg <- source (r.Message -- thread);
+                            msgS' <- source (Cons (msg, msgS));
+                            return (threads, Some (thread, subj, ttail, msgS', cl, r.Message.Who, r.Threads.Private))
+                        else
+                            tail' <- source Nil;
+                            tail <- source tail';
+                            msg <- source (r.Message -- thread);
+                            msgS' <- source (Cons (msg, tail'));
+                            cl' <- source r.Threads.Closed;
 
-        ch <- channel;
-        (case acc of
-             Admin _ =>
-             @@Sql.easy_insert [key ++ [Who = _]] [_]
-               (kinj ++ {Who = _})
-               (@Folder.concat ! _ fl)
-               adminListeners
-               (k ++ {Who = ch})
-           | Read =>
-             @@Sql.easy_insert [key ++ [Who = _]] [_]
-               (kinj ++ {Who = _})
-               (@Folder.concat ! _ fl)
-               readonlyListeners
-               (k ++ {Who = ch})
-           | Post {User = u, ...} =>
-             @@Sql.easy_insert [key ++ [Who = _, Private = _]] [_]
-               (kinj ++ {Who = _, Private = _})
-               (@Folder.concat ! _ fl)
-               loggedinListeners
-               (k ++ {Who = ch, Private = u})
-           | Forbidden => error <xml>Discussion: impossible Forbidden</xml>);
+                            ts <- source (TCons ({Thread = thread, Subject = subj, Private = priv, Head = msgS, Tail = ttail, Closed = cl, FirstPoster = fp}, threads));
 
-        thread <- source "";
-        sw <- source "Only show open";
+                            return (ts, Some (r.Message.thread, r.Threads.Text, tail, msgS', cl', r.Message.Who, r.Threads.Private)))
+                (tail', None) rows;
 
-        return {Config = cfg,
-                Key = k,
-                Access = acc,
-                Head = threads,
-                Tail = tail,
-                Thread = thread,
-                NewThread = nt,
-                NewPost = np,
-                Channel = ch,
-                ShowWhich = sw}
+            threads <- (case unfinished of
+                            None => return threads
+                          | Some (thread, subj, ttail, msgS, cl, fp, priv) =>
+                            source (TCons ({Thread = thread, Subject = subj, Private = priv, Head = msgS, Tail = ttail, Closed = cl, FirstPoster = fp}, threads)));
+
+            ch <- channel;
+            (case acc of
+                 Admin _ =>
+                 @@Sql.easy_insert [key ++ [Who = _]] [_]
+                   (kinj ++ {Who = _})
+                   (@Folder.concat ! _ fl)
+                   adminListeners
+                   (k ++ {Who = ch})
+               | Read =>
+                 @@Sql.easy_insert [key ++ [Who = _]] [_]
+                   (kinj ++ {Who = _})
+                   (@Folder.concat ! _ fl)
+                   readonlyListeners
+                   (k ++ {Who = ch})
+               | Post {User = u, ...} =>
+                 @@Sql.easy_insert [key ++ [Who = _, Private = _]] [_]
+                   (kinj ++ {Who = _, Private = _})
+                   (@Folder.concat ! _ fl)
+                   loggedinListeners
+                   (k ++ {Who = ch, Private = u})
+               | Forbidden => error <xml>Discussion: impossible Forbidden</xml>);
+
+            thread <- source "";
+            sw <- source "Only show open";
+
+            return {Config = cfg,
+                    Key = k,
+                    Access = acc,
+                    Head = threads,
+                    Tail = tail,
+                    Thread = thread,
+                    NewThread = nt,
+                    NewPost = np,
+                    Channel = ch,
+                    ShowWhich = sw}
+        end
 
     fun withThread f thread ls =
         lsV <- get ls;

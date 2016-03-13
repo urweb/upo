@@ -70,14 +70,14 @@ functor Make(M : sig
             Forbidden => error <xml>Access denied</xml>
           | _ =>
             tail <- source Nil;
-            head <- query (SELECT *
-                            FROM post
-                            ORDER BY post.When DESC)
-                           (fn {Post = p} ps =>
-                               p <- source p;
-                               mode <- source Hidden;
-                               source (Cons ({Post = p, Mode = mode}, ps)))
-                           tail;
+            posts <- queryL1 (SELECT *
+                              FROM post
+                              ORDER BY post.When);
+            head <- List.foldlM (fn p ps =>
+                                    p <- source p;
+                                    mode <- source Hidden;
+                                    source (Cons ({Post = p, Mode = mode}, ps)))
+                                tail posts;
             tail <- source tail;
 
             ch <- channel;

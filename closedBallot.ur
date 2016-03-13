@@ -80,65 +80,66 @@ functor Make(M : sig
               Channel : channel action}
 
     fun create r =
-        choices <- List.mapQueryM ({{{sql_query1 [[]]
-                                                 {Distinct = False,
-                                                  From = @@sql_left_join [[]]
-                                                           [[Choice = choiceBallot ++ choiceKey ++ choiceRest,
-                                                             Vote = map option (choiceBallot ++ choiceKey ++ [Votes = int] ++ voterKey)]]
-                                                           [[YourVote = map (fn t => (t, option t)) (choiceBallot ++ choiceKey ++ [Votes = int] ++ voterKey)]]
-                                                           ! ! !
-                                                           {YourVote = @Top.mp [sql_injectable_prim] [fn t => nullify t (option t)]
-                                                                        @@nullify_prim (@Folder.concat ! (_ : folder [Votes = _])
-                                                                                         (@Folder.concat !
-                                                                                           (@Folder.concat ! choiceBallotFl choiceKeyFl)
-                                                                                           voterKeyFl))
-                                                                        (_ ++ voterKeyInj
-                                                                           ++ choiceBallotInj ++ choiceKeyInj)}
-                                                           (@@sql_left_join [[]]
-                                                              [[Choice = choiceBallot ++ choiceKey ++ choiceRest]]
-                                                              [[Vote = map (fn t => (t, option t)) (choiceBallot ++ choiceKey ++ [Votes = int] ++ voterKey)]]
-                                                              ! ! !
-                                                              {Vote = @Top.mp [sql_injectable_prim] [fn t => nullify t (option t)]
-                                                                       @@nullify_prim (@Folder.concat ! (_ : folder [Votes = _])
-                                                                                        (@Folder.concat !
-                                                                                          (@Folder.concat ! choiceBallotFl choiceKeyFl)
-                                                                                          voterKeyFl))
-                                                                       (_ ++ voterKeyInj
-                                                                          ++ choiceBallotInj ++ choiceKeyInj)}
-                                                              (FROM choice) (FROM vote)
-                                                              (WHERE {@@Sql.easy_join [#Choice] [#Vote]
-                                                                 [choiceKey] [choiceBallot ++ choiceRest]
-                                                                 [choiceBallot ++ [Votes = _] ++ voterKey]
-                                                                 [[]] [[]] [[]]
-                                                                 ! ! ! ! choiceKeyFl}))
-                                                           (FROM vote AS YourVote)
-                                                           (WHERE {@@Sql.easy_join [#Choice] [#YourVote]
-                                                              [choiceKey] [choiceBallot ++ choiceRest]
-                                                              [choiceBallot ++ [Votes = _] ++ voterKey]
-                                                              [[Vote = map option (choiceBallot ++ choiceKey ++ [Votes = int] ++ voterKey)]] [[]] [[]]
-                                                              ! ! ! ! choiceKeyFl}
-                                                              AND {@@Sql.easy_where [#YourVote] [voterKey] [_]
-                                                                [[Choice = _, Vote = map option (choiceBallot ++ choiceKey ++ [Votes = int] ++ voterKey)]] [_] [_]
-                                                                ! ! voterKeyInj' voterKeyFl r.Voter}),
-                                                  Where = (WHERE {@@Sql.easy_where [#Choice] [choiceBallot] [_] [_] [_] [_]
-                                                             ! ! choiceBallotInj' choiceBallotFl r.Ballot}
-                                                             AND {sql_exp_weaken keyFilter}),
-                                                  GroupBy = sql_subset [[Choice = (choiceKey, _),
-                                                                         Vote = ([], _),
-                                                                         YourVote = ([], _)]],
-                                                  Having = (WHERE TRUE),
-                                                  SelectFields = sql_subset [[Choice = (choiceKey, _),
-                                                                              Vote = ([], _),
-                                                                              YourVote = ([], _)]],
-                                                  SelectExps = {Votes = sql_window (SQL SUM(vote.Votes)),
-                                                                MyVotes = sql_window (SQL SUM(YourVote.Votes))}} }}}
-                                         ORDER BY {{{@Sql.order_by choiceKeyFl
-                                                      (@Sql.some_fields [#Choice] [choiceKey] ! ! choiceKeyFl)
-                                                      sql_asc}}})
-                                  (fn {Choice = k, Votes = n, MyVotes = yn, ...} =>
-                                      s <- source (Option.get 0 n);
-                                      ys <- source (Option.get 0 yn);
-                                      return {Key = k, Votes = s, MyVotes = ys});
+        choices <- queryL ({{{sql_query1 [[]]
+                                         {Distinct = False,
+                                          From = @@sql_left_join [[]]
+                                                   [[Choice = choiceBallot ++ choiceKey ++ choiceRest,
+                                                     Vote = map option (choiceBallot ++ choiceKey ++ [Votes = int] ++ voterKey)]]
+                                                   [[YourVote = map (fn t => (t, option t)) (choiceBallot ++ choiceKey ++ [Votes = int] ++ voterKey)]]
+                                                   ! ! !
+                                                   {YourVote = @Top.mp [sql_injectable_prim] [fn t => nullify t (option t)]
+                                                                @@nullify_prim (@Folder.concat ! (_ : folder [Votes = _])
+                                                                                 (@Folder.concat !
+                                                                                   (@Folder.concat ! choiceBallotFl choiceKeyFl)
+                                                                                   voterKeyFl))
+                                                                (_ ++ voterKeyInj
+                                                                   ++ choiceBallotInj ++ choiceKeyInj)}
+                                                   (@@sql_left_join [[]]
+                                                      [[Choice = choiceBallot ++ choiceKey ++ choiceRest]]
+                                                      [[Vote = map (fn t => (t, option t)) (choiceBallot ++ choiceKey ++ [Votes = int] ++ voterKey)]]
+                                                      ! ! !
+                                                      {Vote = @Top.mp [sql_injectable_prim] [fn t => nullify t (option t)]
+                                                               @@nullify_prim (@Folder.concat ! (_ : folder [Votes = _])
+                                                                                (@Folder.concat !
+                                                                                  (@Folder.concat ! choiceBallotFl choiceKeyFl)
+                                                                                  voterKeyFl))
+                                                               (_ ++ voterKeyInj
+                                                                  ++ choiceBallotInj ++ choiceKeyInj)}
+                                                      (FROM choice) (FROM vote)
+                                                      (WHERE {@@Sql.easy_join [#Choice] [#Vote]
+                                                         [choiceKey] [choiceBallot ++ choiceRest]
+                                                         [choiceBallot ++ [Votes = _] ++ voterKey]
+                                                         [[]] [[]] [[]]
+                                                         ! ! ! ! choiceKeyFl}))
+                                                   (FROM vote AS YourVote)
+                                                   (WHERE {@@Sql.easy_join [#Choice] [#YourVote]
+                                                      [choiceKey] [choiceBallot ++ choiceRest]
+                                                      [choiceBallot ++ [Votes = _] ++ voterKey]
+                                                      [[Vote = map option (choiceBallot ++ choiceKey ++ [Votes = int] ++ voterKey)]] [[]] [[]]
+                                                      ! ! ! ! choiceKeyFl}
+                                                      AND {@@Sql.easy_where [#YourVote] [voterKey] [_]
+                                                      [[Choice = _, Vote = map option (choiceBallot ++ choiceKey ++ [Votes = int] ++ voterKey)]] [_] [_]
+                                                      ! ! voterKeyInj' voterKeyFl r.Voter}),
+                                          Where = (WHERE {@@Sql.easy_where [#Choice] [choiceBallot] [_] [_] [_] [_]
+                                                     ! ! choiceBallotInj' choiceBallotFl r.Ballot}
+                                                     AND {sql_exp_weaken keyFilter}),
+                                          GroupBy = sql_subset [[Choice = (choiceKey, _),
+                                                                 Vote = ([], _),
+                                                                 YourVote = ([], _)]],
+                                          Having = (WHERE TRUE),
+                                          SelectFields = sql_subset [[Choice = (choiceKey, _),
+                                                                      Vote = ([], _),
+                                                                      YourVote = ([], _)]],
+                                          SelectExps = {Votes = sql_window (SQL SUM(vote.Votes)),
+                                                        MyVotes = sql_window (SQL SUM(YourVote.Votes))}} }}}
+                                                                              ORDER BY {{{@Sql.order_by choiceKeyFl
+                                                                                           (@Sql.some_fields [#Choice] [choiceKey] ! ! choiceKeyFl)
+                                                                                           sql_desc}}});
+        choices <- List.mapM
+                       (fn {Choice = k, Votes = n, MyVotes = yn, ...} =>
+                           s <- source (Option.get 0 n);
+                           ys <- source (Option.get 0 yn);
+                           return {Key = k, Votes = s, MyVotes = ys}) choices;
 
         chan <- channel;
         @@Sql.easy_insert [[Channel = channel action] ++ choiceBallot ++ voterKey] [_]
