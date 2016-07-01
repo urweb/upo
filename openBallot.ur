@@ -156,7 +156,7 @@ functor Make(M : sig
                              ORDER BY {{{@Sql.order_by (@Folder.concat ! choiceKeyFl (@Folder.mp voterKeyFl))
                                           (@Sql.some_fields [#Choice] [choiceKey] ! ! choiceKeyFl
                                             ++ @Sql.some_fields [#Vote] [map option voterKey] ! ! (@Folder.mp voterKeyFl))
-                                          sql_asc}}});
+                                          sql_desc}}});
 
             choices <- doVotes votes [] None [];
             choices <- source choices;
