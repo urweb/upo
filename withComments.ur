@@ -78,8 +78,7 @@ functor Make(M : sig
                   YourNewComment : source (option (source string)) }
 
     type a = {User : option $user,
-              Entries : source (list entry),
-              Channel : channel action}
+              Entries : source (list entry)}
 
     type input = _
 
@@ -114,7 +113,7 @@ functor Make(M : sig
                       | Some (key, rest) =>
                         if @eq keyEq key (q --- rest) then
                             case @Sql.unnull (@Folder.concat ! (_ : folder [Comment = _]) userFl) c of
-                                None => error <xml>WithComments: Inconsistent left join</xml>
+                                None => return []
                               | Some c => setup ls' acc thisKey ({User = c -- #Comment, Comment = c.Comment} :: comments)
                         else
                             comments <- source (List.rev comments);
@@ -155,56 +154,10 @@ functor Make(M : sig
             ents <- setup ents [] None [];
             ents <- source ents;
 
-            ch <- channel;
-            dml (INSERT INTO listeners(Channel) VALUES({[ch]}));
-
-            return {User = iam, Entries = ents, Channel = ch}
+            return {User = iam, Entries = ents}
         end
 
-    fun onload a =
-        let
-            fun loop () =
-                act <- recv a.Channel;
-                (case act of
-                     SetKey r =>
-                     ents <- get a.Entries;
-                     (case r.Rest of
-                          None => set a.Entries (List.filter (fn ent => ent.Key <> r.Key) ents)
-                        | Some rest =>
-                          if List.exists (fn ent => ent.Key = r.Key) ents then
-                              set a.Entries
-                                  (List.sort (fn r1 r2 => r1.Key < r2.Key)
-                                             (List.mp (fn ent => if ent.Key = r.Key then
-                                                                     case r.NewKey of
-                                                                         None => ent -- #Rest ++ {Rest = rest}
-                                                                       | Some nk => ent -- #Key -- #Rest
-                                                                                        ++ {Key = nk, Rest = rest}
-                                                                 else
-                                                                     ent) ents))
-                           else
-                               comments <- source [];
-                               ync <- source None;
-                               set a.Entries (List.sort (fn r1 r2 => r1.Key < r2.Key)
-                                                        ((r -- #NewKey -- #Rest
-                                                            ++ {Rest = rest,
-                                                                Comments = comments,
-                                                                YourNewComment = ync}) :: ents)))
-                   | SetComment r =>
-                     ents <- get a.Entries;
-                     List.app (fn ent =>
-                                  if ent.Key <> r.Key then
-                                      return ()
-                                  else
-                                      cs <- get ent.Comments;
-                                      cs <- return (List.filter (fn c => c.User <> r.User) cs);
-                                      cs <- return (case r.Comment of
-                                                        None => cs
-                                                      | Some s => {User = r.User, Comment = s} :: cs);
-                                      set ent.Comments (List.sort (fn r1 r2 => r1.User > r2.User) cs)) ents);
-                loop ()
-        in
-            spawn (loop ())
-        end
+    fun onload a = return ()
 
     fun makeComment k s =
         u <- amUser;
@@ -216,11 +169,6 @@ functor Make(M : sig
                    (keyInj' ++ userInj')
                    (@Folder.concat ! keyFl userFl)
                    (k ++ u)});
-            queryI1 (SELECT listeners.Channel
-                     FROM listeners)
-                    (fn l => send l.Channel (SetComment {Key = k, User = u, Comment = (case s of
-                                                                                           "" => None
-                                                                                         | _ => Some s)}));
             case s of
                 "" => return ()
               | _ =>
@@ -294,37 +242,10 @@ functor Make(M : sig
                 Onload = onload,
                 Render = render}
 
-    fun add k =
-        rest <- oneRow1 ({{{sql_query1 [[]]
-                                       {Distinct = False,
-                                        From = sql_from_query [#Q] query,
-                                        Where = @@Sql.easy_where [#Q] [key] [_] [_] [_] [_]
-                                                  ! ! keyInj' keyFl k,
-                                        GroupBy = sql_subset_all [_],
-                                        Having = (WHERE TRUE),
-                                        SelectFields = sql_subset [[Q = (rest, _)]],
-                                        SelectExps = {}} }}});
-        queryI1 (SELECT listeners.Channel
-                 FROM listeners)
-                (fn l => send l.Channel (SetKey {Key = k, NewKey = None, Rest = Some rest}))
+    fun add k = return ()
 
-    fun delete k =
-        queryI1 (SELECT listeners.Channel
-                 FROM listeners)
-                (fn l => send l.Channel (SetKey {Key = k, NewKey = None, Rest = None}))
+    fun delete k = return ()
 
-    fun modify r =
-        rest <- oneRow1 ({{{sql_query1 [[]]
-                                       {Distinct = False,
-                                        From = sql_from_query [#Q] query,
-                                        Where = @@Sql.easy_where [#Q] [key] [_] [_] [_] [_]
-                                                  ! ! keyInj' keyFl r.New,
-                                        GroupBy = sql_subset_all [_],
-                                        Having = (WHERE TRUE),
-                                        SelectFields = sql_subset [[Q = (rest, _)]],
-                                        SelectExps = {}} }}});
-        queryI1 (SELECT listeners.Channel
-                 FROM listeners)
-                (fn l => send l.Channel (SetKey {Key = r.Old, NewKey = Some r.New, Rest = Some rest}))
+    fun modify r = return ()
 
 end

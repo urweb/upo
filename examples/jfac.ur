@@ -44,11 +44,7 @@ cookie localC : string
 
 (* Find the common name of the authenticated user (via SSL certificates),
  * remembering this person in the DB, if successful. *)
-val auth =
-    lo <- getCookie localC;
-    case lo of
-        None => error <xml>You haven't set the cookie with your name.</xml>
-      | Some r => return r
+val auth = return "Admin"
 
 val requireAuth = Monad.ignore auth
 
@@ -229,7 +225,6 @@ val explainTime =
 val main =
     user <- auth;
     key <- return {HumanName = user};
-    tm <- now;
 
     times <- queryX1 (SELECT time.Time
                       FROM time
@@ -256,7 +251,6 @@ val main =
                                 FROM dinner, restaurant
                                 WHERE dinner.RestaurantName = restaurant.RestaurantName
                                   AND dinner.Neighborhood = restaurant.Neighborhood
-                                  AND dinner.Time > {[addSeconds tm (oneHour * -3)]}
                                 ORDER BY dinner.Time
                                 LIMIT 1);
 
@@ -282,7 +276,7 @@ val main =
                      explainTime,
                      VoteTime.OneChoice.ui {Ballot = (),
                                             Choice = case nextDinner of
-                                                         None => {Time = tm}
+                                                         None => {Time = minTime}
                                                        | Some nd => {Time = nd.Dinner.Time},
                                             Voter = key})),
                (Some "Vote on Times",
@@ -294,7 +288,7 @@ val main =
                (Some "Restaurants",
                 Restaurants.ui),
                (Some "Times",
-                Ui.seq (Ui.h4 <xml>An example of the time format to use, applied to <i>right now</i>: {[tm]}</xml>,
+                Ui.seq (Ui.h4 <xml>An example of the time format to use, applied to <i>right now</i>: </xml>,
                             Times.ui)),
                (Some "Dinners",
                 Ui.seq
@@ -338,7 +332,7 @@ val main =
                       <h2>Add a Past Dinner</h2>
 
                       <div class="form-group">
-                        <label>When? (format example: {[tm]})</label>
+                        <label>When? (format example:) </label>
                         <ctextbox source={whichTP} class="form-control"/>
                       </div>
 

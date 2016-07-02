@@ -42,8 +42,7 @@ functor Make(M : sig
     type a = { Config : config,
                Perm : permission,
                Rows : source (list row),
-               ToAdd : state,
-               Channel : channel action }
+               ToAdd : state }
 
     val freshRow = @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
                     (fn [nm ::_] [p ::_] (w : Widget.t' p) => @Widget.create w) fl widgets
@@ -74,44 +73,12 @@ functor Make(M : sig
                                            Content = r.Tab});
         rows <- source rows;
 
-        chan <- channel;
-        dml (INSERT INTO listeners(Channel) VALUES ({[chan]}));
-
         return {Config = config,
                 Perm = perm,
                 Rows = rows,
-                ToAdd = toAdd,
-                Channel = chan}
+                ToAdd = toAdd}
 
-    fun onload a =
-        let
-            fun loop () =
-                msg <- recv a.Channel;
-                (case msg of
-                     ADD d =>
-                     rows <- get a.Rows;
-                     editing <- source None;
-                     set a.Rows (List.sort (fn a b => a.Content > b.Content)
-                                           ({Editing = editing,
-                                             Content = d}
-                                                :: rows))
-                   | DEL d =>
-                     rows <- get a.Rows;
-                     set a.Rows (List.filter (fn a => a.Content <> d) rows)
-                   | MOD d =>
-                     rows <- get a.Rows;
-                     editing <- source None;
-                     set a.Rows (List.sort (fn a b => a.Content > b.Content)
-                                           (List.mp (fn a =>
-                                                        if a.Content = d.Old then
-                                                            {Editing = editing,
-                                                             Content = d.New}
-                                                        else
-                                                            a) rows)));
-                loop ()
-        in
-            spawn (loop ())
-        end
+    fun onload a = return ()
 
     fun add r =
         perm <- permission;
@@ -121,9 +88,6 @@ functor Make(M : sig
              error <xml>Don't have permission to add row</xml>);
 
         @@Sql.easy_insert [map fst3 fs] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
-
-        queryI1 (SELECT * FROM listeners)
-        (fn x => send x.Channel (ADD r));
 
         onAdd r
 
@@ -137,9 +101,6 @@ functor Make(M : sig
         dml (DELETE FROM tab
              WHERE {@@Sql.easy_where [#T] [map fst3 fs] [[]] [[]] [[]] [[]] ! !
                injs (@@Folder.mp [fst3] [_] fl) r});
-
-        queryI1 (SELECT * FROM listeners)
-        (fn x => send x.Channel (DEL r));
 
         onDelete r
 
@@ -157,9 +118,6 @@ functor Make(M : sig
               tab
               (@@Sql.easy_where [#T] [map fst3 fs] [[]] [[]] [[]] [[]] ! !
                  injs (@@Folder.mp [fst3] [_] fl) r.Old));
-
-        queryI1 (SELECT * FROM listeners)
-        (fn x => send x.Channel (MOD r));
 
         onModify r
 
