@@ -125,40 +125,6 @@ functor WithCompletionFlag(M : sig
     val todo : t (M.key ++ M.subkey) [tag = private]
 end
 
-functor WithCompletionFlagAndDueDate(M : sig
-                                         con tag :: Name
-                                         con key :: {Type}
-                                         con subkey :: {Type}
-                                         con due :: Name
-                                         con done :: Name
-                                         con other :: {Type}
-                                         con user :: Name
-                                         con aother :: {Type}
-                                         constraint key ~ subkey
-                                         constraint (key ++ subkey) ~ other
-                                         constraint key ~ aother
-                                         constraint [due] ~ [done]
-                                         constraint [due, done] ~ (key ++ subkey ++ other)
-                                         constraint [user] ~ (key ++ aother)
-                                         constraint [Assignee, Due, Done, Kind] ~ (key ++ subkey)
-                                         val fl : folder key
-                                         val sfl : folder subkey
-                                         val inj : $(map sql_injectable_prim key)
-                                         val sinj : $(map sql_injectable_prim subkey)
-
-                                         table items : (key ++ subkey ++ [due = time, done = bool] ++ other)
-                                         (* The set of items that must be done *)
-                                         table assignments : (key ++ [user = option string] ++ aother)
-                                         (* Recording who is responsible for which items *)
-
-                                         val title : string
-                                         val render : $(key ++ subkey) -> string (* username *) -> xbody
-                    end) : sig
-    con private
-    con tag = M.tag
-    val todo : t (M.key ++ M.subkey) [tag = private]
-end
-
 (* Every user in a certain set should be aware of the contents of a certain table, interpreted as todos. *)
 functor Happenings(M : sig
                        con tag :: Name

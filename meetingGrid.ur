@@ -143,23 +143,11 @@ functor Make(M : sig
     val awayInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim awayKeyFl awayInj
     val timeInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim timeKeyFl timeInj
 
-    datatype sum a b = Left of a | Right of b
-
-    val getOffice =
-        case @fold [fn office => sum ($homeKey -> transaction $homeOffice)
-                                     ($homeKey -> transaction $office)]
-              (fn [nm ::_] [v ::_] [r ::_] [[nm] ~ r] _ =>
-                  Left (fn key =>
-                           oneRow1 (SELECT home.{{homeOffice}}
-                                    FROM home
-                                    WHERE {@@Sql.easy_where [#Home] [homeKey] [_] [_] [_] [_]
-                                      ! ! homeInj' homeKeyFl key})))
-              (Right (fn _ => return ())) officeFl of
-            Left f => f
-          | Right f => f
-
     fun addMeeting r =
-        office <- getOffice (r --- awayKey --- timeKey);
+        office <- oneRow1 (SELECT home.{{homeOffice}}
+                           FROM home
+                           WHERE {@@Sql.easy_where [#Home] [homeKey] [_] [_] [_] [_]
+                             ! ! homeInj' homeKeyFl (r --- awayKey --- timeKey)});
 
         @@Sql.easy_insert [all] [_] allInj allFl meeting r;
         queryI1 (SELECT * FROM globalListeners)
@@ -343,7 +331,7 @@ functor Make(M : sig
                                      FROM time
                                      ORDER BY {{{@Sql.order_by timeKeyFl
                                        (@Sql.some_fields [#Time] [timeKey] ! ! timeKeyFl)
-                                       sql_asc}}});
+                                       sql_desc}}});
 
                 let
                     (* A bit of a little dance to initialize the meeting states,
@@ -439,7 +427,7 @@ functor Make(M : sig
                                        (usHardConst ++ usSoftConst)}
                                      ORDER BY {{{@Sql.order_by usFl
                                         (@Sql.some_fields [#Us] [usKey] ! ! usFl)
-                                        sql_asc}}});
+                                        sql_desc}}});
                     thems <- queryL1 (SELECT them.{{themKey}}
                                       FROM them
                                       WHERE {@@Sql.easy_where [#Them] [themHardConst ++ themSoftConst]
@@ -449,7 +437,7 @@ functor Make(M : sig
                                         (themHardConst ++ themSoftConst)}
                                       ORDER BY {{{@Sql.order_by themFl
                                         (@Sql.some_fields [#Them] [themKey] ! ! themFl)
-                                        sql_asc}}});
+                                        sql_desc}}});
                     unavails <- queryL1 (SELECT unavailable.{{usKey}}, unavailable.{{timeKey}}
                                          FROM unavailable JOIN us
                                            ON {@@Sql.easy_join [#Unavailable] [#Us]
@@ -463,7 +451,7 @@ functor Make(M : sig
                                          ORDER BY {{{@Sql.order_by (@Folder.concat ! usFl timeKeyFl)
                                            (@Sql.some_fields [#Unavailable] [usKey ++ timeKey] ! !
                                              (@Folder.concat ! usFl timeKeyFl))
-                                           sql_asc}}});
+                                           sql_desc}}});
                     meetings <- queryL (SELECT meeting.{{usKey}}, meeting.{{timeKey}}, meeting.{{themKey}},
                                           (SELECT COUNT( * )
                                            FROM meeting AS ByThem
@@ -476,7 +464,7 @@ functor Make(M : sig
                                         FROM meeting
                                         ORDER BY {{{@Sql.order_by allFl
                                           (@Sql.some_fields [#Meeting] [all] ! ! allFl)
-                                          sql_asc}}});
+                                          sql_desc}}});
                     meetings <- List.mapM (fn (us, off, tms) =>
                                               tms' <- List.mapM (fn (tm, avail, ths) =>
                                                                     ths <- source ths;
@@ -768,7 +756,7 @@ functor Make(M : sig
                                          FROM time
                                          ORDER BY {{{@Sql.order_by timeKeyFl
                                            (@Sql.some_fields [#Time] [timeKey] ! ! timeKeyFl)
-                                           sql_asc}}});
+                                           sql_desc}}});
                     meetings <- queryL (SELECT meeting.{{timeKey}}, meeting.{{themKey}}, them.{{themOffice}}
                                         FROM meeting
                                           JOIN them ON {@@Sql.easy_join [#Meeting] [#Them] [themKey]
@@ -786,7 +774,7 @@ functor Make(M : sig
                                         ORDER BY {{{@Sql.order_by (@Folder.concat ! timeKeyFl themFl)
                                           (@Sql.some_fields [#Meeting] [timeKey ++ themKey] ! !
                                             (@Folder.concat ! timeKeyFl themFl))
-                                          sql_asc}}});
+                                          sql_desc}}});
                     meetings <- List.mapM (fn (tm, ths) =>
                                               ths <- source ths;
                                               return (tm, ths))
