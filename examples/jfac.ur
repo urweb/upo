@@ -126,7 +126,7 @@ structure VoteTime = OpenBallot.Make(struct
 
                                          val amVoter = amJfac
                                          val maxVotesPerVoter = None
-                                         val keyFilter = (WHERE choice.Time > CURRENT_TIMESTAMP)
+                                         val keyFilter = (WHERE TRUE)
                                          val alwaysShowVotes = True
                                      end)
 
@@ -228,7 +228,6 @@ val main =
 
     times <- queryX1 (SELECT time.Time
                       FROM time
-                      WHERE time.Time > CURRENT_TIMESTAMP
                       ORDER BY time.Time)
                    (fn r => <xml><coption>{[r.Time]}</coption></xml>);
 

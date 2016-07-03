@@ -113,7 +113,7 @@ functor Make(M : sig
                       | Some (key, rest) =>
                         if @eq keyEq key (q --- rest) then
                             case @Sql.unnull (@Folder.concat ! (_ : folder [Comment = _]) userFl) c of
-                                None => return []
+                                None => error <xml>WithComments: Inconsistent left join</xml>
                               | Some c => setup ls' acc thisKey ({User = c -- #Comment, Comment = c.Comment} :: comments)
                         else
                             comments <- source (List.rev comments);
