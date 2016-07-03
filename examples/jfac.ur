@@ -39,9 +39,6 @@ table dinner : { RestaurantName : string, Neighborhood : string, Time : time }
   CONSTRAINT Restaurant FOREIGN KEY (RestaurantName, Neighborhood) REFERENCES restaurant(RestaurantName, Neighborhood) ON UPDATE CASCADE,
   CONSTRAINT Time FOREIGN KEY Time REFERENCES time(Time) ON UPDATE CASCADE
 
-(* The real app uses client certificates, but here we'll do cookies for convenience. *)
-cookie localC : string
-
 (* Find the common name of the authenticated user (via SSL certificates),
  * remembering this person in the DB, if successful. *)
 val auth = return "Admin"
@@ -386,24 +383,8 @@ task periodic halfHour = fn () =>
                 AND dinner.Time > {[addSeconds tm (-oneHour)]})
              VoteRestaurant.removeVotesFor
 
-fun setIt v =
-    setCookie localC {Value = v,
-                      Expires = None,
-                      Secure = False}
-
-val cookieSetup =
-    sc <- source "";
-
-    Theme.tabbed "Cookie Setup"
-    {1 = (Some "Set Cookie",
-      Ui.const <xml>
-        <ctextbox source={sc}/>
-        <button value="Set" onclick={fn _ => v <- get sc; rpc (setIt v)}/>
-        </xml>)}
-
 (* Dummy page to keep Ur/Web from garbage-collecting handlers within modules *)
 val index = return <xml><body>
-  <li><a link={cookieSetup}>Cookie set-up</a></li>
   <li><a link={admin}>Admin</a></li>
   <li><a link={main}>Main</a></li>
 </body></xml>
