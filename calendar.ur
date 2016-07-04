@@ -410,7 +410,6 @@ table listeners : { Kind : serialized (variant (map (fn _ => unit) tags)),
                     Channel : channel action }
 
 type a = $(map thd3 tags) (* configuration *)
-         * channel action
          * source (list (time * string * string * list (time * option string * string * variant (map fst3 tags))))
            (* We render the times to strings server-side to avoid time-zone hang-ups. *)
          * $(map (fn _ => bool) tags) (* Allowed to modify this kind of entry? *)
@@ -448,55 +447,13 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                 cfg <- @Monad.mapR _ [tag] [thd3] (fn [nm ::_] [p ::_] (t : tag p) => t.Configure) fl t.Tags;
                 items <- items @t;
                 ds <- source (loop from items []);
-                ch <- channel;
                 mm <- @Monad.mapR _ [tag] [fn _ => bool]
                        (fn [nm ::_] [p ::_] (t : tag p) => t.MayModify)
                        fl t.Tags;
-                @Variant.withAll fl (fn k =>
-                                        b <- @Record.select [tag] [fn _ => unit] fl
-                                            (fn [p] (t : tag p) _ => t.MaySee)
-                                            t.Tags k;
-                                        if b then
-                                            dml (INSERT INTO listeners(Kind, Channel)
-                                                 VALUES ({[serialize k]}, {[ch]}))
-                                        else
-                                            return ());
-                return (cfg, ch, ds, mm)
+                return (cfg, ds, mm)
             end
 
-        fun onload ((_, ch, ds, _) : a) =
-            let
-                fun doAdd (tml, r) =
-                    days <- get ds;
-                    set ds (List.foldl (fn (tm, tmS, k) days =>
-                                           List.mp (fn (tm', tmS', longS, items) =>
-                                                       (tm', tmS', longS,
-                                                        if tm' <= tm && tm < addSeconds tm' oneDay then
-                                                            List.sort (fn (tm1, _, _, _) (tm2, _, _, _) => tm1 > tm2)
-                                                                      ((tm, tmS, k, r) :: items)
-                                                        else
-                                                            items)) days) days tml)
-
-                fun doDel r =
-                    days <- get ds;
-                    set ds (List.mp (fn (tm', tmS', longS, items) =>
-                                        (tm', tmS', longS,
-                                         List.filter (fn (_, _, _, r') =>
-                                                         not (@eq (@@Variant.eq [map fst3 tags]
-                                                                     (@mp [tag] [fn p => eq p.1]
-                                                                       (fn [p] (t : tag p) => t.Eq)
-                                                                       fl t.Tags) (@Folder.mp fl)) r' r)) items)) days)
-
-                fun loop () =
-                    msg <- recv ch;
-                    (case msg of
-                         Add c => doAdd c
-                       | Del c => doDel c
-                       | Mod (c1, c2) => doDel c1; doAdd c2);
-                    loop ()
-            in
-                spawn (loop ())
-            end
+        fun onload _ = return ()
 
         fun notify (k : variant (map fst3 tags)) (act : action) =
             queryI1 (SELECT listeners.Channel
@@ -504,7 +461,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                      WHERE listeners.Kind = {[serialize (@Variant.erase (@Folder.mp fl) k)]})
                     (fn r => send r.Channel act)
 
-        fun render ctx (cfg, _, ds, mm) =
+        fun render ctx (cfg, ds, mm) =
             let
                 fun render' days =
                     case extractWeek days of

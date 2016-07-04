@@ -76,8 +76,7 @@ functor Make(M : sig
     type input = _
     type a = {Voter : $voterKey,
               Ballot : $choiceBallot,
-              Choices : list choice,
-              Channel : channel action}
+              Choices : list choice}
 
     fun create r =
         choices <- queryL ({{{sql_query1 [[]]
@@ -141,47 +140,9 @@ functor Make(M : sig
                            ys <- source (Option.get 0 yn);
                            return {Key = k, Votes = s, MyVotes = ys}) choices;
 
-        chan <- channel;
-        @@Sql.easy_insert [[Channel = channel action] ++ choiceBallot ++ voterKey] [_]
-          ({Channel = _ : sql_injectable (channel action)} ++ choiceBallotInj' ++ voterKeyInj')
-          (@Folder.cons [#Channel] [_] ! (@Folder.concat ! choiceBallotFl voterKeyFl))
-          listeners ({Channel = chan} ++ r.Voter ++ r.Ballot);
+        return (r ++ {Choices = choices})
 
-        return (r ++ {Choices = choices, Channel = chan})
-
-    fun onload a =
-        let
-            fun loop () =
-                act <- recv a.Channel;
-                (case act.Operation of
-                     Vote =>
-                     List.app (fn ch =>
-                                  if ch.Key <> act.Choice then
-                                      return ()
-                                  else
-                                      (votes <- Basis.get ch.Votes;
-                                       set ch.Votes (votes + 1);
-                                       if act.IsItYou then
-                                           (yourVotes <- Basis.get ch.MyVotes;
-                                            set ch.MyVotes (yourVotes + 1))
-                                       else
-                                           return ())) a.Choices
-                   | Unvote =>
-                     List.app (fn ch =>
-                                  if ch.Key <> act.Choice then
-                                      return ()
-                                  else
-                                      (votes <- Basis.get ch.Votes;
-                                       set ch.Votes (votes - 1);
-                                       if act.IsItYou then
-                                           (yourVotes <- Basis.get ch.MyVotes;
-                                            set ch.MyVotes (yourVotes - 1))
-                                       else
-                                           return ())) a.Choices);
-                loop ()
-        in
-            spawn (loop ())
-        end
+    fun onload a = return ()
 
     fun del r =
         v <- amVoter;
@@ -205,11 +166,7 @@ functor Make(M : sig
                        (choiceBallotInj' ++ choiceKeyInj' ++ voterKeyInj')
                        (@Folder.concat ! choiceBallotFl
                          (@Folder.concat ! choiceKeyFl voterKeyFl))
-                       (r.Ballot ++ r.Choice ++ v)});
-                queryI1 (SELECT listeners.Channel, listeners.{{voterKey}}
-                         FROM listeners
-                         WHERE {@Sql.easy_where [#Listeners] ! ! choiceBallotInj' choiceBallotFl r.Ballot})
-                (fn l => send l.Channel {Operation = Unvote, IsItYou = (l -- #Channel = v), Choice = r.Choice})
+                       (r.Ballot ++ r.Choice ++ v)})
               | Some oldCount =>
                 dml (UPDATE vote
                      SET Votes = Votes - 1
@@ -218,11 +175,7 @@ functor Make(M : sig
                        (choiceBallotInj' ++ choiceKeyInj' ++ voterKeyInj')
                        (@Folder.concat ! choiceBallotFl
                          (@Folder.concat ! choiceKeyFl voterKeyFl))
-                       (r.Ballot ++ r.Choice ++ v)});
-                queryI1 (SELECT listeners.Channel, listeners.{{voterKey}}
-                         FROM listeners
-                         WHERE {@Sql.easy_where [#Listeners] ! ! choiceBallotInj' choiceBallotFl r.Ballot})
-                (fn l => send l.Channel {Operation = Unvote, IsItYou = (l -- #Channel = v), Choice = r.Choice})
+                       (r.Ballot ++ r.Choice ++ v)})
 
     fun add r =
         v <- amVoter;
@@ -244,11 +197,7 @@ functor Make(M : sig
                   (@Folder.cons [#Votes] [_] ! (@Folder.concat ! choiceBallotFl
                                                  (@Folder.concat ! choiceKeyFl voterKeyFl)))
                   vote
-                  (r.Ballot ++ r.Choice ++ v ++ {Votes = 1});
-                queryI1 (SELECT listeners.Channel, listeners.{{voterKey}}
-                         FROM listeners
-                         WHERE {@Sql.easy_where [#Listeners] ! ! choiceBallotInj' choiceBallotFl r.Ballot})
-                        (fn l => send l.Channel {Operation = Vote, IsItYou = (l -- #Channel = v), Choice = r.Choice})
+                  (r.Ballot ++ r.Choice ++ v ++ {Votes = 1})
               | Some n =>
                 if (case maxVotesPerVoter of
                         None => False
@@ -262,11 +211,7 @@ functor Make(M : sig
                            (choiceBallotInj' ++ choiceKeyInj' ++ voterKeyInj')
                            (@Folder.concat ! choiceBallotFl
                              (@Folder.concat ! choiceKeyFl voterKeyFl))
-                           (r.Ballot ++ r.Choice ++ v)});
-                    queryI1 (SELECT listeners.Channel, listeners.{{voterKey}}
-                             FROM listeners
-                             WHERE {@Sql.easy_where [#Listeners] ! ! choiceBallotInj' choiceBallotFl r.Ballot})
-                            (fn l => send l.Channel {Operation = Vote, IsItYou = (l -- #Channel = v), Choice = r.Choice})
+                           (r.Ballot ++ r.Choice ++ v)})
 
     fun oneChoice showKey a ch = <xml>
         <tr>

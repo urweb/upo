@@ -75,14 +75,7 @@ functor Make(M : sig
                   [key ++ map fst3 fs ++ [Filename = _, Content = _, MimeType = _, When = _, ukey = _]] [_]
                   (_ ++ injs ++ keyInj')
                   (@Folder.concat ! _ (@Folder.concat ! keyFl (@Folder.mp fl))) submission
-                  (k ++ up ++ {When = tm, ukey = u} ++ vs);
-
-                queryI1 (SELECT listeners.Channel
-                         FROM listeners
-                         WHERE {@@Sql.easy_where [#Listeners] [key] [_] [_] [_] [_] ! ! keyInj' keyFl k}
-                           AND (listeners.{ukey} IS NULL
-                             OR listeners.{ukey} = {[Some u]}))
-                (fn {Channel = ch} => send ch {Filename = up.Filename, When = tm, ukey = u})
+                  (k ++ up ++ {When = tm, ukey = u} ++ vs)
 
     fun newUpload k =
         id <- fresh;
@@ -210,27 +203,11 @@ functor Make(M : sig
                            ORDER BY submission.When);
             ls <- source ls;
 
-            ch <- channel;
-            @@Sql.easy_insert [[Channel = _, ukey = _] ++ key] [_]
-              ({Channel = _, ukey = _} ++ keyInj')
-              (@Folder.concat ! _ keyFl)
-              listeners ({Channel = ch, ukey = Some u} ++ k);
-
             return {Key = k,
                     User = u,
-                    Files = ls,
-                    Channel = ch}
+                    Files = ls}
 
-        fun onload me =
-            let
-                fun loop () =
-                    msg <- recv me.Channel;
-                    fs <- get me.Files;
-                    set me.Files ((msg -- ukey) :: fs);
-                    loop ()
-            in
-                spawn (loop ())
-            end
+        fun onload me = return ()
 
         fun render _ me = <xml><div class="file">
           <h2>Submissions</h2>
@@ -260,26 +237,10 @@ functor Make(M : sig
                            ORDER BY submission.When);
             ls <- source ls;
 
-            ch <- channel;
-            @@Sql.easy_insert [[Channel = _, ukey = _] ++ key] [_]
-              ({Channel = _, ukey = _} ++ keyInj')
-              (@Folder.concat ! _ keyFl)
-              listeners ({Channel = ch, ukey = None} ++ k);
-
             return {Key = k,
-                    Files = ls,
-                    Channel = ch}
+                    Files = ls}
 
-        fun onload me =
-            let
-                fun loop () =
-                    msg <- recv me.Channel;
-                    fs <- get me.Files;
-                    set me.Files (msg :: fs);
-                    loop ()
-            in
-                spawn (loop ())
-            end
+        fun onload me = return ()
 
         fun render _ me = <xml><div class="file">
           <dyn signal={fs <- signal me.Files;

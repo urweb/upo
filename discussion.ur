@@ -96,7 +96,6 @@ functor Make(M : sig
               Thread : source string,
               NewThread : source (option (source string * source bool)),
               NewPost : text_internal,
-              Channel : channel update,
               ShowWhich : source string}
 
     table threads : (key ++ [thread = time, Who = string, Text = string, Closed = bool, Private = bool])
@@ -171,27 +170,6 @@ functor Make(M : sig
                           | Some (thread, subj, ttail, msgS, cl, fp, priv) =>
                             source (TCons ({Thread = thread, Subject = subj, Private = priv, Head = msgS, Tail = ttail, Closed = cl, FirstPoster = fp}, threads)));
 
-            ch <- channel;
-            (case acc of
-                 Admin _ =>
-                 @@Sql.easy_insert [key ++ [Who = _]] [_]
-                   (kinj ++ {Who = _})
-                   (@Folder.concat ! _ fl)
-                   adminListeners
-                   (k ++ {Who = ch})
-               | Read =>
-                 @@Sql.easy_insert [key ++ [Who = _]] [_]
-                   (kinj ++ {Who = _})
-                   (@Folder.concat ! _ fl)
-                   readonlyListeners
-                   (k ++ {Who = ch})
-               | Post {User = u, ...} =>
-                 @@Sql.easy_insert [key ++ [Who = _, Private = _]] [_]
-                   (kinj ++ {Who = _, Private = _})
-                   (@Folder.concat ! _ fl)
-                   loggedinListeners
-                   (k ++ {Who = ch, Private = u})
-               | Forbidden => error <xml>Discussion: impossible Forbidden</xml>);
 
             thread <- source "";
             sw <- source "Only show open";
@@ -204,7 +182,6 @@ functor Make(M : sig
                     Thread = thread,
                     NewThread = nt,
                     NewPost = np,
-                    Channel = ch,
                     ShowWhich = sw}
         end
 
@@ -218,100 +195,7 @@ functor Make(M : sig
             else
                 withThread f thread ls'
 
-    fun onload a =
-        let
-            fun loop () =
-                upd <- recv a.Channel;
-                (case upd of
-                     NewThread r =>
-                     let
-                         fun atEnd ls =
-                             lsV <- get ls;
-                             case lsV of
-                                 TNil =>
-                                 (head <- source Nil;
-                                  tail <- source head;
-                                  tail' <- source TNil;
-                                  cl <- source False;
-                                  cell <- return (TCons ({Thread = r.Thread,
-                                                          Subject = r.Subject,
-                                                          Private = r.Private,
-                                                          Head = head,
-                                                          Tail = tail,
-                                                          Closed = cl,
-                                                          FirstPoster = r.FirstPoster}, 
-                                                         tail'));
-                                  set ls cell;
-                                  set a.Tail tail';
-
-                                  hdV <- get a.Head;
-                                  case hdV of
-                                      TNil => set a.Head cell
-                                    | _ => return ())
-                               | TCons (_, ls') => atEnd ls'
-                     in
-                         atEnd a.Head
-                     end
-                   | SetClosed r =>
-                     withThread (fn _ _ cl => set cl r.Closed) r.Thread a.Head
-                   | New msg =>
-                     withThread (fn head tail _ =>
-                                    let
-                                        fun atEnd ls =
-                                            lsV <- get ls;
-                                            case lsV of
-                                                Nil =>
-                                                (tail' <- source Nil;
-                                                 msgS <- source (msg -- #Thread);
-                                                 set ls (Cons (msgS, tail'));
-                                                 set tail tail';
-
-                                                 hdV <- get head;
-                                                 case hdV of
-                                                     Nil => set head (Cons (msgS, tail'))
-                                                   | _ => return ())
-                                              | Cons (_, ls') => atEnd ls'
-                                    in
-                                        atEnd head
-                                    end) msg.Thread a.Head
-                   | Edit r =>
-                     withThread (fn head _ _ =>
-                                    let
-                                        fun findIt ls =
-                                            lsV <- get ls;
-                                            case lsV of
-                                                Nil => return ()
-                                              | Cons (msg, ls') =>
-                                                msgV <- get msg;
-                                                if msgV.When = r.When then
-                                                    set msg (msgV -- #Text ++ {Text = r.Text})
-                                                else
-                                                    findIt ls'
-                                    in
-                                        findIt head
-                                    end) r.Thread a.Head
-                   | Delete r =>
-                     withThread (fn head _ _ =>
-                                    let
-                                        fun findIt ls =
-                                            lsV <- get ls;
-                                            case lsV of
-                                                Nil => return ()
-                                              | Cons (msg, ls') =>
-                                                msgV <- get msg;
-                                                if msgV.When = r.When then
-                                                    lsV' <- get ls';
-                                                    set ls lsV'
-                                                else
-                                                    findIt ls'
-                                    in
-                                        findIt head
-                                    end) r.Thread a.Head);
-
-                loop ()
-        in
-            spawn (loop ())
-        end
+    fun onload a = return ()
 
     fun broadcast f k isPrivate u =
         if isPrivate then

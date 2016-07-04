@@ -61,8 +61,7 @@ functor Make(M : sig
               Access : access,
               Head : source posts,
               Tail : source (source posts),
-              NewPost : source (option editing),
-              Channel : channel action}
+              NewPost : source (option editing)}
 
     val create =
         acc <- access;
@@ -80,10 +79,6 @@ functor Make(M : sig
                                 tail posts;
             tail <- source tail;
 
-            ch <- channel;
-            dml (INSERT INTO listeners(Channel)
-                 VALUES ({[ch]}));
-
             title <- @Widget.configure title;
             body <- @Widget.configure body;
             newPost <- source None;
@@ -93,63 +88,9 @@ functor Make(M : sig
                     Access = acc,
                     Head = head,
                     Tail = tail,
-                    NewPost = newPost,
-                    Channel = ch}
+                    NewPost = newPost}
 
-    fun onload a =
-        let
-            fun loop () =
-                act <- recv a.Channel;
-                (case act of
-                     Add p =>
-                     tl <- get a.Tail;
-                     tl' <- source Nil;
-                     set a.Tail tl';
-                     p <- source p;
-                     mode <- source Hidden;
-                     cell <- return (Cons ({Post = p, Mode = mode}, tl'));
-                     set tl cell;
-
-                     hd <- get a.Head;
-                     (case hd of
-                          Nil => set a.Head cell
-                        | _ => return ())
-                   | Delete tm =>
-                     let
-                         fun del ps =
-                             v <- get ps;
-                             case v of
-                                 Nil => return ()
-                               | Cons (r, ps') =>
-                                 p <- get r.Post;
-                                 if p.When = tm then
-                                     v <- get ps';
-                                     set ps v
-                                 else
-                                     del ps'
-                     in
-                         del a.Head
-                     end
-                   | Modify p =>
-                     let
-                         fun mod ps =
-                             v <- get ps;
-                             case v of
-                                 Nil => return ()
-                               | Cons (r, ps') =>
-                                 p' <- get r.Post;
-                                 if p'.When = p.When then
-                                     set r.Post p;
-                                     set r.Mode Hidden
-                                 else
-                                     mod ps'
-                     in
-                         mod a.Head
-                     end);
-                loop ()
-        in
-            spawn (loop ())
-        end
+    fun onload a = return ()
 
     fun mayAdd acc =
         case acc of
@@ -178,8 +119,6 @@ functor Make(M : sig
             p <- return (p ++ {Poster = u, When = tm});
             dml (INSERT INTO post(Poster, When, Title, Body)
                  VALUES ({[u]}, {[tm]}, {[p.Title]}, {[p.Body]}));
-            queryI1 (SELECT listeners.Channel FROM listeners)
-            (fn {Channel = ch} => send ch (Add p));
 
             onNewPost {Title = p.Title, Body = p.Body, Poster = u}
 
@@ -192,9 +131,7 @@ functor Make(M : sig
             error <xml>Access denied</xml>
         else
             dml (DELETE FROM post
-                 WHERE When = {[tm]});
-            queryI1 (SELECT listeners.Channel FROM listeners)
-            (fn {Channel = ch} => send ch (Delete tm))
+                 WHERE When = {[tm]})
 
     fun modify p =
         currentUser <- oneRowE1 (SELECT (post.Poster)
@@ -206,9 +143,7 @@ functor Make(M : sig
         else
             dml (UPDATE post
                  SET Title = {[p.Title]}, Body = {[p.Body]}
-                 WHERE When = {[p.When]});
-            queryI1 (SELECT listeners.Channel FROM listeners)
-            (fn {Channel = ch} => send ch (Modify p))
+                 WHERE When = {[p.When]})
 
     fun render' ctx a ps = <xml>
       <dyn signal={v <- signal ps;
