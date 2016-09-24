@@ -205,7 +205,7 @@ functor Make(M : THEME) = struct
           </body>
         </xml>
 
-    fun tabbedStatic [ts] (fl : folder ts) titl (ts : $(mapU (string * url) ts)) bod =
+    fun tabbedStatic [ts] (fl : folder ts) titl (ts : $(mapU (string * bool * url) ts)) bod =
         nid <- fresh;
 
         return <xml>
@@ -234,9 +234,12 @@ functor Make(M : THEME) = struct
                 </div>
                 <div id={nid} class="collapse navbar-collapse">
                   <ul class="bs3-nav navbar-nav">
-                    {@mapUX [string * url] [body]
-                     (fn [nm ::_] [r ::_] [[nm] ~ r] (labl, url) => <xml>
-                       <li><a href={url}>{[labl]}</a></li>
+                    {@mapUX_rev [string * bool * url] [body]
+                     (fn [nm ::_] [r ::_] [[nm] ~ r] (labl, ct, url) => <xml>
+                       <li class={if ct then
+                                      bs3_active
+                                  else
+                                      null}><a href={url}>{[labl]}</a></li>
                      </xml>)
                      fl ts}
                   </ul>

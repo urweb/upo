@@ -50,7 +50,10 @@ functor Make(M : sig
     open M
     open Ui.Make(Theme)
 
-    fun index (which : variant (map (fn _ => unit) tables)) =
+    type tag = variant (map (fn _ => unit) tables)
+    val eq_tag : eq tag = @Variant.eqU (@@Folder.mp [fn _ => ()] [_] fl)
+
+    fun index (which : tag) =
         let
             fun titleOf v =
                 @Variant.destrR [fn _ => unit] [t1]
@@ -58,9 +61,9 @@ functor Make(M : sig
                  fl v t
         in
             @@tabbedStatic [map (fn _ => ()) tables] (@Folder.mp fl)
-              (title ^ " - " ^ titleOf which)
+              title
               (@@Variant.mp [map (fn _ => ()) tables] [_] (@Folder.mp fl)
-                 (fn v => (titleOf v, url (index v))))
+                 (fn v => (titleOf v, v = which, url (index v))))
               <xml>Nothing here yet</xml>
         end
 
