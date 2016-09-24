@@ -76,6 +76,13 @@ functor Make(M : THEME) : sig
                  -> $(map (fn a => option string * t a) ts)    (* content *)
                  -> transaction page
     (* Tabs labeled with [None] are hidden in this rendering. *)
+
+    (* Less dynamic version of [tabbed] *)
+    val tabbedStatic : ts ::: {Unit} -> folder ts
+                       -> string
+                       -> $(mapU (string * url) ts)
+                       -> xbody
+                       -> transaction page
 end
 
 (* Create an HTML button that opens a modal dialog with the content

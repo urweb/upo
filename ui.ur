@@ -204,6 +204,51 @@ functor Make(M : THEME) = struct
             </div>
           </body>
         </xml>
+
+    fun tabbedStatic [ts] (fl : folder ts) titl (ts : $(mapU (string * url) ts)) bod =
+        nid <- fresh;
+
+        return <xml>
+          <head>
+            <title>{[titl]}</title>
+            {@mapUX [url] [_]
+              (fn [nm ::_] [rest ::_] [_~_] url =>
+                  <xml><link rel="stylesheet" href={url}/></xml>)
+              M.fl M.css}
+            {case M.icon of
+                 None => <xml></xml>
+               | Some icon => <xml><link rel="shortcut icon" href={icon} type="image/vnd.microsoft.icon"></link></xml>}
+          </head>
+
+          <body>
+            <nav class="navbar navbar-inverse navbar-fixed-top">
+              <div class="container">
+                <div class="navbar-header">
+                  <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false" aria-controls="navbar">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                  </button>
+                  <a class="navbar-brand">{[titl]}</a>
+                </div>
+                <div id={nid} class="collapse navbar-collapse">
+                  <ul class="bs3-nav navbar-nav">
+                    {@mapUX [string * url] [body]
+                     (fn [nm ::_] [r ::_] [[nm] ~ r] (labl, url) => <xml>
+                       <li><a href={url}>{[labl]}</a></li>
+                     </xml>)
+                     fl ts}
+                  </ul>
+                </div>
+              </div>
+            </nav>
+
+            <div class="container-fluid">
+              {bod}
+            </div>
+          </body>
+        </xml>
 end
 
 fun modalButton ctx cls bod onclick = <xml>

@@ -67,3 +67,19 @@ fun fromString [r ::: {Unit}] (fl : folder r) (ss : $(mapU string r)) (s : strin
         else
             acc [[nm] ++ r'])
     (fn [r' ::_] [[] ~ r'] => None) fl ss [[]] !
+
+fun mp [r ::: {Unit}] [t ::: Type] (fl : folder r) (f : variant (mapU {} r) -> t) : $(mapU t r) =
+    @Top.fold [fn r => r' :: {Unit} -> [r ~ r'] => (variant (mapU {} (r ++ r')) -> t) -> $(mapU t r)]
+    (fn [nm :: Name] [u ::_] [r ::_] [[nm] ~ r]
+                     (acc : r' :: {Unit} -> [r ~ r'] => (variant (mapU {} (r ++ r')) -> t) -> $(mapU t r))
+                     [r' ::_] [[nm] ++ r ~ r'] f' =>
+        {nm = f' (make [nm] {})} ++ acc [[nm] ++ r'] f')
+    (fn [r' ::_] [[] ~ r'] _ => {}) fl [[]] ! f
+
+fun destrR [K] [f :: K -> Type] [fr :: K -> Type] [t ::: Type]
+    (f : p :: K -> f p -> fr p -> t)
+    [r ::: {K}] (fl : folder r) (v : variant (map f r)) (r : $(map fr r)) : t =
+    match v
+    (@Top.mp [fr] [fn p => f p -> t]
+     (fn [p] (m : fr p) (v : f p) => f [p] v m)
+     fl r)
