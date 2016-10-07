@@ -21,13 +21,24 @@ table hasPower : { Frog : string,
 
 open Explorer
 open Make(struct
-              structure Theme = Default
+              structure Theme = Cached
 
               val title = "Froggyland"
               val t = none
-                          |> one [#Frog] [#Nickname] frog "Frogs"
-                          |> one [#Swamp] [#SwampName] swamp "Swamps"
-                          |> one [#SuperPower] [#Power] superPower "Powers"
+                      |> one [#Frog] [#Nickname] frog "Frogs"
+                      |> one [#Swamp] [#SwampName] swamp "Swamps"
+                      |> one [#SuperPower] [#Power] superPower "Powers"
+
+                      |> text [#Frog] [#Nickname] "Nickname"
+                      |> text [#Frog] [#Age] "Age"
+                      |> text [#Frog] [#IsBullfrog] "Bullfrog?"
+                      |> text [#Frog] [#Swamp] "Swamp"
+
+                      |> text [#Swamp] [#SwampName] "Name"
+                      |> text [#Swamp] [#SmellinessLevel] "Smelliness Level"
+
+                      |> text [#SuperPower] [#Power] "Power"
+                      |> text [#SuperPower] [#Description] "Description"
           end)
 
 val main = index (make [#Frog] ())

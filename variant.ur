@@ -84,5 +84,26 @@ fun destrR [K] [f :: K -> Type] [fr :: K -> Type] [t ::: Type]
      (fn [p] (m : fr p) (v : f p) => f [p] v m)
      fl r)
 
+fun destrR' [K] [f :: K -> Type] [fr :: K -> Type] [t ::: Type] [r ::: {K}]
+    (f : p :: K -> (tf :: (K -> Type) -> tf p -> variant (map tf r)) -> f p -> fr p -> t)
+    (fl : folder r) (v : variant (map f r)) (r : $(map fr r)) : t =
+    match v
+    (@Top.fold [fn r0 => r' :: {K} -> [r0 ~ r'] =>
+                   (tf :: ({K} -> Type) -> tf (r0 ++ r') -> tf r)
+                   -> $(map fr r0)
+                   -> $(map (fn p => f p -> t) r0)]
+      (fn [nm ::_] [p ::_] [r0 ::_] [[nm] ~ r0]
+          (acc : r' :: {K} -> [r0 ~ r'] =>
+           (tf :: ({K} -> Type) -> tf (r0 ++ r') -> tf r)
+           -> $(map fr r0)
+           -> $(map (fn p => f p -> t) r0))
+          [r' ::_] [[nm = p] ++ r0 ~ r']
+          (cast : tf :: ({K} -> Type) -> tf ([nm = p] ++ r0 ++ r') -> tf r)
+          (vs : $(map fr ([nm = p] ++ r0))) =>
+          acc [[nm = p] ++ r'] cast (vs -- nm)
+              ++ {nm = fn x => f [p] (fn [tf ::_] (v : tf p) => cast [fn ps => variant (map tf ps)] (make [nm] v)) x vs.nm})
+      (fn [r' ::_] [[] ~ r'] _ _ => {}) fl [[]] !
+      (fn [tf ::_] x => x) r)
+
 fun eqU [ts ::: {Unit}] (fl : folder ts) : eq (variant (map (fn _ => unit) ts)) =
     @@eq [map (fn _ => unit) ts] (@map0 [fn _ => eq unit] (fn [t ::_] => mkEq (fn () () => True)) fl) (@Folder.mp fl)
