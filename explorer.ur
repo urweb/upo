@@ -4,6 +4,7 @@ type t1 (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type)) =
      {Title : string,
       Table : sql_table p.2 p.4,
       Insert : $p.2 -> transaction unit,
+      List : transaction (list p.1),
       KeyIs : nm :: Name -> p.1 -> sql_exp [nm = p.2] [] [] bool,
       Show : show p.1,
       Config : transaction p.5,
@@ -29,6 +30,10 @@ fun one [tname :: Name] [key :: Name] [keyT ::: Type] [rest ::: {Type}] [cstrs :
     {tname = {Title = title,
               Table = tab,
               Insert = @@Sql.easy_insert [[key = _] ++ rest] [_] ({key = inj} ++ injs) fl tab,
+              List = List.mapQuery (SELECT tab.{key}
+                                    FROM tab
+                                    ORDER BY tab.{key})
+                                   (fn {Tab = r} => r.key),
               KeyIs = fn [nm ::_] v => (WHERE {{nm}}.{key} = {[v]}),
               Show = sh,
               Config = return (),
@@ -47,6 +52,10 @@ fun two [tname :: Name] [key1 :: Name] [key2 :: Name] [keyT1 ::: Type] [keyT2 ::
     {tname = {Title = title,
               Table = tab,
               Insert = @@Sql.easy_insert [[key1 = _, key2 = _] ++ rest] [_] ({key1 = inj1, key2 = inj2} ++ injs) fl tab,
+              List = List.mapQuery (SELECT tab.{key1}, tab.{key2}
+                                    FROM tab
+                                    ORDER BY tab.{key1}, tab.{key2})
+                                   (fn {Tab = r} => (r.key1, r.key2)),
               KeyIs = fn [nm ::_] (v1, v2) => (WHERE {{nm}}.{key1} = {[v1]}
                                                  AND {{nm}}.{key2} = {[v2]}),
               Show = sh,
@@ -122,9 +131,18 @@ functor Make(M : sig
              (fn v => (titleOf v, @eq eq_tag v which, url (f v))))
 
     fun index (which : tag) =
-        tabbed index which <xml>
-          <a class="btn btn-primary" link={create which}>New Entry</a>
-        </xml>
+        bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 (dupF p)] [transaction xbody] [tables]
+          (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type) -> Type) -> tf p -> variant (map tf tables)) () r =>
+              rows <- r.List;
+              return <xml>
+                <table class="bs3-table table-striped">
+                  {List.mapX (fn k => <xml><tr><td>{[@show r.Show k]}</td></tr></xml>) rows}
+                </table>
+
+                <a class="btn btn-primary" link={create which}>New Entry</a>
+              </xml>)
+          fl which t;
+        tabbed index which bod
 
     and create (which : tag) =
         bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 (dupF p)] [transaction xbody] [tables]
