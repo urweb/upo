@@ -8,7 +8,7 @@ type t1 (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type)) =
       KeyIs : nm :: Name -> p.1 -> sql_exp [nm = p.2] [] [] bool,
       Show : show p.1,
       Config : transaction p.5,
-      Render : p.5 -> $p.2 -> xtable,
+      Render : $p.2 -> xtable,
       FreshWidgets : transaction p.6,
       RenderWidgets : p.5 -> p.6 -> xbody,
       ReadWidgets : p.6 -> signal $p.3}
@@ -37,7 +37,7 @@ fun one [tname :: Name] [key :: Name] [keyT ::: Type] [rest ::: {Type}] [cstrs :
               KeyIs = fn [nm ::_] v => (WHERE {{nm}}.{key} = {[v]}),
               Show = sh,
               Config = return (),
-              Render = fn () _ => <xml></xml>,
+              Render = fn _ => <xml></xml>,
               FreshWidgets = return (),
               RenderWidgets = fn () () => <xml></xml>,
               ReadWidgets = fn () => return ()}} ++ old
@@ -60,7 +60,7 @@ fun two [tname :: Name] [key1 :: Name] [key2 :: Name] [keyT1 ::: Type] [keyT2 ::
                                                  AND {{nm}}.{key2} = {[v2]}),
               Show = sh,
               Config = return (),
-              Render = fn () _ => <xml></xml>,
+              Render = fn _ => <xml></xml>,
               FreshWidgets = return (),
               RenderWidgets = fn () () => <xml></xml>,
               ReadWidgets = fn () => return ()}} ++ old
@@ -77,9 +77,9 @@ fun text [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type]
     old -- tname
         ++ {tname = old.tname
                         -- #Render -- #FreshWidgets -- #RenderWidgets -- #ReadWidgets
-                        ++ {Render = fn cfg r =>
+                        ++ {Render = fn r =>
                                         <xml>
-                                          {old.tname.Render cfg r}
+                                          {old.tname.Render r}
                                           <tr>
                                             <th>{[lab]}</th>
                                             <td>{[r.col]}</td>
@@ -136,7 +136,7 @@ functor Make(M : sig
               rows <- r.List;
               return <xml>
                 <table class="bs3-table table-striped">
-                  {List.mapX (fn k => <xml><tr><td>{[@show r.Show k]}</td></tr></xml>) rows}
+                  {List.mapX (fn k => <xml><tr><td><a link={entry k}>{[@show r.Show k]}</a></td></tr></xml>) rows}
                 </table>
 
                 <a class="btn btn-primary" link={create which}>New Entry</a>
@@ -168,5 +168,23 @@ functor Make(M : sig
           (fn [p ::_] (vs : $p.2) r =>
               r.Insert vs)
           [dup] (@Folder.mp fl) which t
+
+    and entry (which : variant (map (fn p => p.1) dup)) =
+        bod <- @@Variant.destrR [fn p => p.1] [t1] [transaction xtable]
+          (fn [p ::_] (k : p.1) r =>
+              let
+                  val tab = r.Table
+              in
+                  queryX1 (SELECT *
+                           FROM tab
+                           WHERE {r.KeyIs [#Tab] k})
+                          r.Render
+              end)
+          [dup] (@Folder.mp fl) which t;
+        tabbed index (@Variant.erase (@Folder.mp fl) which) <xml>
+          <table class="bs3-table table-striped">
+            {bod}
+          </table>
+        </xml>
 
 end
