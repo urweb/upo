@@ -136,7 +136,7 @@ functor Make(M : sig
               rows <- r.List;
               return <xml>
                 <table class="bs3-table table-striped">
-                  {List.mapX (fn k => <xml><tr><td><a link={entry k}>{[@show r.Show k]}</a></td></tr></xml>) rows}
+                  {List.mapX (fn k => <xml><tr><td><a link={entry (maker [fn p => p.1] k)}>{[@show r.Show k]}</a></td></tr></xml>) rows}
                 </table>
 
                 <a class="btn btn-primary" link={create which}>New Entry</a>
@@ -171,7 +171,7 @@ functor Make(M : sig
 
     and entry (which : variant (map (fn p => p.1) dup)) =
         bod <- @@Variant.destrR [fn p => p.1] [t1] [transaction xtable]
-          (fn [p ::_] (k : p.1) r =>
+          (fn [p ::_] (k : p.1) (r : t1 p) =>
               let
                   val tab = r.Table
               in
