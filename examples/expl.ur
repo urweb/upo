@@ -21,7 +21,7 @@ table hasPower : { Frog : string,
 
 open Explorer
 open Make(struct
-              structure Theme = Cached
+              structure Theme = Default
 
               val title = "Froggyland"
               val t = none

@@ -1,6 +1,6 @@
 database dbname=upotest
 sql upo.sql
-library ../cached
+library ../default
 rewrite url Expl/*
 
 expl

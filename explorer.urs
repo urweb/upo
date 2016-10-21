@@ -19,7 +19,7 @@ val one : tname :: Name -> key :: Name -> keyT ::: Type -> rest ::: {Type} -> cs
           -> old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}
           -> [[key] ~ rest] => [[tname] ~ old] => sql_table ([key = keyT] ++ rest) cstrs -> string
           -> show keyT -> sql_injectable keyT -> $(map sql_injectable rest)
-          -> folder ([key = keyT] ++ rest)
+          -> folder rest
           -> t old
           -> t ([tname = (keyT, [key = keyT] ++ rest, [], cstrs, base1, base2)] ++ old)
 
@@ -29,7 +29,7 @@ val two : tname :: Name -> key1 :: Name -> key2 :: Name -> keyT1 ::: Type -> key
           => sql_table ([key1 = keyT1, key2 = keyT2] ++ rest) cstrs -> string
           -> show (keyT1 * keyT2) -> sql_injectable keyT1 -> sql_injectable keyT2
           -> $(map sql_injectable rest)
-          -> folder ([key1 = keyT1, key2 = keyT2] ++ rest)
+          -> folder rest
           -> t old
           -> t ([tname = (keyT1 * keyT2, [key1 = keyT1, key2 = keyT2] ++ rest, [], cstrs, base1, base2)] ++ old)
 
