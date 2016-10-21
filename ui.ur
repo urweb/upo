@@ -207,6 +207,8 @@ functor Make(M : THEME) = struct
 
     fun tabbedStatic [ts] (fl : folder ts) titl (ts : $(mapU (string * bool * url) ts)) bod =
         nid <- fresh;
+        mid <- fresh;
+        ms <- source <xml/>;
 
         return <xml>
           <head>
@@ -221,6 +223,10 @@ functor Make(M : THEME) = struct
           </head>
 
           <body>
+            <div class="modal" id={mid}>
+              <dyn signal={signal ms}/>
+            </div>
+
             <nav class="navbar navbar-inverse navbar-fixed-top">
               <div class="container">
                 <div class="navbar-header">
@@ -248,7 +254,7 @@ functor Make(M : THEME) = struct
             </nav>
 
             <div class="container-fluid">
-              {bod}
+              {bod {ModalId = mid, ModalSpot = ms}}
             </div>
           </body>
         </xml>

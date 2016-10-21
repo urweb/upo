@@ -81,7 +81,7 @@ functor Make(M : THEME) : sig
     val tabbedStatic : ts ::: {Unit} -> folder ts
                        -> string
                        -> $(mapU (string * bool (* selected? *) * url) ts)
-                       -> xbody
+                       -> (context -> xbody)
                        -> transaction page
 end
 

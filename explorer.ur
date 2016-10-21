@@ -156,7 +156,7 @@ functor Make(M : sig
                 <a class="btn btn-primary" link={create which}>New Entry</a>
               </xml>)
           fl which t;
-        tabbed index which bod
+        tabbed index which (fn _ => bod)
 
     and create (which : tag) =
         bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 (dupF p)] [transaction xbody] [tables]
@@ -175,7 +175,7 @@ functor Make(M : sig
                                     redirect (url (index which))}/>
               </xml>)
           fl which t;
-        tabbed create which bod
+        tabbed create which (fn _ => bod)
 
     and doCreate (which : variant (map (fn p => $p.2) dup)) =
         @@Variant.destrR [fn p => $p.2] [t1] [transaction unit]
@@ -184,6 +184,7 @@ functor Make(M : sig
           [dup] (@Folder.mp fl) which t
 
     and entry (which : variant (map (fn p => p.1) tables)) =
+        (ctx : source (option Ui.context)) <- source None;
         bod <- @@Variant.destrR' [fn p => p.1] [fn p => t1 (dupF p)] [transaction xbody] [tables]
           (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type) -> Type) -> tf p -> variant (map tf tables)) (k : p.1) (r : t1 (dupF p)) =>
               let
@@ -197,16 +198,25 @@ functor Make(M : sig
                   return <xml>
                     <dyn signal={esta <- signal est;
                                  case esta of
-                                     NotEditing row => return <xml>
-                                       <p>
-                                         <button class="btn btn-primary"
-                                                 onclick={fn _ => ws <- r.WidgetsFrom row; set est (Editing (row, ws))}>Edit</button>
-                                         </p>
+                                     NotEditing row =>
+                                     ctx <- signal ctx;
+                                     (case ctx of
+                                         None => return <xml></xml>
+                                       | Some ctx => return <xml>
+                                         <p>
+                                           <button class="btn btn-primary"
+                                                   onclick={fn _ => ws <- r.WidgetsFrom row; set est (Editing (row, ws))}>Edit</button>
+                                           {Ui.modalButton ctx (CLASS "btn") <xml>Delete</xml>
+                                                           (return (Ui.modal (rpc (delete which); redirect (url (index (maker [fn _ => unit] ()))))
+                                                                             <xml>Are you sure you want to delete this entry?</xml>
+                                                                             <xml></xml>
+                                                                             <xml>Yes, delete it.</xml>))}
+                                           </p>
 
-                                       <table class="bs3-table table-striped">
-                                         {r.Render row}
-                                       </table>
-                                    </xml>
+                                         <table class="bs3-table table-striped">
+                                           {r.Render row}
+                                         </table>
+                                      </xml>)
                                    | Editing (row, ws) => return <xml>
                                      <p>
                                        <button class="btn btn-primary"
@@ -224,12 +234,26 @@ functor Make(M : sig
               end)
           fl which t;
 
-        tabbed index (@Variant.erase (@Folder.mp fl) which) bod
+        tabbed index (@Variant.erase (@Folder.mp fl) which) (fn ctxv => <xml>
+          <active code={set ctx (Some ctxv); return <xml/>}/>
+          {bod}
+        </xml>)
 
     and save (which : variant (map (fn p => $p.2) tables)) =
         @@Variant.destrR [fn p => $p.2] [fn p => t1 (dupF p)] [transaction unit]
           (fn [p ::_] (vs : $p.2) r =>
               r.Update vs)
+          [tables] fl which t
+
+    and delete (which : variant (map (fn p => p.1) tables)) =
+        @@Variant.destrR [fn p => p.1] [fn p => t1 (dupF p)] [transaction unit]
+          (fn [p ::_] (k : p.1) (r : t1 (dupF p)) =>
+              let
+                  val tab = r.Table
+              in
+                  dml (DELETE FROM tab
+                       WHERE {r.KeyIs [#T] k})
+              end)
           [tables] fl which t
 
 end
