@@ -46,6 +46,27 @@ val text : tname :: Name -> key ::: Type -> col :: Name -> colT ::: Type
            -> t ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2)] ++ old)
            -> t ([tname = (key, [col = colT] ++ cols, [col = colT] ++ colsDone, cstrs, text1 impl1, text2 impl2)] ++ old)
 
+con foreign1 :: Type -> Type -> Type
+con foreign2 :: Type -> Type -> Type
+
+val foreign : tname :: Name -> key ::: Type -> col :: Name -> colT ::: Type
+              -> cols ::: {Type} -> colsDone ::: {Type} -> cstrs ::: {{Unit}}
+              -> impl1 ::: Type -> impl2 ::: Type
+              -> ftname :: Name -> fkey ::: Type -> fcol :: Name
+              -> fcols ::: {Type} -> fcolsDone ::: {Type} -> fcstrs ::: {{Unit}}
+              -> fimpl1 ::: Type -> fimpl2 ::: Type
+              -> old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}
+              -> [[col] ~ cols] => [[col] ~ colsDone] => [[tname] ~ old]
+              => [[fcol] ~ fcols] => [[fcol] ~ fcolsDone] => [[ftname] ~ old]
+              => [[tname] ~ [ftname]]
+              => string
+              -> show colT
+              -> read colT
+              -> t ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2),
+                     ftname = (fkey, [fcol = colT] ++ fcols, fcolsDone, fcstrs, fimpl1, fimpl2)] ++ old)
+              -> t ([tname = (key, [col = colT] ++ cols, [col = colT] ++ colsDone, cstrs, foreign1 impl1 colT, foreign2 impl2 colT),
+                     ftname = (fkey, [fcol = colT] ++ fcols, fcolsDone, fcstrs, fimpl1, fimpl2)] ++ old)
+
 functor Make(M : sig
                  structure Theme : Ui.THEME
 

@@ -112,6 +112,67 @@ fun text [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type]
                                              wsv <- old.tname.ReadWidgets ws;
                                              return ({col = readError v} ++ wsv)}}
 
+type foreign1 t colT = list colT * t
+type foreign2 t colT = source string * t
+
+fun foreign [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type]
+    [cols ::: {Type}] [colsDone ::: {Type}] [cstrs ::: {{Unit}}]
+    [impl1 ::: Type] [impl2 ::: Type]
+    [ftname :: Name] [fkey ::: Type] [fcol :: Name]
+    [fcols ::: {Type}] [fcolsDone ::: {Type}] [fcstrs ::: {{Unit}}]
+    [fimpl1 ::: Type] [fimpl2 ::: Type]
+    [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}]
+    [[col] ~ cols] [[col] ~ colsDone] [[tname] ~ old]
+    [[fcol] ~ fcols] [[fcol] ~ fcolsDone] [[ftname] ~ old]
+    [[tname] ~ [ftname]]
+    (lab : string) (_ : show colT) (_ : read colT)
+    (old : t ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2),
+               ftname = (fkey, [fcol = colT] ++ fcols, fcolsDone, fcstrs, fimpl1, fimpl2)] ++ old)) =
+    old -- tname
+        ++ {tname = old.tname
+                        -- #Config -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
+                        ++ {Config =
+                            let
+                                val tab = old.ftname.Table
+                            in
+                                keys <- List.mapQuery (SELECT DISTINCT tab.{fcol}
+                                                       FROM tab
+                                                       ORDER BY tab.{fcol})
+                                                      (fn r => r.Tab.fcol);
+                                cfg <- old.tname.Config;
+                                return (keys, cfg)
+                            end,
+                            Render = fn r =>
+                                        <xml>
+                                          {old.tname.Render r}
+                                          <tr>
+                                            <th>{[lab]}</th>
+                                            <td>{[r.col]}</td>
+                                          </tr>
+                                        </xml>,
+                            FreshWidgets =
+                               s <- source "";
+                               ws <- old.tname.FreshWidgets;
+                               return (s, ws),
+                            WidgetsFrom = fn r =>
+                               s <- source (show r.col);
+                               ws <- old.tname.WidgetsFrom r;
+                               return (s, ws),
+                            RenderWidgets = fn (cfg1, cfg2) (s, ws) =>
+                                               <xml>
+                                                 {old.tname.RenderWidgets cfg2 ws}
+                                                 <div class="form-group">
+                                                   <label class="control-label">{[lab]}</label>
+                                                   <cselect class="form-control" source={s}>
+                                                     {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
+                                                   </cselect>
+                                                 </div>
+                                               </xml>,
+                            ReadWidgets = fn (s, ws) =>
+                                             v <- signal s;
+                                             wsv <- old.tname.ReadWidgets ws;
+                                             return ({col = readError v} ++ wsv)}}
+
 functor Make(M : sig
                  structure Theme : Ui.THEME
 
@@ -221,7 +282,9 @@ functor Make(M : sig
                                      <p>
                                        <button class="btn btn-primary"
                                                onclick={fn _ =>
+                                                           debug "Ahoy";
                                                            row' <- current (r.ReadWidgets ws);
+                                                           debug "Ahi";
                                                            rpc (save (maker [fn p => $p.2] row'));
                                                            set est (NotEditing row')}>Save</button>
                                        <button class="btn"
