@@ -18,3 +18,16 @@ val weaken : r1 ::: {Type} -> r2 ::: {Type} -> [r1 ~ r2] => folder r1
              -> variant r1 -> variant (r1 ++ r2)
 
 val fromString : r ::: {Unit} -> folder r -> $(mapU string r) -> string -> option (variant (mapU unit r))
+
+val mp : r ::: {Unit} -> t ::: Type -> folder r -> (variant (mapU {} r) -> t) -> $(mapU t r)
+
+val destrR : K --> f :: (K -> Type) -> fr :: (K -> Type) -> t ::: Type
+             -> (p :: K -> f p -> fr p -> t)
+             -> r ::: {K} -> folder r -> variant (map f r) -> $(map fr r) -> t
+
+val destrR' : K --> f :: (K -> Type) -> fr :: (K -> Type) -> t ::: Type
+              -> r ::: {K}
+              -> (p :: K -> (tf :: (K -> Type) -> tf p -> variant (map tf r)) -> f p -> fr p -> t)
+              -> folder r -> variant (map f r) -> $(map fr r) -> t
+
+val eqU : ts ::: {Unit} -> folder ts -> eq (variant (map (fn _ => unit) ts))
