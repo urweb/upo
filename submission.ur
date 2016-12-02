@@ -207,7 +207,7 @@ functor Make(M : sig
                            FROM submission
                            WHERE {@@Sql.easy_where [#Submission] [key] [_] [_] [_] [_] ! ! keyInj' keyFl k}
                              AND submission.{ukey} = {[u]}
-                           ORDER BY submission.When);
+                           ORDER BY submission.When DESC);
             ls <- source ls;
 
             ch <- channel;
@@ -257,7 +257,7 @@ functor Make(M : sig
             ls <- queryL1 (SELECT submission.Filename, submission.When, submission.{ukey}
                            FROM submission
                            WHERE {@@Sql.easy_where [#Submission] [key] [_] [_] [_] [_] ! ! keyInj' keyFl k}
-                           ORDER BY submission.When);
+                           ORDER BY submission.When DESC);
             ls <- source ls;
 
             ch <- channel;
@@ -302,7 +302,7 @@ functor Make(M : sig
         val create =
             queryL1 (SELECT submission.{{key}}, submission.Filename, submission.When, submission.{ukey}
                      FROM submission
-                     ORDER BY {{{@Sql.order_by (@Folder.concat ! keyFl _) (@Sql.some_fields [#Submission] [key ++ [Filename = _]] ! ! (@Folder.concat ! keyFl _)) sql_desc}}})
+                     ORDER BY {{{@Sql.order_by (@Folder.concat ! keyFl _) (@Sql.some_fields [#Submission] [key ++ [Filename = _]] ! ! (@Folder.concat ! keyFl _)) sql_asc}}})
 
         fun onload _ = return ()
 

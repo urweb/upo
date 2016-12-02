@@ -251,7 +251,7 @@ functor Make(M : sig
                                    FROM event
                                    ORDER BY {{{@Sql.order_by eventKeyFl
                                      (@Sql.some_fields [#Event] [eventKey] ! ! eventKeyFl)
-                                     sql_desc}}});
+                                     sql_asc}}});
                 homes <- queryL (SELECT homeRsvp.*, home.{{homeData}}, home.{{homeSensitiveData}}
                                  FROM homeRsvp
                                    JOIN home ON {@@Sql.easy_join [#HomeRsvp] [#Home] [homeKey]
@@ -260,7 +260,7 @@ functor Make(M : sig
                                  ORDER BY {{{@Sql.order_by (@Folder.concat ! eventKeyFl homeKeyFl)
                                     (@Sql.some_fields [#HomeRsvp] [eventKey ++ homeKey] ! !
                                      (@Folder.concat ! eventKeyFl homeKeyFl))
-                                    sql_desc}}});
+                                    sql_asc}}});
                 aways <- queryL (SELECT awayRsvp.*, away.{{awayData}}, away.{{awaySensitiveData}}
                                  FROM awayRsvp
                                    JOIN away ON {@@Sql.easy_join [#AwayRsvp] [#Away] [awayKey]
@@ -269,7 +269,7 @@ functor Make(M : sig
                                  ORDER BY {{{@Sql.order_by (@Folder.concat ! eventKeyFl awayKeyFl)
                                     (@Sql.some_fields [#AwayRsvp] [eventKey ++ awayKey] ! !
                                      (@Folder.concat ! eventKeyFl awayKeyFl))
-                                    sql_desc}}});
+                                    sql_asc}}});
                 events <- List.mapM (fn r =>
                                         homes <- source r.Home;
                                         aways <- source r.Away;
@@ -340,7 +340,7 @@ functor Make(M : sig
                                                                 <xml><th>{[label]}</th></xml>)
                                                             awayShownDataFl awayShownDataLabels}
                                                         </tr>
-                                                                               
+
                                                         {List.mapX (fn aw => <xml><tr>
                                                           <td>{[aw.Away]}</td>
                                                           {@mapX2 [show] [ident] [tr]
@@ -364,7 +364,7 @@ functor Make(M : sig
                                                                 <xml><th>{[label]}</th></xml>)
                                                             homeShownDataFl homeShownDataLabels}
                                                         </tr>
-                                                                               
+
                                                         {List.mapX (fn ho => <xml><tr>
                                                           <td>{[ho.Home]}</td>
                                                           {@mapX2 [show] [ident] [tr]
