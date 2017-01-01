@@ -182,7 +182,7 @@ functor Make(M : sig
                          (@Folder.cons [#Grade] [_] ! fl) specialCase (key ++ {Grade = serialize g}));
         queryI1 (SELECT * FROM listeners)
                 (fn r => send r.Channel (SpecialCase (key, g)))
-        
+
     fun render' allRanges lastSm ranges (keys : list entry) =
         case keys of
             [] => <xml></xml>
@@ -408,7 +408,7 @@ functor Make(M : sig
     fun grades sms =
         ranges <- queryL1 (SELECT *
                            FROM ranges
-                           ORDER BY ranges.Min DESC, ranges.Max DESC);
+                           ORDER BY ranges.Min ASC, ranges.Max ASC);
 
         List.mapQuery ({{{sql_query1 [[]]
                         {Distinct = False,

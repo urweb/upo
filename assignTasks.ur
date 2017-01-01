@@ -35,7 +35,7 @@ functor Make(M : sig
                      Having = (WHERE TRUE),
                      SelectFields = sql_subset [[T = (assignable, _), Assignments = ([assigned = _], _)]],
                      SelectExps = {}}}}}
-                 ORDER BY {{{@Sql.order_by assignableFl (@Sql.some_fields [#T] [assignable] ! ! assignableFl) sql_desc}}})
+                 ORDER BY {{{@Sql.order_by assignableFl (@Sql.some_fields [#T] [assignable] ! ! assignableFl) sql_asc}}})
 
     val inj = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim assignableFl inj_assignable
 
@@ -169,7 +169,7 @@ functor Make(M : sig
                                                                 </xml>) a.Eligible}
 
                                                                 <button class="btn btn-default"
-                                                                        onclick={fn _ => 
+                                                                        onclick={fn _ =>
                                                                                     us <- List.foldlM (fn (u, sel) ls =>
                                                                                                           b <- get sel;
                                                                                                           return (if b then u :: ls else ls)) [] ls;

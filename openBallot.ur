@@ -156,7 +156,7 @@ functor Make(M : sig
                              ORDER BY {{{@Sql.order_by (@Folder.concat ! choiceKeyFl (@Folder.mp voterKeyFl))
                                           (@Sql.some_fields [#Choice] [choiceKey] ! ! choiceKeyFl
                                             ++ @Sql.some_fields [#Vote] [map option voterKey] ! ! (@Folder.mp voterKeyFl))
-                                          sql_asc}}});
+                                          sql_desc}}});
 
             choices <- doVotes votes [] None [];
             choices <- source choices;
@@ -383,7 +383,7 @@ functor Make(M : sig
                                               | _ => <xml/>}, with <i>{[count]}</i> vote{case count of
                                                                                              1 => <xml/>
                                                                                            | _ => <xml>s</xml>}:</h3>
-                         
+
                          {List.mapX (fn ch => <xml>{[ch]}<br/></xml>) choices}
                        </xml>}/>
     </xml>

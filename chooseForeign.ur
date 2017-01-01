@@ -53,14 +53,14 @@ functor Make(M : sig
                               ! ! optionsConstInj optionsConstFl optionsConst}
                          ORDER BY {{{@Sql.order_by chosenFl
                             (@Sql.some_fields [#Options] [chosen] ! ! chosenFl)
-                           sql_desc}}});
+                           sql_asc}}});
         prefs <- queryL1 (SELECT choices.{{chosen}}
                           FROM choices
                           WHERE {@@Sql.easy_where [#Choices] [const ++ given] [_] [_] [_] [_]
                               ! ! (constInj ++ givenInj) (@Folder.concat ! constFl givenFl) (const ++ gv)}
                           ORDER BY {{{@Sql.order_by chosenFl
                             (@Sql.some_fields [#Choices] [chosen] ! ! chosenFl)
-                            sql_desc}}});
+                            sql_asc}}});
         prefs <- source prefs;
         toAdd <- source "";
         return {Given = gv, Options = opts, Prefs = prefs, ToAdd = toAdd}

@@ -151,7 +151,7 @@ functor Make(M : sig
                             ORDER BY {{{@Sql.order_by (@Folder.concat ! keyFl (@Folder.mp userFl))
                                          (@Sql.some_fields [#Q] [key] ! ! keyFl
                                            ++ @Sql.some_fields [#Comment] [map option user] ! ! (@Folder.mp userFl))
-                                         sql_desc}}});
+                                         sql_asc}}});
             ents <- setup ents [] None [];
             ents <- source ents;
 

@@ -286,7 +286,7 @@ functor Make(M : sig
                                    <xml/>
                                else <xml>
                                  <hr/>
-          
+
                                  <h2>Add Review</h2>
 
                                  {@mapX3 [fn _ => string] [Widget.t'] [fn p => id * p.2] [body]
@@ -322,7 +322,7 @@ functor Make(M : sig
             queryL1 (SELECT *
                      FROM tab AS T
                      WHERE {e}
-                     ORDER BY T.When)
+                     ORDER BY T.When DESC)
 
         fun onload _ = return ()
 
