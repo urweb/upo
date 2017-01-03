@@ -32,7 +32,7 @@ open Make(struct
                       |> text [#Frog] [#Nickname] "Nickname"
                       |> text [#Frog] [#Age] "Age"
                       |> text [#Frog] [#IsBullfrog] "Bullfrog?"
-                      |> foreign [#Frog] [#Swamp] [#Swamp] [#SwampName] "Swamp"
+                      |> foreign [#Frog] [#Swamp] [#Swamp] [#SwampName] "Swamp" "Frogs"
 
                       |> text [#Swamp] [#SwampName] "Name"
                       |> text [#Swamp] [#SmellinessLevel] "Smelliness Level"
