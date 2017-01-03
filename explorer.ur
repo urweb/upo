@@ -1,6 +1,6 @@
 open Bootstrap3
 
-type t1 (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type)) =
+type t1 (full :: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}) (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type)) =
      {Title : string,
       Table : sql_table p.2 p.4,
       Insert : $p.2 -> transaction unit,
@@ -9,26 +9,27 @@ type t1 (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type)) =
       KeyIs : nm :: Name -> p.1 -> sql_exp [nm = p.2] [] [] bool,
       Show : show p.1,
       Config : transaction p.5,
-      Render : $p.2 -> xtable,
+      Render : (variant (map (fn p => p.1) full) -> string -> xbody) -> $p.2 -> xtable,
       FreshWidgets : transaction p.6,
       WidgetsFrom : $p.2 -> transaction p.6,
       RenderWidgets : p.5 -> p.6 -> xbody,
       ReadWidgets : p.6 -> signal $p.3}
-                                         
-type t (tables :: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}) =
-    $(map t1 tables)
+
+type t (full :: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}) (tables :: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}) =
+    $(map (t1 full) tables)
 
 type base1 = unit
 type base2 = unit
 
-val none = {}
+val none [full ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}] = {}
 
-fun one [tname :: Name] [key :: Name] [keyT ::: Type] [rest ::: {Type}] [cstrs ::: {{Unit}}]
+fun one [full ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}]
+        [tname :: Name] [key :: Name] [keyT ::: Type] [rest ::: {Type}] [cstrs ::: {{Unit}}]
         [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}]
         [[key] ~ rest] [[tname] ~ old]
         (tab : sql_table ([key = keyT] ++ rest) cstrs) (title : string)
         (sh : show keyT) (inj : sql_injectable keyT) (injs : $(map sql_injectable rest))
-        (fl : folder rest) (old : t old) =
+        (fl : folder rest) (ofl : folder old) (old : t full old) =
     {tname = {Title = title,
               Table = tab,
               Insert = @@Sql.easy_insert [[key = _] ++ rest] [_] ({key = inj} ++ injs) (@Folder.cons [_] [_] ! fl) tab,
@@ -40,19 +41,20 @@ fun one [tname :: Name] [key :: Name] [keyT ::: Type] [rest ::: {Type}] [cstrs :
               KeyIs = fn [nm ::_] v => (WHERE {{nm}}.{key} = {[v]}),
               Show = sh,
               Config = return (),
-              Render = fn _ => <xml></xml>,
+              Render = fn _ _ => <xml></xml>,
               FreshWidgets = return (),
               WidgetsFrom = fn _ => return (),
               RenderWidgets = fn () () => <xml></xml>,
               ReadWidgets = fn () => return ()}} ++ old
 
-fun two [tname :: Name] [key1 :: Name] [key2 :: Name] [keyT1 ::: Type] [keyT2 ::: Type]
-    [rest ::: {Type}] [cstrs ::: {{Unit}}] [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}]
-    [[key1] ~ [key2]] [[key1, key2] ~ rest] [[tname] ~ old]
-    (tab: sql_table ([key1 = keyT1, key2 = keyT2] ++ rest) cstrs) (title : string)
-    (sh : show (keyT1 * keyT2)) (inj1 : sql_injectable keyT1) (inj2 : sql_injectable keyT2)
-    (injs : $(map sql_injectable rest)) (fl : folder rest)
-    (old : t old) =
+fun two [full ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}]
+        [tname :: Name] [key1 :: Name] [key2 :: Name] [keyT1 ::: Type] [keyT2 ::: Type]
+        [rest ::: {Type}] [cstrs ::: {{Unit}}] [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}]
+        [[key1] ~ [key2]] [[key1, key2] ~ rest] [[tname] ~ old]
+        (tab: sql_table ([key1 = keyT1, key2 = keyT2] ++ rest) cstrs) (title : string)
+        (sh : show (keyT1 * keyT2)) (inj1 : sql_injectable keyT1) (inj2 : sql_injectable keyT2)
+        (injs : $(map sql_injectable rest)) (fl : folder rest) (ofl : folder old)
+        (old : t full old) =
     {tname = {Title = title,
               Table = tab,
               Insert = @@Sql.easy_insert [[key1 = _, key2 = _] ++ rest] [_] ({key1 = inj1, key2 = inj2} ++ injs) (@Folder.cons [_] [_] ! (@Folder.cons [_] [_] ! fl)) tab,
@@ -65,7 +67,7 @@ fun two [tname :: Name] [key1 :: Name] [key2 :: Name] [keyT1 ::: Type] [keyT2 ::
                                                  AND {{nm}}.{key2} = {[v2]}),
               Show = sh,
               Config = return (),
-              Render = fn _ => <xml></xml>,
+              Render = fn _ _ => <xml></xml>,
               FreshWidgets = return (),
               WidgetsFrom = fn _ => return (),
               RenderWidgets = fn () () => <xml></xml>,
@@ -74,18 +76,19 @@ fun two [tname :: Name] [key1 :: Name] [key2 :: Name] [keyT1 ::: Type] [keyT2 ::
 type text1 t = t
 type text2 t = source string * t
 
-fun text [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type]
-    [cols ::: {Type}] [colsDone ::: {Type}] [cstrs ::: {{Unit}}]
-    [impl1 ::: Type] [impl2 ::: Type] [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}]
-    [[col] ~ cols] [[col] ~ colsDone] [[tname] ~ old]
-    (lab : string) (_ : show colT) (_ : read colT)
-    (old : t ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2)] ++ old)) =
+fun text [full ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}]
+         [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type]
+         [cols ::: {Type}] [colsDone ::: {Type}] [cstrs ::: {{Unit}}]
+         [impl1 ::: Type] [impl2 ::: Type] [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}]
+         [[col] ~ cols] [[col] ~ colsDone] [[tname] ~ old]
+         (lab : string) (_ : show colT) (_ : read colT)
+         (old : t full ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2)] ++ old)) =
     old -- tname
         ++ {tname = old.tname
                         -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
-                        ++ {Render = fn r =>
+                        ++ {Render = fn entry r =>
                                         <xml>
-                                          {old.tname.Render r}
+                                          {old.tname.Render entry r}
                                           <tr>
                                             <th>{[lab]}</th>
                                             <td>{[r.col]}</td>
@@ -115,19 +118,22 @@ fun text [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type]
 type foreign1 t colT = list colT * t
 type foreign2 t colT = source string * t
 
-fun foreign [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type]
-    [cols ::: {Type}] [colsDone ::: {Type}] [cstrs ::: {{Unit}}]
-    [impl1 ::: Type] [impl2 ::: Type]
-    [ftname :: Name] [fkey ::: Type] [fcol :: Name]
-    [fcols ::: {Type}] [fcolsDone ::: {Type}] [fcstrs ::: {{Unit}}]
-    [fimpl1 ::: Type] [fimpl2 ::: Type]
-    [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}]
-    [[col] ~ cols] [[col] ~ colsDone] [[tname] ~ old]
-    [[fcol] ~ fcols] [[fcol] ~ fcolsDone] [[ftname] ~ old]
-    [[tname] ~ [ftname]]
-    (lab : string) (_ : show colT) (_ : read colT)
-    (old : t ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2),
-               ftname = (fkey, [fcol = colT] ++ fcols, fcolsDone, fcstrs, fimpl1, fimpl2)] ++ old)) =
+fun foreign [full ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}]
+            [ft1 ::: {Type}] [ft2 ::: {Type}] [ft3 ::: {{Unit}}] [ft4 ::: Type] [ft5 ::: Type]
+            [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type]
+            [cols ::: {Type}] [colsDone ::: {Type}] [cstrs ::: {{Unit}}]
+            [impl1 ::: Type] [impl2 ::: Type]
+            [ftname :: Name] [fcol :: Name]
+            [fcols ::: {Type}] [fcolsDone ::: {Type}] [fcstrs ::: {{Unit}}]
+            [fimpl1 ::: Type] [fimpl2 ::: Type]
+            [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type)}]
+            [[col] ~ cols] [[col] ~ colsDone] [[tname] ~ old]
+            [[fcol] ~ fcols] [[fcol] ~ fcolsDone] [[ftname] ~ old]
+            [[tname] ~ [ftname]] [[ftname] ~ full]
+            (lab : string) (_ : show colT) (_ : read colT)
+            (old : t ([ftname = (colT, ft1, ft2, ft3, ft4, ft5)] ++ full)
+                     ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2),
+                       ftname = (colT, [fcol = colT] ++ fcols, fcolsDone, fcstrs, fimpl1, fimpl2)] ++ old)) =
     old -- tname
         ++ {tname = old.tname
                         -- #Config -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
@@ -142,12 +148,12 @@ fun foreign [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type]
                                 cfg <- old.tname.Config;
                                 return (keys, cfg)
                             end,
-                            Render = fn r =>
+                            Render = fn entry r =>
                                         <xml>
-                                          {old.tname.Render r}
+                                          {old.tname.Render entry r}
                                           <tr>
                                             <th>{[lab]}</th>
-                                            <td>{[r.col]}</td>
+                                            <td>{entry (make [ftname] r.col) (show r.col)}</td>
                                           </tr>
                                         </xml>,
                             FreshWidgets =
@@ -179,6 +185,7 @@ functor Make(M : sig
                  val title : string
                  con tables :: {(Type * {Type} * {{Unit}} * Type * Type)}
                  val t : t (map (fn p => (p.1, p.2, p.2, p.3, p.4, p.5)) tables)
+                           (map (fn p => (p.1, p.2, p.2, p.3, p.4, p.5)) tables)
                  val fl : folder tables
              end) = struct
     open M
@@ -190,8 +197,10 @@ functor Make(M : sig
     con dupF (p :: (Type * {Type} * {{Unit}} * Type * Type)) = (p.1, p.2, p.2, p.3, p.4, p.5)
     con dup = map dupF tables
 
+    con tables' = map (fn p => (p.1, p.2, p.2, p.3, p.4, p.5)) tables
+
     fun titleOf v =
-        @@Variant.destrR [fn _ => unit] [t1] [string]
+        @@Variant.destrR [fn _ => unit] [t1 tables'] [string]
           (fn [p ::_] () r => r.Title)
           [dup] (@Folder.mp fl) v t
 
@@ -206,7 +215,7 @@ functor Make(M : sig
            | Editing of row * widgets
 
     fun index (which : tag) =
-        bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 (dupF p)] [transaction xbody] [tables]
+        bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
           (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type) -> Type) -> tf p -> variant (map tf tables)) () r =>
               rows <- r.List;
               return <xml>
@@ -220,7 +229,7 @@ functor Make(M : sig
         tabbed index which (fn _ => bod)
 
     and create (which : tag) =
-        bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 (dupF p)] [transaction xbody] [tables]
+        bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
           (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type) -> Type) -> tf p -> variant (map tf tables)) () r =>
               cfg <- r.Config;
               ws <- r.FreshWidgets;
@@ -239,15 +248,15 @@ functor Make(M : sig
         tabbed create which (fn _ => bod)
 
     and doCreate (which : variant (map (fn p => $p.2) dup)) =
-        @@Variant.destrR [fn p => $p.2] [t1] [transaction unit]
+        @@Variant.destrR [fn p => $p.2] [t1 tables'] [transaction unit]
           (fn [p ::_] (vs : $p.2) r =>
               r.Insert vs)
           [dup] (@Folder.mp fl) which t
 
     and entry (which : variant (map (fn p => p.1) tables)) =
         (ctx : source (option Ui.context)) <- source None;
-        bod <- @@Variant.destrR' [fn p => p.1] [fn p => t1 (dupF p)] [transaction xbody] [tables]
-          (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type) -> Type) -> tf p -> variant (map tf tables)) (k : p.1) (r : t1 (dupF p)) =>
+        bod <- @@Variant.destrR' [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
+          (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type) -> Type) -> tf p -> variant (map tf tables)) (k : p.1) (r : t1 tables' (dupF p)) =>
               let
                   val tab = r.Table
               in
@@ -275,7 +284,7 @@ functor Make(M : sig
                                            </p>
 
                                          <table class="bs3-table table-striped">
-                                           {r.Render row}
+                                           {r.Render (fn key text => <xml><a link={entry key}>{[text]}</a></xml>) row}
                                          </table>
                                       </xml>)
                                    | Editing (row, ws) => return <xml>
@@ -298,19 +307,19 @@ functor Make(M : sig
           fl which t;
 
         tabbed index (@Variant.erase (@Folder.mp fl) which) (fn ctxv => <xml>
-          <active code={set ctx (Some ctxv); return <xml/>}/>
+          <active code={set ctx (Some ctxv); return <xml></xml>}/>
           {bod}
         </xml>)
 
     and save (which : variant (map (fn p => $p.2) tables)) =
-        @@Variant.destrR [fn p => $p.2] [fn p => t1 (dupF p)] [transaction unit]
+        @@Variant.destrR [fn p => $p.2] [fn p => t1 tables' (dupF p)] [transaction unit]
           (fn [p ::_] (vs : $p.2) r =>
               r.Update vs)
           [tables] fl which t
 
     and delete (which : variant (map (fn p => p.1) tables)) =
-        @@Variant.destrR [fn p => p.1] [fn p => t1 (dupF p)] [transaction unit]
-          (fn [p ::_] (k : p.1) (r : t1 (dupF p)) =>
+        @@Variant.destrR [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction unit]
+          (fn [p ::_] (k : p.1) (r : t1 tables' (dupF p)) =>
               let
                   val tab = r.Table
               in
