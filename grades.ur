@@ -277,7 +277,7 @@ fun assignments [aks ::: {{Unit}}] [sks ::: {{Unit}}] [gks ::: {{Unit}}]
                                         FROM gra
                                         ORDER BY {{{@Sql.order_by fl
                                           (@Sql.some_fields [#Gra] [_] ! ! fl)
-                                          sql_asc}}});
+                                          sql_desc}}});
                          ats <- return (group ls None []);
                          len <- return (List.length ats);
                          return (ACategory (lab,

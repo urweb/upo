@@ -331,7 +331,7 @@ functor Make(M : sig
                                      FROM time
                                      ORDER BY {{{@Sql.order_by timeKeyFl
                                        (@Sql.some_fields [#Time] [timeKey] ! ! timeKeyFl)
-                                       sql_desc}}});
+                                       sql_asc}}});
 
                 let
                     (* A bit of a little dance to initialize the meeting states,
@@ -427,7 +427,7 @@ functor Make(M : sig
                                        (usHardConst ++ usSoftConst)}
                                      ORDER BY {{{@Sql.order_by usFl
                                         (@Sql.some_fields [#Us] [usKey] ! ! usFl)
-                                        sql_desc}}});
+                                        sql_asc}}});
                     thems <- queryL1 (SELECT them.{{themKey}}
                                       FROM them
                                       WHERE {@@Sql.easy_where [#Them] [themHardConst ++ themSoftConst]
@@ -437,7 +437,7 @@ functor Make(M : sig
                                         (themHardConst ++ themSoftConst)}
                                       ORDER BY {{{@Sql.order_by themFl
                                         (@Sql.some_fields [#Them] [themKey] ! ! themFl)
-                                        sql_desc}}});
+                                        sql_asc}}});
                     unavails <- queryL1 (SELECT unavailable.{{usKey}}, unavailable.{{timeKey}}
                                          FROM unavailable JOIN us
                                            ON {@@Sql.easy_join [#Unavailable] [#Us]
@@ -451,7 +451,7 @@ functor Make(M : sig
                                          ORDER BY {{{@Sql.order_by (@Folder.concat ! usFl timeKeyFl)
                                            (@Sql.some_fields [#Unavailable] [usKey ++ timeKey] ! !
                                              (@Folder.concat ! usFl timeKeyFl))
-                                           sql_desc}}});
+                                           sql_asc}}});
                     meetings <- queryL (SELECT meeting.{{usKey}}, meeting.{{timeKey}}, meeting.{{themKey}},
                                           (SELECT COUNT( * )
                                            FROM meeting AS ByThem
@@ -464,7 +464,7 @@ functor Make(M : sig
                                         FROM meeting
                                         ORDER BY {{{@Sql.order_by allFl
                                           (@Sql.some_fields [#Meeting] [all] ! ! allFl)
-                                          sql_desc}}});
+                                          sql_asc}}});
                     meetings <- List.mapM (fn (us, off, tms) =>
                                               tms' <- List.mapM (fn (tm, avail, ths) =>
                                                                     ths <- source ths;
@@ -756,7 +756,7 @@ functor Make(M : sig
                                          FROM time
                                          ORDER BY {{{@Sql.order_by timeKeyFl
                                            (@Sql.some_fields [#Time] [timeKey] ! ! timeKeyFl)
-                                           sql_desc}}});
+                                           sql_asc}}});
                     meetings <- queryL (SELECT meeting.{{timeKey}}, meeting.{{themKey}}, them.{{themOffice}}
                                         FROM meeting
                                           JOIN them ON {@@Sql.easy_join [#Meeting] [#Them] [themKey]
@@ -774,7 +774,7 @@ functor Make(M : sig
                                         ORDER BY {{{@Sql.order_by (@Folder.concat ! timeKeyFl themFl)
                                           (@Sql.some_fields [#Meeting] [timeKey ++ themKey] ! !
                                             (@Folder.concat ! timeKeyFl themFl))
-                                          sql_desc}}});
+                                          sql_asc}}});
                     meetings <- List.mapM (fn (tm, ths) =>
                                               ths <- source ths;
                                               return (tm, ths))
