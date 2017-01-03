@@ -70,7 +70,7 @@ val foreign : full ::: {Type}
               -> fimpl1 ::: Type -> fimpl2 ::: Type -> fimpl3 ::: Type
               -> old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}
               -> [[col] ~ cols] => [[col] ~ colsDone] => [[tname] ~ old]
-              => [[fcol] ~ fcols] => [[fcol] ~ fcolsDone] => [[ftname] ~ old]
+              => [[fcol] ~ fcols] => [[ftname] ~ old]
               => [[tname] ~ [ftname]] => [[tname, ftname] ~ full]
               => string
               -> string
