@@ -71,6 +71,8 @@ signature THEME = sig
     val fl : folder r
     val css : $(mapU url r)
     val icon : option url
+    val wrap : xbody -> xbody
+    val navclasses : css_class
 end
 
 functor Make(M : THEME) = struct
@@ -96,26 +98,28 @@ functor Make(M : THEME) = struct
               <dyn signal={signal ms}/>
             </div>
 
-            <nav class="navbar navbar-inverse navbar-fixed-top">
-              <div class="container">
-                <div class="navbar-header">
-                  <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false" aria-controls="navbar">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                  </button>
-                  <a class="navbar-brand">{[titl]}</a>
+            {M.wrap <xml>
+              <nav class={M.navclasses}>
+                <div class="container">
+                  <div class="navbar-header">
+                    <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false" aria-controls="navbar">
+                      <span class="sr-only">Toggle navigation</span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand">{[titl]}</a>
+                  </div>
+                  <div id={nid} class="collapse navbar-collapse">
+                    <ul class="bs3-nav navbar-nav"/>
+                  </div>
                 </div>
-                <div id={nid} class="collapse navbar-collapse">
-                  <ul class="bs3-nav navbar-nav"/>
-                </div>
-              </div>
-            </nav>
+              </nav>
 
-            <div class="container-fluid">
-              {t.Render {ModalId = mid, ModalSpot = ms} state}
-            </div>
+              <div class="container-fluid">
+                {t.Render {ModalId = mid, ModalSpot = ms} state}
+              </div>
+            </xml>}
           </body>
         </xml>
 
@@ -157,51 +161,53 @@ functor Make(M : THEME) = struct
               <dyn signal={signal ms}/>
             </div>
 
-            <nav class="navbar navbar-inverse navbar-fixed-top">
-              <div class="container">
-                <div class="navbar-header">
-                  <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false" aria-controls="navbar">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                  </button>
-                  <a class="navbar-brand">{[titl]}</a>
+            {M.wrap <xml>
+              <nav class={M.navclasses}>
+                <div class="container">
+                  <div class="navbar-header">
+                    <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false" aria-controls="navbar">
+                      <span class="sr-only">Toggle navigation</span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand">{[titl]}</a>
+                  </div>
+                  <div id={nid} class="collapse navbar-collapse">
+                    <ul class="bs3-nav navbar-nav">
+                      {(@foldR2 [fn a => option string * t a] [ident]
+                        [fn _ => xbody * int]
+                       (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (labl : option string, r) st (bod, n) =>
+                           (case labl of
+                                None => bod
+                              | Some labl => <xml>
+                                <li dynClass={ct <- signal curTab;
+                                                    return (if ct = n then
+                                                                bs3_active
+                                                            else
+                                                                null)}
+                                    onclick={fn _ => set curTab n}><a>{[labl]}</a></li>
+                                    {bod}
+                              </xml>,
+                            n-1))
+                       (<xml/>, size-1)
+                       fl ts state).1}
+                    </ul>
+                  </div>
                 </div>
-                <div id={nid} class="collapse navbar-collapse">
-                  <ul class="bs3-nav navbar-nav">
-                    {(@foldR2 [fn a => option string * t a] [ident]
-                      [fn _ => xbody * int]
-                     (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (labl : option string, r) st (bod, n) =>
-                         (case labl of
-                              None => bod
-                            | Some labl => <xml>
-                              <li dynClass={ct <- signal curTab;
-                                                  return (if ct = n then
-                                                              bs3_active
-                                                          else
-                                                              null)}
-                                  onclick={fn _ => set curTab n}><a>{[labl]}</a></li>
-                                  {bod}
-                            </xml>,
-                          n-1))
-                     (<xml/>, size-1)
-                     fl ts state).1}
-                  </ul>
-                </div>
-              </div>
-            </nav>
+              </nav>
 
-            <div class="container-fluid">
-              <dyn signal={ct <- signal curTab;
-                           return (@foldR2 [fn a => option string * t a] [ident] [fn _ => xbody * int]
-                                    (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_, t) st (acc, n) =>
-                                        (if ct = n then
-                                             t.Render {ModalId = mid, ModalSpot = ms} st
-                                         else
-                                             acc, n-1))
-                                    (<xml/>, size-1) fl ts state).1}/>
-            </div>
+              <div class="container-fluid">
+                <dyn signal={ct <- signal curTab;
+                             return (@foldR2 [fn a => option string * t a] [ident] [fn _ => xbody * int]
+                                      (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_, t) st (acc, n) =>
+                                          (if ct = n then
+                                               t.Render {ModalId = mid, ModalSpot = ms} st
+                                           else
+                                               acc, n-1))
+                                      (<xml/>, size-1) fl ts state).1}/>
+              </div>
+              </xml>}
           </body>
         </xml>
 
@@ -227,35 +233,37 @@ functor Make(M : THEME) = struct
               <dyn signal={signal ms}/>
             </div>
 
-            <nav class="navbar navbar-inverse navbar-fixed-top">
-              <div class="container">
-                <div class="navbar-header">
-                  <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false" aria-controls="navbar">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                  </button>
-                  <a class="navbar-brand">{[titl]}</a>
+            {M.wrap <xml>
+              <nav class={M.navclasses}>
+                <div class="container">
+                  <div class="navbar-header">
+                    <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false" aria-controls="navbar">
+                      <span class="sr-only">Toggle navigation</span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand">{[titl]}</a>
+                  </div>
+                  <div id={nid} class="collapse navbar-collapse">
+                    <ul class="bs3-nav navbar-nav">
+                      {@mapUX_rev [string * bool * url] [body]
+                       (fn [nm ::_] [r ::_] [[nm] ~ r] (labl, ct, url) => <xml>
+                         <li class={if ct then
+                                        bs3_active
+                                    else
+                                        null}><a href={url}>{[labl]}</a></li>
+                       </xml>)
+                       fl ts}
+                    </ul>
+                  </div>
                 </div>
-                <div id={nid} class="collapse navbar-collapse">
-                  <ul class="bs3-nav navbar-nav">
-                    {@mapUX_rev [string * bool * url] [body]
-                     (fn [nm ::_] [r ::_] [[nm] ~ r] (labl, ct, url) => <xml>
-                       <li class={if ct then
-                                      bs3_active
-                                  else
-                                      null}><a href={url}>{[labl]}</a></li>
-                     </xml>)
-                     fl ts}
-                  </ul>
-                </div>
-              </div>
-            </nav>
+              </nav>
 
-            <div class="container-fluid">
-              {bod {ModalId = mid, ModalSpot = ms}}
-            </div>
+              <div class="container-fluid">
+                {bod {ModalId = mid, ModalSpot = ms}}
+              </div>
+            </xml>}
           </body>
         </xml>
 end

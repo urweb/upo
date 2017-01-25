@@ -60,6 +60,12 @@ signature THEME = sig
 
     (* Shortcut icon *)
     val icon : option url
+
+    (* Wrap body contents with this function, to introduce extra fanciness *)
+    val wrap : xbody -> xbody
+
+    (* Styling for top navbar *)
+    val navclasses : css_class
 end
 
 functor Make(M : THEME) : sig
