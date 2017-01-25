@@ -5,6 +5,7 @@ type t1 (full :: {Type}) (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type 
       Table : sql_table p.2 p.4,
       Insert : $p.2 -> p.7 -> transaction unit,
       Update : $p.2 -> p.7 -> transaction unit,
+      Delete : p.1 -> transaction unit,
       List : sql_exp [Tab = p.2] [] [] bool -> transaction (list p.1),
       KeyIs : nm :: Name -> p.1 -> sql_exp [nm = p.2] [] [] bool,
       Show : show p.1,
@@ -36,6 +37,7 @@ fun one [full ::: {Type}]
               Table = tab,
               Insert = fn r () => @@Sql.easy_insert [[key = _] ++ rest] [_] ({key = inj} ++ injs) (@Folder.cons [_] [_] ! fl) tab r,
               Update = fn r () => @@Sql.easy_update [[key = _]] [rest] [_] ! {key = inj} injs _ fl tab (r --- rest) (r -- key),
+              Delete = fn _ => return (),
               List = fn wher => List.mapQuery (SELECT tab.{key}
                                                FROM tab
                                                WHERE {wher}
@@ -63,6 +65,7 @@ fun two [full ::: {Type}]
               Table = tab,
               Insert = fn r () => @@Sql.easy_insert [[key1 = _, key2 = _] ++ rest] [_] ({key1 = inj1, key2 = inj2} ++ injs) (@Folder.cons [_] [_] ! (@Folder.cons [_] [_] ! fl)) tab r,
               Update = fn r () => @@Sql.easy_update [[key1 = _, key2 = _]] [rest] [_] ! {key1 = inj1, key2 = inj2} injs _ fl tab (r --- rest) (r -- key1 -- key2),
+              Delete = fn _ => return (),
               List = fn wher => List.mapQuery (SELECT tab.{key1}, tab.{key2}
                                                FROM tab
                                                WHERE {wher}
@@ -240,7 +243,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                tname2 = (key2, [col2 = key2] ++ cols2, colsDone2, cstrs2, impl21, impl22, impl23)] ++ old)) =
     old -- tname1 -- tname2
         ++ {tname1 = old.tname1
-                         -- #Insert -- #Update -- #Config -- #Auxiliary -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
+                         -- #Insert -- #Update -- #Delete -- #Config -- #Auxiliary -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
                          ++ {Insert =
                              fn r (k2s, aux) =>
                                 old.tname1.Insert r aux;
@@ -253,6 +256,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                      WHERE t.{col1} = {[r.col1]});
                                 List.app (fn k2 => dml (INSERT INTO rel({col1}, {col2})
                                                         VALUES ({[r.col1]}, {[k2]}))) k2s,
+                             Delete = fn k1 => dml (DELETE FROM rel WHERE t.{col1} = {[k1]}),
                              Config =
                              let
                                  val tab = old.tname2.Table
@@ -321,7 +325,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                               (wsv, aux) <- old.tname1.ReadWidgets ws;
                                               return (wsv, (slv, aux))},
             tname2 = old.tname2
-                         -- #Insert -- #Update -- #Config -- #Auxiliary -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
+                         -- #Insert -- #Update -- #Delete -- #Config -- #Auxiliary -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
                          ++ {Insert = fn r (k1s, aux) =>
                              old.tname2.Insert r aux;
                              List.app (fn k1 => dml (INSERT INTO rel({col1}, {col2})
@@ -332,6 +336,8 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                     WHERE t.{col2} = {[r.col2]});
                                List.app (fn k1 => dml (INSERT INTO rel({col1}, {col2})
                                                        VALUES ({[k1]}, {[r.col2]}))) k1s,
+                             Delete =
+                             fn k2 => dml (DELETE FROM rel WHERE t.{col2} = {[k2]}),
                              Config =
                              let
                                  val tab = old.tname1.Table
@@ -545,6 +551,7 @@ functor Make(M : sig
               let
                   val tab = r.Table
               in
+                  r.Delete k;
                   dml (DELETE FROM tab
                        WHERE {r.KeyIs [#T] k})
               end)
