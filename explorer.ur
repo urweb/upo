@@ -15,7 +15,8 @@ type t1 (full :: {Type}) (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type 
       FreshWidgets : transaction p.6,
       WidgetsFrom : $p.2 -> p.7 -> transaction p.6,
       RenderWidgets : p.5 -> p.6 -> xbody,
-      ReadWidgets : p.6 -> signal ($p.3 * p.7)}
+      ReadWidgets : p.6 -> signal ($p.3 * p.7),
+      KeyOf : $p.2 -> p.1}
 
 type t (full :: {Type}) (tables :: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}) =
     $(map (t1 full) tables)
@@ -51,7 +52,8 @@ fun one [full ::: {Type}]
               FreshWidgets = return (),
               WidgetsFrom = fn _ _ => return (),
               RenderWidgets = fn () () => <xml></xml>,
-              ReadWidgets = fn () => return ((), ())}} ++ old
+              ReadWidgets = fn () => return ((), ()),
+              KeyOf = fn r => r.key}} ++ old
 
 fun two [full ::: {Type}]
         [tname :: Name] [key1 :: Name] [key2 :: Name] [keyT1 ::: Type] [keyT2 ::: Type]
@@ -80,7 +82,8 @@ fun two [full ::: {Type}]
               FreshWidgets = return (),
               WidgetsFrom = fn _ _ => return (),
               RenderWidgets = fn () () => <xml></xml>,
-              ReadWidgets = fn () => return ((), ())}} ++ old
+              ReadWidgets = fn () => return ((), ()),
+              KeyOf = fn r => (r.key1, r.key2)}} ++ old
 
 type text1 t = t
 type text2 t = source string * t
@@ -635,6 +638,12 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                             (wsv, aux) <- old.tname2.ReadWidgets ws;
                                             return (wsv, (slv, aux))}}
 
+datatype action tab key =
+         Read of tab
+       | Create of tab
+       | Update of key
+       | Delete of key
+
 functor Make(M : sig
                  structure Theme : Ui.THEME
 
@@ -643,6 +652,8 @@ functor Make(M : sig
                  val t : t (map (fn p => p.1) tables)
                            (map (fn p => (p.1, p.2, p.2, p.3, p.4, p.5, p.6)) tables)
                  val fl : folder tables
+
+                 val authorize : action (variant (map (fn _ => unit) tables)) (variant (map (fn p => p.1) tables)) -> transaction bool
              end) = struct
     open M
     open Ui.Make(Theme)
@@ -670,7 +681,15 @@ functor Make(M : sig
              NotEditing of row * aux
            | Editing of row * widgets
 
+    fun auth act =
+        b <- authorize act;
+        if b then
+            return ()
+        else
+            error <xml>Access denied</xml>
+
     fun index (which : tag) =
+        auth (Read which);
         bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
           (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) () r =>
               rows <- r.List (WHERE TRUE);
@@ -685,6 +704,7 @@ functor Make(M : sig
         tabbed index which (fn _ => bod)
 
     and create (which : tag) =
+        auth (Create which);
         bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
           (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) () r =>
               cfg <- r.Config;
@@ -704,12 +724,16 @@ functor Make(M : sig
         tabbed create which (fn _ => bod)
 
     and doCreate (which : variant (map (fn p => $p.2 * p.7) dup)) =
+        auth (Create (@Variant.erase (@Folder.mp fl) which));
         @@Variant.destrR [fn p => $p.2 * p.7] [t1 tables'] [transaction unit]
           (fn [p ::_] (vs : $p.2, aux : p.7) r =>
               r.Insert vs aux)
           [dup] (@Folder.mp fl) which t
 
     and entry (which : variant (map (fn p => p.1) tables)) =
+        auth (Read (@Variant.erase (@Folder.mp fl) which));
+        mayUpdate <- authorize (Update which);
+        mayDelete <- authorize (Delete which);
         (ctx : source (option Ui.context)) <- source None;
         bod <- @@Variant.destrR' [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
           (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) (k : p.1) (r : t1 tables' (dupF p)) =>
@@ -731,13 +755,21 @@ functor Make(M : sig
                                          None => return <xml></xml>
                                        | Some ctx => return <xml>
                                          <p>
-                                           <button class="btn btn-primary"
-                                                   onclick={fn _ => ws <- r.WidgetsFrom row aux; set est (Editing (row, ws))}>Edit</button>
-                                           {Ui.modalButton ctx (CLASS "btn") <xml>Delete</xml>
-                                                           (return (Ui.modal (rpc (delete which); redirect (url (index (maker [fn _ => unit] ()))))
-                                                                             <xml>Are you sure you want to delete this entry?</xml>
-                                                                             <xml></xml>
-                                                                             <xml>Yes, delete it.</xml>))}
+                                           {if mayUpdate then
+                                                <xml>
+                                                  <button class="btn btn-primary"
+                                                          onclick={fn _ => ws <- r.WidgetsFrom row aux; set est (Editing (row, ws))}>Edit</button>
+                                                </xml>
+                                            else
+                                                <xml/>}
+                                           {if mayDelete then
+                                                Ui.modalButton ctx (CLASS "btn") <xml>Delete</xml>
+                                                               (return (Ui.modal (rpc (delete which); redirect (url (index (maker [fn _ => unit] ()))))
+                                                                                 <xml>Are you sure you want to delete this entry?</xml>
+                                                                                 <xml></xml>
+                                                                                 <xml>Yes, delete it.</xml>))
+                                            else
+                                                <xml/>}
                                            </p>
 
                                          <table class="bs3-table table-striped">
@@ -767,12 +799,14 @@ functor Make(M : sig
         </xml>)
 
     and save (which : variant (map (fn p => $p.2 * p.6) tables)) =
-        @@Variant.destrR [fn p => $p.2 * p.6] [fn p => t1 tables' (dupF p)] [transaction unit]
-          (fn [p ::_] (vs : $p.2, aux : p.6) r =>
+        @@Variant.destrR' [fn p => $p.2 * p.6] [fn p => t1 tables' (dupF p)] [transaction unit] [tables]
+          (fn [p ::_] (mk : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) (vs : $p.2, aux : p.6) r =>
+              auth (Update (mk [fn p => p.1] (r.KeyOf vs)));
               r.Update vs aux)
-          [tables] fl which t
+          fl which t
 
     and delete (which : variant (map (fn p => p.1) tables)) =
+        auth (Delete which);
         @@Variant.destrR [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction unit]
           (fn [p ::_] (k : p.1) (r : t1 tables' (dupF p)) =>
               let

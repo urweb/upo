@@ -62,6 +62,8 @@ open Make(struct
 
                       |> text [#SuperPower] [#Power] "Power"
                       |> text [#SuperPower] [#Description] "Description"
+
+              fun authorize _ = return True
           end)
 
 val main = index (make [#Frog] ())

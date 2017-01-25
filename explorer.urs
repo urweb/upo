@@ -167,6 +167,12 @@ val manyToManyOrdered : full ::: {Type}
                              ([tname1 = (key1, [col1 = key1] ++ cols1, colsDone1, cstrs1, manyToMany11 impl11 key1 key2, manyToMany12 impl12 key1 key2, manyToMany13 impl13 key1 key2),
                                tname2 = (key2, [col2 = key2] ++ cols2, colsDone2, cstrs2, manyToMany21 impl21 key1 key2, manyToMany22 impl22 key1 key2, manyToMany23 impl23 key1 key2)] ++ old)
 
+datatype action tab key =
+         Read of tab
+       | Create of tab
+       | Update of key
+       | Delete of key
+
 functor Make(M : sig
                  structure Theme : Ui.THEME
 
@@ -175,6 +181,8 @@ functor Make(M : sig
                  val t : t (map (fn p => p.1) tables)
                            (map (fn p => (p.1, p.2, p.2, p.3, p.4, p.5, p.6)) tables)
                  val fl : folder tables
+
+                 val authorize : action (variant (map (fn _ => unit) tables)) (variant (map (fn p => p.1) tables)) -> transaction bool
              end) : sig
     val index : variant (map (fn _ => unit) M.tables) -> transaction page
     val create : variant (map (fn _ => unit) M.tables) -> transaction page
