@@ -125,6 +125,49 @@ fun text [full ::: {Type}]
                                              (wsv, aux) <- old.tname.ReadWidgets ws;
                                              return ({col = readError v} ++ wsv, aux)}}
 
+type checkbox1 t = t
+type checkbox2 t = source bool * t
+type checkbox3 t = t
+
+fun checkbox [full ::: {Type}]
+         [tname :: Name] [key ::: Type] [col :: Name]
+         [cols ::: {Type}] [colsDone ::: {Type}] [cstrs ::: {{Unit}}]
+         [impl1 ::: Type] [impl2 ::: Type] [impl3 ::: Type] [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
+         [[col] ~ cols] [[col] ~ colsDone] [[tname] ~ old]
+         (lab : string)
+         (old : t full ([tname = (key, [col = bool] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)) =
+    old -- tname
+        ++ {tname = old.tname
+                        -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
+                        ++ {Render = fn entry aux r =>
+                                        <xml>
+                                          {old.tname.Render entry aux r}
+                                          <tr>
+                                            <th>{[lab]}</th>
+                                            <td>{[r.col]}</td>
+                                          </tr>
+                                        </xml>,
+                            FreshWidgets =
+                               s <- source False;
+                               ws <- old.tname.FreshWidgets;
+                               return (s, ws),
+                            WidgetsFrom = fn r aux =>
+                               s <- source r.col;
+                               ws <- old.tname.WidgetsFrom r aux;
+                               return (s, ws),
+                            RenderWidgets = fn cfg (s, ws) =>
+                                               <xml>
+                                                 {old.tname.RenderWidgets cfg ws}
+                                                 <div class="form-group">
+                                                   <label class="control-label">{[lab]}</label>
+                                                   <ccheckbox class="form-control" source={s}/>
+                                                 </div>
+                                               </xml>,
+                            ReadWidgets = fn (s, ws) =>
+                                             v <- signal s;
+                                             (wsv, aux) <- old.tname.ReadWidgets ws;
+                                             return ({col = v} ++ wsv, aux)}}
+
 type foreign1 t key colT = list colT * t
 type foreign2 t key colT = source string * t
 type foreign3 t key colT = list key * t

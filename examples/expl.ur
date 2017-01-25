@@ -49,10 +49,10 @@ open Make(struct
 
                       |> text [#Frog] [#Nickname] "Nickname"
                       |> text [#Frog] [#Age] "Age"
-                      |> text [#Frog] [#IsBullfrog] "Bullfrog?"
+                      |> checkbox [#Frog] [#IsBullfrog] "Bullfrog?"
 
                       |> text [#RestaurantChain] [#Chain] "Name"
-                      |> text [#RestaurantChain] [#Healthy] "Healthy?"
+                      |> checkbox [#RestaurantChain] [#Healthy] "Healthy?"
 
                       |> text [#Swamp] [#SwampName] "Name"
                       |> text [#Swamp] [#SmellinessLevel] "Smelliness Level"
