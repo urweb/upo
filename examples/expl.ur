@@ -25,6 +25,17 @@ table protector : { SwampName : string,
   CONSTRAINT SwampName FOREIGN KEY SwampName REFERENCES swamp(SwampName),
   CONSTRAINT Nickname FOREIGN KEY Nickname REFERENCES frog(Nickname)
 
+table restaurantChain : { Chain : string,
+                          Healthy : bool }
+  PRIMARY KEY Chain
+
+table favoriteFoodOptions : { SwampName : string,
+                              Chain : string,
+                              SeqNum : int }
+  PRIMARY KEY (SwampName, Chain),
+  CONSTRAINT SwampName FOREIGN KEY SwampName REFERENCES swamp(SwampName),
+  CONSTRAINT Chain FOREIGN KEY Chain REFERENCES restaurantChain(Chain)
+
 open Explorer
 open Make(struct
               structure Theme = Default
@@ -34,15 +45,20 @@ open Make(struct
                       |> one [#Frog] [#Nickname] frog "Frogs"
                       |> one [#Swamp] [#SwampName] swamp "Swamps"
                       |> one [#SuperPower] [#Power] superPower "Powers"
+                      |> one [#RestaurantChain] [#Chain] restaurantChain "Chains"
 
                       |> text [#Frog] [#Nickname] "Nickname"
                       |> text [#Frog] [#Age] "Age"
                       |> text [#Frog] [#IsBullfrog] "Bullfrog?"
 
+                      |> text [#RestaurantChain] [#Chain] "Name"
+                      |> text [#RestaurantChain] [#Healthy] "Healthy?"
+
                       |> text [#Swamp] [#SwampName] "Name"
                       |> text [#Swamp] [#SmellinessLevel] "Smelliness Level"
                       |> foreign [#Frog] [#Swamp] [#Swamp] [#SwampName] "Swamp" "Frogs"
                       |> manyToMany [#Frog] [#Nickname] [#Swamp] [#SwampName] protector "Protecting" "Protectors"
+                      |> manyToManyOrdered [#Swamp] [#SwampName] [#RestaurantChain] [#Chain] favoriteFoodOptions "Favorite Food Options" "Swamps"
 
                       |> text [#SuperPower] [#Power] "Power"
                       |> text [#SuperPower] [#Description] "Description"
