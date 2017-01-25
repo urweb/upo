@@ -281,7 +281,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                            {old.tname1.Render entry aux r}
                                            <tr>
                                              <th>{[lab1]}</th>
-                                             <td>{List.mapX (fn k2 => entry (make [tname2] k2) (show k2)) k2s}</td>
+                                             <td>{List.mapX (fn k2 => <xml>{entry (make [tname2] k2) (show k2)}<br/></xml>) k2s}</td>
                                            </tr>
                                          </xml>,
                              FreshWidgets =
@@ -299,17 +299,21 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                   {old.tname1.RenderWidgets cfg2 ws}
                                                   <div class="form-group">
                                                     <label class="control-label">{[lab1]}</label>
-                                                    <cselect class="form-control" source={s}>
-                                                      {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
-                                                    </cselect> <button class="btn"
-                                                                       onclick={fn _ =>
-                                                                                   sv <- get s;
-                                                                                   sv <- return (readError sv);
-                                                                                   slv <- get sl;
-                                                                                   if List.mem sv slv then
-                                                                                       return ()
-                                                                                   else
-                                                                                       set sl (List.sort gt (sv :: slv))}>Add</button><br/>
+                                                    <div class="input-group">
+                                                      <cselect class="form-control" source={s}>
+                                                        {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
+                                                      </cselect> <span class="input-group-btn">
+                                                        <button class="btn"
+                                                                onclick={fn _ =>
+                                                                            sv <- get s;
+                                                                            sv <- return (readError sv);
+                                                                            slv <- get sl;
+                                                                            if List.mem sv slv then
+                                                                                return ()
+                                                                            else
+                                                                                set sl (List.sort gt (sv :: slv))}>Add</button>
+                                                      </span>
+                                                    </div>
                                                     <table>
                                                       <dyn signal={slv <- signal sl;
                                                                    return (List.mapX (fn k2 => <xml><tr>
@@ -318,89 +322,93 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                        onclick={fn _ => set sl (List.filter (fn k2' => k2' <> k2) slv)}/></td>
                                                                    </tr></xml>) slv)}/>
                                                     </table>
-                                                  </div>
-                                                </xml>,
-                             ReadWidgets = fn (s, sl, ws) =>
-                                              slv <- signal sl;
-                                              (wsv, aux) <- old.tname1.ReadWidgets ws;
-                                              return (wsv, (slv, aux))},
-            tname2 = old.tname2
-                         -- #Insert -- #Update -- #Delete -- #Config -- #Auxiliary -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
-                         ++ {Insert = fn r (k1s, aux) =>
-                             old.tname2.Insert r aux;
+                                                </div>
+                                              </xml>,
+                           ReadWidgets = fn (s, sl, ws) =>
+                                            slv <- signal sl;
+                                            (wsv, aux) <- old.tname1.ReadWidgets ws;
+                                            return (wsv, (slv, aux))},
+          tname2 = old.tname2
+                       -- #Insert -- #Update -- #Delete -- #Config -- #Auxiliary -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
+                       ++ {Insert = fn r (k1s, aux) =>
+                           old.tname2.Insert r aux;
+                           List.app (fn k1 => dml (INSERT INTO rel({col1}, {col2})
+                                                   VALUES ({[k1]}, {[r.col2]}))) k1s,
+                           Update = fn r (k1s, aux) =>
+                             old.tname2.Update r aux;
+                             dml (DELETE FROM rel
+                                  WHERE t.{col2} = {[r.col2]});
                              List.app (fn k1 => dml (INSERT INTO rel({col1}, {col2})
                                                      VALUES ({[k1]}, {[r.col2]}))) k1s,
-                             Update = fn r (k1s, aux) =>
-                               old.tname2.Update r aux;
-                               dml (DELETE FROM rel
-                                    WHERE t.{col2} = {[r.col2]});
-                               List.app (fn k1 => dml (INSERT INTO rel({col1}, {col2})
-                                                       VALUES ({[k1]}, {[r.col2]}))) k1s,
-                             Delete =
-                             fn k2 => dml (DELETE FROM rel WHERE t.{col2} = {[k2]}),
-                             Config =
-                             let
-                                 val tab = old.tname1.Table
-                             in
-                                 keys <- List.mapQuery (SELECT DISTINCT tab.{col1}
-                                                        FROM tab
-                                                        ORDER BY tab.{col1})
-                                                       (fn r => r.Tab.col1);
-                                 cfg <- old.tname2.Config;
-                                 return (keys, cfg)
-                             end,
-                             Auxiliary = fn k2 =>
-                                 keys <- List.mapQuery (SELECT rel.{col1}
-                                                        FROM rel
-                                                        WHERE rel.{col2} = {[k2]}
-                                                        ORDER BY rel.{col1})
-                                                       (fn r => r.Rel.col1);
-                                 aux <- old.tname2.Auxiliary k2;
-                                 return (keys, aux),
-                             Render = fn entry (k1s, aux) r =>
-                                         <xml>
-                                           {old.tname2.Render entry aux r}
-                                           <tr>
-                                             <th>{[lab2]}</th>
-                                             <td>{List.mapX (fn k1 => entry (make [tname1] k1) (show k1)) k1s}</td>
-                                           </tr>
-                                         </xml>,
-                             FreshWidgets =
-                                s <- source "";
-                                sl <- source [];
-                                ws <- old.tname2.FreshWidgets;
-                                return (s, sl, ws),
-                             WidgetsFrom = fn r (keys, aux) =>
-                                              s <- source "";
-                                              sl <- source keys;
-                                              ws <- old.tname2.WidgetsFrom r aux;
-                                              return (s, sl, ws),
-                             RenderWidgets = fn (cfg1, cfg2) (s, sl, ws) =>
-                                                <xml>
-                                                  {old.tname2.RenderWidgets cfg2 ws}
-                                                  <div class="form-group">
-                                                    <label class="control-label">{[lab2]}</label>
+                           Delete =
+                           fn k2 => dml (DELETE FROM rel WHERE t.{col2} = {[k2]}),
+                           Config =
+                           let
+                               val tab = old.tname1.Table
+                           in
+                               keys <- List.mapQuery (SELECT DISTINCT tab.{col1}
+                                                      FROM tab
+                                                      ORDER BY tab.{col1})
+                                                     (fn r => r.Tab.col1);
+                               cfg <- old.tname2.Config;
+                               return (keys, cfg)
+                           end,
+                           Auxiliary = fn k2 =>
+                               keys <- List.mapQuery (SELECT rel.{col1}
+                                                      FROM rel
+                                                      WHERE rel.{col2} = {[k2]}
+                                                      ORDER BY rel.{col1})
+                                                     (fn r => r.Rel.col1);
+                               aux <- old.tname2.Auxiliary k2;
+                               return (keys, aux),
+                           Render = fn entry (k1s, aux) r =>
+                                       <xml>
+                                         {old.tname2.Render entry aux r}
+                                         <tr>
+                                           <th>{[lab2]}</th>
+                                           <td>{List.mapX (fn k1 => <xml>{entry (make [tname1] k1) (show k1)}<br/></xml>) k1s}</td>
+                                         </tr>
+                                       </xml>,
+                           FreshWidgets =
+                              s <- source "";
+                              sl <- source [];
+                              ws <- old.tname2.FreshWidgets;
+                              return (s, sl, ws),
+                           WidgetsFrom = fn r (keys, aux) =>
+                                            s <- source "";
+                                            sl <- source keys;
+                                            ws <- old.tname2.WidgetsFrom r aux;
+                                            return (s, sl, ws),
+                           RenderWidgets = fn (cfg1, cfg2) (s, sl, ws) =>
+                                              <xml>
+                                                {old.tname2.RenderWidgets cfg2 ws}
+                                                <div class="form-group">
+                                                  <label class="control-label">{[lab2]}</label>
+                                                  <div class="input-group">
                                                     <cselect class="form-control" source={s}>
                                                       {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
-                                                    </cselect> <button class="btn"
-                                                                       onclick={fn _ =>
-                                                                                   sv <- get s;
-                                                                                   sv <- return (readError sv);
-                                                                                   slv <- get sl;
-                                                                                   if List.mem sv slv then
-                                                                                       return ()
-                                                                                   else
-                                                                                       set sl (List.sort gt (sv :: slv))}>Add</button><br/>
-                                                    <table>
-                                                      <dyn signal={slv <- signal sl;
-                                                                   return (List.mapX (fn k1 => <xml><tr>
-                                                                     <td>{[k1]}</td>
-                                                                     <td><button class="btn glyphicon glyphicon-remove"
-                                                                                 onclick={fn _ => set sl (List.filter (fn k1' => k1' <> k1) slv)}/></td>
-                                                                   </tr></xml>) slv)}/>
-                                                    </table>
+                                                    </cselect> <span class="input-group-btn">
+                                                      <button class="btn"
+                                                              onclick={fn _ =>
+                                                                          sv <- get s;
+                                                                          sv <- return (readError sv);
+                                                                          slv <- get sl;
+                                                                          if List.mem sv slv then
+                                                                              return ()
+                                                                          else
+                                                                              set sl (List.sort gt (sv :: slv))}>Add</button>
+                                                      </span>
                                                   </div>
-                                                </xml>,
+                                                  <table>
+                                                    <dyn signal={slv <- signal sl;
+                                                                 return (List.mapX (fn k1 => <xml><tr>
+                                                                   <td>{[k1]}</td>
+                                                                   <td><button class="btn glyphicon glyphicon-remove"
+                                                                               onclick={fn _ => set sl (List.filter (fn k1' => k1' <> k1) slv)}/></td>
+                                                                 </tr></xml>) slv)}/>
+                                                  </table>
+                                                </div>
+                                              </xml>,
                              ReadWidgets = fn (s, sl, ws) =>
                                               slv <- signal sl;
                                               (wsv, aux) <- old.tname2.ReadWidgets ws;
