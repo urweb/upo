@@ -171,7 +171,7 @@ fun easy_update'''
     (* Table update
     
     Usage: 
-    easy_update' tab {indexcolname = i} {valuecolname = v}; 
+    easy_update''' tab {indexcolname = i} {valuecolname = v}; 
     
     *)
     [pkcolname] 
