@@ -1,3 +1,19 @@
+fun easy_eq 
+    (* Construct SQL equality clause using table name, column name, value
+    
+    Usage:
+    (easy_eq [#Tablename] [#Colname] (sql_inject value))
+    
+    *)
+    [fs ::: {Type}] 
+    [v ::: Type] 
+    [qtablename :: Name] 
+    [qcolumnname :: Name] 
+    [fs ~ [qcolumnname=v]]  
+    (value:sql_exp [qtablename = [qcolumnname=v] ++ fs] [] [] v)
+    : sql_exp [qtablename = [qcolumnname=v] ++ fs] [] [] bool
+    = sql_binary sql_eq (sql_field [qtablename] [qcolumnname]) value
+
 fun order_by [tables] [exps] [dummy] (fl : folder dummy)
              (es : $(map (sql_exp tables [] exps) dummy))
              (dir : sql_direction) =
@@ -30,6 +46,52 @@ fun easy_insert [fields] [uniques] (injs : $(map sql_injectable fields)) (fl : f
     dml (insert tab (@Top.map2 [sql_injectable] [ident] [sql_exp [] [] []]
                      (fn [t] => @sql_inject)
                      fl injs fs))
+
+fun easy_select
+    (* Construct SQL SELECT clause using table name, where and order clauses 
+    
+    Usage:
+    val twhere = easy_eq [#Tab] [#Col] (sql_inject val)
+    val torderby = sql_order_by_Nil [_]
+    val q = (
+        easy_select
+            [#Tab]
+            M.tab
+            twhere
+            torderby
+    )
+    
+    *)
+    [fs ::: {Type}] 
+    [ks]
+    [qtablename :: Name]
+    (qtable : sql_table fs ks)
+    (qwhere: sql_exp [qtablename = fs] [] [] bool)
+    (qorderby : sql_order_by [qtablename = _] [])
+    : sql_query [] [] [qtablename = fs] [] 
+    =
+    let
+        fun qu qtable qwhere qorderby =
+            sql_query {
+                Rows =
+                    sql_query1 [[]]
+                        {
+                            Distinct = False,
+                            From =
+                                (sql_from_table [qtablename] qtable),
+                            Where = qwhere,
+                            GroupBy = sql_subset_all [(_ :: {{Type}})],
+                            Having = sql_inject True,
+                            SelectFields = sql_subset_all [(_ :: {{Type}})],
+                            SelectExps = {}
+                        },
+                        OrderBy = qorderby,
+                        Limit = sql_no_limit,
+                        Offset = sql_no_offset
+            }
+    in
+        qu qtable qwhere qorderby
+    end
 
 fun easy_where [tab :: Name] [using] [notUsing] [otherTables] [agg] [exps] [using ~ notUsing] [[tab] ~ otherTables]
     (injs : $(map sql_injectable using)) (fl : folder using) (r : $using) =
@@ -104,6 +166,70 @@ fun easy_update'' [key] [fields] [uniques] [leftAlone]
                   fieldsFl fieldsInj fields)
                 tab
                 (@easy_where [#T] ! ! keyInj keyFl key))
+
+fun easy_update'''
+    (* Table update
+    
+    Usage: 
+    easy_update' tab {indexcolname = i} {valuecolname = v}; 
+    
+    *)
+    [pkcolname] 
+    [pktype]
+    [fields]
+    [other]
+    [uniques] 
+    
+    [[pkcolname = pktype] ~ fields]
+    [[pkcolname = pktype] ~ other]
+    [fields ~ other]
+    (keyInj : $(map sql_injectable [pkcolname = pktype])) 
+    (ktInjPrim : sql_injectable_prim pktype)
+    (fieldsInj : $(map sql_injectable (fields)))
+    (keyFl : folder [pkcolname = pktype]) 
+    (fieldsFl : folder (fields))
+    
+    (tab : sql_table ([pkcolname = pktype] ++ fields ++ other) uniques)
+    (key : $([pkcolname = pktype])) 
+    (fields : $fields) 
+    : transaction unit 
+    =
+    
+    dml (
+        update 
+            [fields]
+            (@Top.map2 
+                [sql_injectable]
+                [ident]
+                [sql_exp _ _ _]
+                (fn [t] => @sql_inject)
+                fieldsFl 
+                fieldsInj
+                fields
+            )
+            tab
+            (easy_eq [#T] [pkcolname] (sql_inject (Record.project [pkcolname] key)))
+    )
+
+fun easy_delete
+    (* Easy delete
+
+    Usage:
+    easy_delete tab rec;
+
+    *)
+    [others]
+    [fields]
+    [uniques]
+    [others ~ fields]
+    (othersInj : $(map sql_injectable others)) 
+    (fieldsInj : $(map sql_injectable fields))
+    (fieldsFl : folder others)
+    (fieldsFl : folder fields)
+    (tab : sql_table (others ++ fields) uniques)
+    (fields : $fields) =
+    dml (delete tab (@easy_where [#T] ! ! fieldsInj fieldsFl fields))
+
 
 fun easy_join [tab1 :: Name] [tab2 :: Name] [using] [notUsing1] [notUsing2] [otherTables] [agg] [exps]
               [[tab1] ~ [tab2]] [using ~ notUsing1] [using ~ notUsing2] [[tab1, tab2] ~ otherTables]
