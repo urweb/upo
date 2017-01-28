@@ -183,7 +183,18 @@ functor Make(M : sig
                  val fl : folder tables
 
                  val authorize : action (variant (map (fn _ => unit) tables)) (variant (map (fn p => p.1) tables)) -> transaction bool
+
+                 (* Other tabs to include, beside those associated with these tables. *)
+                 con preTabs :: {Unit} (* To appear *before* the tables *)
+                 val preTabs : $(mapU (string (* page title *) * xbody) preTabs)
+                 val preFl : folder preTabs
+                 con postTabs :: {Unit}
+                 val postTabs : $(mapU (string * xbody) postTabs)
+                 val postFl : folder postTabs
+                 constraint preTabs ~ postTabs
+                 constraint (preTabs ++ postTabs) ~ tables
              end) : sig
     val index : variant (map (fn _ => unit) M.tables) -> transaction page
     val create : variant (map (fn _ => unit) M.tables) -> transaction page
+    val page : variant (map (fn _ => unit) M.tables ++ mapU unit (M.preTabs ++ M.postTabs)) -> transaction page
 end

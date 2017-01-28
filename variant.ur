@@ -107,3 +107,8 @@ fun destrR' [K] [f :: K -> Type] [fr :: K -> Type] [t ::: Type] [r ::: {K}]
 
 fun eqU [ts ::: {Unit}] (fl : folder ts) : eq (variant (map (fn _ => unit) ts)) =
     @@eq [map (fn _ => unit) ts] (@map0 [fn _ => eq unit] (fn [t ::_] => mkEq (fn () () => True)) fl) (@Folder.mp fl)
+
+fun proj [t ::: Type] [r ::: {Unit}] (fl : folder r) (r : $(mapU t r)) (v : variant (mapU unit r)) =
+    match v (@Top.mp [fn _ => t] [fn _ => unit -> t]
+             (fn [u] v () => v)
+             fl r)

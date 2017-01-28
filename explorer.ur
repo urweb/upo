@@ -654,28 +654,49 @@ functor Make(M : sig
                  val fl : folder tables
 
                  val authorize : action (variant (map (fn _ => unit) tables)) (variant (map (fn p => p.1) tables)) -> transaction bool
+
+                 con preTabs :: {Unit}
+                 val preTabs : $(mapU (string * xbody) preTabs)
+                 val preFl : folder preTabs
+                 con postTabs :: {Unit}
+                 val postTabs : $(mapU (string * xbody) postTabs)
+                 val postFl : folder postTabs
+                 constraint preTabs ~ postTabs
+                 constraint (preTabs ++ postTabs) ~ tables
              end) = struct
     open M
     open Ui.Make(Theme)
 
     type tag = variant (map (fn _ => unit) tables)
+    con tabs = map (fn _ => unit) tables ++ mapU unit (preTabs ++ postTabs)
+    con tabsU = map (fn _ => ()) tables ++ preTabs ++ postTabs
+    type tagPlus = variant tabs
     val eq_tag : eq tag = @Variant.eqU (@@Folder.mp [fn _ => ()] [_] fl)
+    val eq_tagPlus : eq tagPlus = @Variant.eqU (@Folder.concat ! preFl (@Folder.concat ! (@@Folder.mp [fn _ => ()] [_] fl) postFl))
 
     con dupF (p :: (Type * {Type} * {{Unit}} * Type * Type * Type)) = (p.1, p.2, p.2, p.3, p.4, p.5, p.6)
     con dup = map dupF tables
 
     con tables' = map (fn p => p.1) tables
 
-    fun titleOf v =
-        @@Variant.destrR [fn _ => unit] [t1 tables'] [string]
-          (fn [p ::_] () r => r.Title)
-          [dup] (@Folder.mp fl) v t
+    val titleOf : variant tabs -> string =
+        @@Variant.proj [string] [tabsU]
+          (@Folder.concat ! preFl
+            (@Folder.concat ! (@Folder.mp fl) postFl))
+          (@mp [fn _ => string * _] [fn _ => string]
+            (fn [u] (titl, _) => titl) preFl preTabs
+            ++ @mp [fn _ => string * _] [fn _ => string]
+            (fn [u] (titl, _) => titl) postFl postTabs
+            ++ @mp [t1 tables'] [fn _ => string]
+            (fn [p] (r : t1 tables' p) => r.Title) (@@Folder.mp [dupF] [_] fl) t)
 
-    fun tabbed f which =
-        @@tabbedStatic [map (fn _ => ()) tables] (@Folder.mp fl)
+    val tabsFl = @Folder.concat ! postFl (@Folder.concat ! (@Folder.mp fl) preFl)
+
+    fun tabbed f (which : variant tabs) : (Ui.context -> xbody) -> transaction page =
+        @@tabbedStatic [tabsU] tabsFl
           title
-          (@@Variant.mp [map (fn _ => ()) tables] [_] (@Folder.mp fl)
-             (fn v => (titleOf v, @eq eq_tag v which, url (f v))))
+          (@@Variant.mp [tabsU] [_] tabsFl
+             (fn v => (titleOf v, @eq eq_tagPlus v which, url (f v))))
 
     datatype editingState row widgets aux =
              NotEditing of row * aux
@@ -688,7 +709,15 @@ functor Make(M : sig
         else
             error <xml>Access denied</xml>
 
-    fun index (which : tag) =
+    val weakener = @Variant.weaken ! (@Folder.mp fl)
+
+    fun page (which : tagPlus) =
+        @match which
+        (@@Variant.mp [map (fn _ => ()) tables] [_] (@Folder.mp fl) (fn v () => index v)
+          ++ @Variant.mp preFl (fn v () => tabbed page (@Variant.weaken ! (@Folder.mp preFl) v) (fn _ => (@Variant.proj preFl preTabs v).2))
+          ++ @Variant.mp postFl (fn v () => tabbed page (@Variant.weaken ! (@Folder.mp postFl) v) (fn _ => (@Variant.proj postFl postTabs v).2)))
+
+    and index (which : tag) =
         auth (Read which);
         bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
           (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) () r =>
@@ -701,7 +730,7 @@ functor Make(M : sig
                 <a class="btn btn-primary" link={create which}>New Entry</a>
               </xml>)
           fl which t;
-        tabbed index which (fn _ => bod)
+        tabbed page (weakener which) (fn _ => bod)
 
     and create (which : tag) =
         auth (Create which);
@@ -721,7 +750,7 @@ functor Make(M : sig
                                     redirect (url (index which))}/>
               </xml>)
           fl which t;
-        tabbed create which (fn _ => bod)
+        tabbed page (weakener which) (fn _ => bod)
 
     and doCreate (which : variant (map (fn p => $p.2 * p.7) dup)) =
         auth (Create (@Variant.erase (@Folder.mp fl) which));
@@ -793,7 +822,7 @@ functor Make(M : sig
               end)
           fl which t;
 
-        tabbed index (@Variant.erase (@Folder.mp fl) which) (fn ctxv => <xml>
+        tabbed page (weakener (@Variant.erase (@Folder.mp fl) which)) (fn ctxv => <xml>
           <active code={set ctx (Some ctxv); return <xml></xml>}/>
           {bod}
         </xml>)

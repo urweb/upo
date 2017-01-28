@@ -31,3 +31,5 @@ val destrR' : K --> f :: (K -> Type) -> fr :: (K -> Type) -> t ::: Type
               -> folder r -> variant (map f r) -> $(map fr r) -> t
 
 val eqU : ts ::: {Unit} -> folder ts -> eq (variant (map (fn _ => unit) ts))
+
+val proj : t ::: Type -> r ::: {Unit} -> folder r -> $(mapU t r) -> variant (mapU unit r) -> t

@@ -64,6 +64,8 @@ open Make(struct
                       |> text [#SuperPower] [#Description] "Description"
 
               fun authorize _ = return True
+              val preTabs = {Before = ("Before", <xml>Boring Before page</xml>)}
+              val postTabs = {After = ("After", <xml>Boring After page</xml>)}
           end)
 
 val main = index (make [#Frog] ())
