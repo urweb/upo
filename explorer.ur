@@ -656,12 +656,12 @@ functor Make(M : sig
                  val authorize : action (variant (map (fn _ => unit) tables)) (variant (map (fn p => p.1) tables)) -> transaction bool
 
                  con preTabs :: {Unit}
-                 val preTabs : $(mapU (string * xbody) preTabs)
-                 val preFl : folder preTabs
                  con postTabs :: {Unit}
-                 val postTabs : $(mapU (string * xbody) postTabs)
-                 val postFl : folder postTabs
                  constraint preTabs ~ postTabs
+                 val preTabs : $(mapU (string (* page title *) * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> xbody)) preTabs)
+                 val preFl : folder preTabs
+                 val postTabs : $(mapU (string * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> xbody)) postTabs)
+                 val postFl : folder postTabs
                  constraint (preTabs ++ postTabs) ~ tables
              end) = struct
     open M
@@ -714,8 +714,8 @@ functor Make(M : sig
     fun page (which : tagPlus) =
         @match which
         (@@Variant.mp [map (fn _ => ()) tables] [_] (@Folder.mp fl) (fn v () => index v)
-          ++ @Variant.mp preFl (fn v () => tabbed page (@Variant.weaken ! (@Folder.mp preFl) v) (fn _ => (@Variant.proj preFl preTabs v).2))
-          ++ @Variant.mp postFl (fn v () => tabbed page (@Variant.weaken ! (@Folder.mp postFl) v) (fn _ => (@Variant.proj postFl postTabs v).2)))
+          ++ @Variant.mp preFl (fn v () => tabbed page (@Variant.weaken ! (@Folder.mp preFl) v) (fn _ => (@Variant.proj preFl preTabs v).2 (fn v' => url (page (@Variant.weaken ! (@Folder.mp (@Folder.concat ! preFl postFl)) v')))))
+          ++ @Variant.mp postFl (fn v () => tabbed page (@Variant.weaken ! (@Folder.mp postFl) v) (fn _ => (@Variant.proj postFl postTabs v).2 (fn v' => url (page (@Variant.weaken ! (@Folder.mp (@Folder.concat ! preFl postFl)) v'))))))
 
     and index (which : tag) =
         auth (Read which);

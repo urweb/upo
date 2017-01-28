@@ -186,12 +186,12 @@ functor Make(M : sig
 
                  (* Other tabs to include, beside those associated with these tables. *)
                  con preTabs :: {Unit} (* To appear *before* the tables *)
-                 val preTabs : $(mapU (string (* page title *) * xbody) preTabs)
-                 val preFl : folder preTabs
                  con postTabs :: {Unit}
-                 val postTabs : $(mapU (string * xbody) postTabs)
-                 val postFl : folder postTabs
                  constraint preTabs ~ postTabs
+                 val preTabs : $(mapU (string (* page title *) * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> xbody)) preTabs)
+                 val preFl : folder preTabs
+                 val postTabs : $(mapU (string * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> xbody)) postTabs)
+                 val postFl : folder postTabs
                  constraint (preTabs ++ postTabs) ~ tables
              end) : sig
     val index : variant (map (fn _ => unit) M.tables) -> transaction page
