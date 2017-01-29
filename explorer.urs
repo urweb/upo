@@ -178,6 +178,25 @@ val manyToManyOrdered : full ::: {Type}
                              ([tname1 = (key1, [col1 = key1] ++ cols1, colsDone1, cstrs1, manyToMany11 impl11 key1 key2, manyToMany12 impl12 key1 key2, manyToMany13 impl13 key1 key2),
                                tname2 = (key2, [col2 = key2] ++ cols2, colsDone2, cstrs2, manyToMany21 impl21 key1 key2, manyToMany22 impl22 key1 key2, manyToMany23 impl23 key1 key2)] ++ old)
 
+con custom1 :: Type -> Type -> Type
+con custom2 :: Type -> Type -> Type
+con custom3 :: Type -> Type -> Type
+
+(* Treat a column as a foreign key, where in read mode we display it with custom logic. *)
+val custom : full ::: {Type}
+              -> tname :: Name -> key ::: Type -> col :: Name -> colT ::: Type
+              -> cols ::: {Type} -> colsDone ::: {Type} -> cstrs ::: {{Unit}}
+              -> stash ::: Type
+              -> impl1 ::: Type -> impl2 ::: Type -> impl3 ::: Type -> old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}
+              -> [[col] ~ cols] => [[col] ~ colsDone] => [[tname] ~ old]
+              => string
+              -> show colT
+              -> read colT
+              -> (colT -> transaction (option stash))
+              -> (stash -> xtable)
+              -> t full ([tname = (key, [col = option colT] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)
+              -> t full ([tname = (key, [col = option colT] ++ cols, [col = option colT] ++ colsDone, cstrs, custom1 stash impl1, custom2 stash impl2, custom3 stash impl3)] ++ old)
+
 datatype action tab key =
          Read of tab
        | Create of tab

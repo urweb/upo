@@ -10,7 +10,7 @@ type t1 (full :: {Type}) (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type 
       KeyIs : nm :: Name -> p.1 -> sql_exp [nm = p.2] [] [] bool,
       Show : show p.1,
       Config : transaction p.5,
-      Auxiliary : p.1 -> transaction p.7,
+      Auxiliary : p.1 -> $p.2 -> transaction p.7,
       Render : (variant full -> string -> xbody) -> p.7 -> $p.2 -> xtable,
       FreshWidgets : transaction p.6,
       WidgetsFrom : $p.2 -> p.7 -> transaction p.6,
@@ -47,7 +47,7 @@ fun one [full ::: {Type}]
               KeyIs = fn [nm ::_] v => (WHERE {{nm}}.{key} = {[v]}),
               Show = sh,
               Config = return (),
-              Auxiliary = fn _ => return (),
+              Auxiliary = fn _ _ => return (),
               Render = fn _ _ _ => <xml></xml>,
               FreshWidgets = return (),
               WidgetsFrom = fn _ _ => return (),
@@ -77,7 +77,7 @@ fun two [full ::: {Type}]
                                                  AND {{nm}}.{key2} = {[v2]}),
               Show = sh,
               Config = return (),
-              Auxiliary = fn _ => return (),
+              Auxiliary = fn _ _ => return (),
               Render = fn _ _ _ => <xml></xml>,
               FreshWidgets = return (),
               WidgetsFrom = fn _ _ => return (),
@@ -279,12 +279,12 @@ fun foreign [full ::: {Type}]
                         -- #Insert -- #Update -- #Auxiliary -- #Render -- #ReadWidgets -- #WidgetsFrom
                         ++ {Insert = fn r (_, aux) => old.ftname.Insert r aux,
                             Update = fn r (_, aux) => old.ftname.Update r aux,
-                            Auxiliary = fn fkey =>
+                            Auxiliary = fn fkey row =>
                                            let
                                                val tab = old.tname.Table
                                            in
                                                keys <- old.tname.List (WHERE tab.{col} = {[fkey]});
-                                               aux <- old.ftname.Auxiliary fkey;
+                                               aux <- old.ftname.Auxiliary fkey row;
                                                return (keys, aux)
                                            end,
                            Render = fn entry (children, aux) r =>
@@ -355,13 +355,13 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                  cfg <- old.tname1.Config;
                                  return (keys, cfg)
                              end,
-                             Auxiliary = fn k1 =>
+                             Auxiliary = fn k1 row =>
                                  keys <- List.mapQuery (SELECT rel.{col2}
                                                         FROM rel
                                                         WHERE rel.{col1} = {[k1]}
                                                         ORDER BY rel.{col2})
                                                        (fn r => r.Rel.col2);
-                                 aux <- old.tname1.Auxiliary k1;
+                                 aux <- old.tname1.Auxiliary k1 row;
                                  return (keys, aux),
                              Render = fn entry (k2s, aux) r =>
                                          <xml>
@@ -439,13 +439,13 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                cfg <- old.tname2.Config;
                                return (keys, cfg)
                            end,
-                           Auxiliary = fn k2 =>
+                           Auxiliary = fn k2 row =>
                                keys <- List.mapQuery (SELECT rel.{col1}
                                                       FROM rel
                                                       WHERE rel.{col2} = {[k2]}
                                                       ORDER BY rel.{col1})
                                                      (fn r => r.Rel.col1);
-                               aux <- old.tname2.Auxiliary k2;
+                               aux <- old.tname2.Auxiliary k2 row;
                                return (keys, aux),
                            Render = fn entry (k1s, aux) r =>
                                        <xml>
@@ -544,13 +544,13 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                  cfg <- old.tname1.Config;
                                  return (keys, cfg)
                              end,
-                             Auxiliary = fn k1 =>
+                             Auxiliary = fn k1 row =>
                                  keys <- List.mapQuery (SELECT rel.{col2}
                                                         FROM rel
                                                         WHERE rel.{col1} = {[k1]}
                                                         ORDER BY rel.SeqNum)
                                                        (fn r => r.Rel.col2);
-                                 aux <- old.tname1.Auxiliary k1;
+                                 aux <- old.tname1.Auxiliary k1 row;
                                  return (keys, aux),
                              Render = fn entry (k2s, aux) r =>
                                          <xml>
@@ -647,13 +647,13 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                cfg <- old.tname2.Config;
                                return (keys, cfg)
                            end,
-                           Auxiliary = fn k2 =>
+                           Auxiliary = fn k2 row =>
                                keys <- List.mapQuery (SELECT rel.{col1}
                                                       FROM rel
                                                       WHERE rel.{col2} = {[k2]}
                                                       ORDER BY rel.{col1})
                                                      (fn r => r.Rel.col1);
-                               aux <- old.tname2.Auxiliary k2;
+                               aux <- old.tname2.Auxiliary k2 row;
                                return (keys, aux),
                            Render = fn entry (k1s, aux) r =>
                                        <xml>
@@ -678,6 +678,60 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                             slv <- signal sl;
                                             (wsv, aux) <- old.tname2.ReadWidgets ws;
                                             return (wsv, (slv, aux))}}
+
+type custom1 stash t = t
+type custom2 stash t = source string * t
+type custom3 stash t = option stash * t
+
+fun custom [full ::: {Type}]
+           [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type]
+           [cols ::: {Type}] [colsDone ::: {Type}] [cstrs ::: {{Unit}}]
+           [stash ::: Type]
+           [impl1 ::: Type] [impl2 ::: Type] [impl3 ::: Type] [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
+           [[col] ~ cols] [[col] ~ colsDone] [[tname] ~ old]
+           (lab : string) (_ : show colT) (_ : read colT)
+           (content : colT -> transaction (option stash))
+           (render : stash -> xtable)
+           (old : t full ([tname = (key, [col = option colT] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)) =
+    old -- tname
+        ++ {tname = old.tname
+                        -- #Auxiliary -- #Insert -- #Update -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
+                        ++ {Auxiliary = fn k row =>
+                                           aux1 <- (case row.col of
+                                                        None => return None
+                                                      | Some v => content v);
+                                           aux2 <- old.tname.Auxiliary k row;
+                                           return (aux1, aux2),
+                            Insert = fn r (_, aux) => old.tname.Insert r aux,
+                            Update = fn r (_, aux) => old.tname.Update r aux,
+                            Render = fn entry (aux1, aux2) r => <xml>
+                              {old.tname.Render entry aux2 r}
+                              {case aux1 of
+                                   None => <xml></xml>
+                                 | Some aux1 => render aux1}
+                            </xml>,
+                            FreshWidgets =
+                               s <- source "";
+                               ws <- old.tname.FreshWidgets;
+                               return (s, ws),
+                            WidgetsFrom = fn r (_, aux2) =>
+                               s <- source (show r.col);
+                               ws <- old.tname.WidgetsFrom r aux2;
+                               return (s, ws),
+                            RenderWidgets = fn cfg (s, ws) =>
+                                               <xml>
+                                                 {old.tname.RenderWidgets cfg ws}
+                                                 <div class="form-group">
+                                                   <label class="control-label">{[lab]}</label>
+                                                   <ctextbox class="form-control" source={s}/>
+                                                 </div>
+                                               </xml>,
+                            ReadWidgets = fn (s, ws) =>
+                                             v <- signal s;
+                                             (wsv, aux) <- old.tname.ReadWidgets ws;
+                                             return ({col = case v of
+                                                                "" => None
+                                                              | _ => Some (readError v)} ++ wsv, (None, aux))}}
 
 datatype action tab key =
          Read of tab
@@ -811,10 +865,10 @@ functor Make(M : sig
                   val tab = r.Table
               in
                   cfg <- r.Config;
-                  aux <- r.Auxiliary k;
                   row <- oneRow1 (SELECT *
                                   FROM tab
                                   WHERE {r.KeyIs [#Tab] k});
+                  aux <- r.Auxiliary k row;
                   est <- source (NotEditing (row, aux));
                   return <xml>
                     <dyn signal={esta <- signal est;
