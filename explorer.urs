@@ -57,6 +57,17 @@ val text : full ::: {Type}
            -> t full ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)
            -> t full ([tname = (key, [col = colT] ++ cols, [col = colT] ++ colsDone, cstrs, text1 impl1, text2 impl2, text3 impl3)] ++ old)
 
+val hyperref : full ::: {Type}
+               -> tname :: Name -> key ::: Type -> col :: Name -> colT ::: Type
+               -> cols ::: {Type} -> colsDone ::: {Type} -> cstrs ::: {{Unit}}
+               -> impl1 ::: Type -> impl2 ::: Type -> impl3 ::: Type -> old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}
+               -> [[col] ~ cols] => [[col] ~ colsDone] => [[tname] ~ old]
+               => string
+               -> show colT
+               -> read colT
+               -> t full ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)
+               -> t full ([tname = (key, [col = colT] ++ cols, [col = colT] ++ colsDone, cstrs, text1 impl1, text2 impl2, text3 impl3)] ++ old)
+
 val textOpt : full ::: {Type}
               -> tname :: Name -> key ::: Type -> col :: Name -> colT ::: Type
               -> cols ::: {Type} -> colsDone ::: {Type} -> cstrs ::: {{Unit}}
