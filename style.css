@@ -128,3 +128,82 @@ div.Calendar_item {
     padding: 0px 10px 10px 10px;
     border-style: solid;
 }
+
+/* Fixed-header stuff from http://jsfiddle.net/drueter/yqgB5/16/ */
+
+/*
+Force table width to 100%
+*/
+table.table_fixedheader {
+  width: 100%;
+}
+
+/*
+Set table elements to block mode.  (Normally they are inline).
+This allows a responsive table, such as one where columns can be stacked
+if the display is narrow.
+*/
+table.table_fixedheader,
+table.table_fixedheader>thead,
+table.table_fixedheader>tbody,
+table.table_fixedheader>thead>tr,
+table.table_fixedheader>tbody>tr,
+table.table_fixedheader>thead>tr>th,
+table.table_fixedheader>tbody>td {
+  display: block;
+}
+
+
+table.table_fixedheader>thead>tr:after,
+table.table_fixedheader>tbody>tr:after {
+  content: ' ';
+  display: block;
+  visibility: hidden;
+  clear: both;
+}
+
+/*
+When scrolling the table, actually it is only the tbody portion of the
+table that scrolls (not the entire table: we want the thead to remain
+fixed).  We must specify an explicit height for the tbody.  We include
+100px as a default, but it can be overridden elsewhere.
+
+Also, we force the scrollbar to always be displayed so that the usable
+width for the table contents doesn't change (such as becoming narrower
+when a scrollbar is visible and wider when it is not).
+*/
+table.table_fixedheader>tbody {
+  overflow-y: scroll;
+  height: 100px;
+}
+
+/*
+We really don't want to scroll the thead contents, but we want to force
+a scrollbar to be displayed anyway so that the usable width of the thead
+will exactly match the tbody.
+*/
+table.table_fixedheader>thead {        
+  overflow-y: scroll;
+}
+
+/*
+For browsers that support it (webkit), we set the background color of
+the unneeded scrollbar in the thead to make it invisible.  (Setting
+visiblity: hidden defeats the purpose, as this alters the usable width
+of the thead.)
+*/
+table.table_fixedheader>thead::-webkit-scrollbar{
+  background-color: inherit;
+}
+
+/*
+We want to set <th> and <td> elements to float left.
+We also must explicitly set the width for each column (both for the <th>
+and the <td>).  We set to 20% here a default placeholder, but it can be
+overridden elsewhere.
+*/
+table.table_fixedheader>thead>tr>th,
+table.table_fixedheader>tbody>tr>td {
+        width: 20%;
+        float: left;
+}

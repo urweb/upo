@@ -1,3 +1,5 @@
+style table_fixedheader
+
 style meeting_default
 style meeting_selected
 style meeting_conflict
@@ -529,119 +531,130 @@ functor Make(M : sig
                     delMeeting (r.Them ++ r.OldUs ++ r.OldTime);
                     addMeeting (r.Them ++ r.NewUs ++ r.NewTime)
 
-            fun render filt ctx t = <xml>
-              <table class="bs3-table table-striped">
-                <tr>
-                  <th/>
-                  (* Header: one column per time *)
-                  {List.mapX (fn tm => <xml><th>{[tm]}</th></xml>) t.Times}
-                </tr>
-
-                (* One row per us *)
-                {List.mapX (fn (us, off, tms) => <xml>
-                  <tr dynStyle={b <- filt (us ++ off); return (if b then STYLE "" else STYLE "display: none")}>
-                    <th>{[us]}{[off]}</th>
-
-                    (* One column per time *)
-                    {List.mapX (fn (tm, avail, ths) => <xml>
-                      <td dynClass={mf <- signal t.MovingFrom;
-                                    cls <- (case mf of
-                                                None => return (CLASS "")
-                                              | Some _ =>
-                                                mt <- signal t.MovingTo;
-                                                return (case mt of
-                                                            None => CLASS ""
-                                                          | Some mt =>
-                                                            if mt.Us = us && mt.Time = tm then
-                                                                CLASS "bs3-active"
-                                                            else
-                                                                CLASS ""));
-                                   return (if avail then cls else classes cls danger)}
-                          onmouseover={fn _ =>
-                                          set t.MovingTo (Some {Us = us, Time = tm})}
-                          onclick={fn _ =>
-                                      mf <- get t.MovingFrom;
-                                      case mf of
-                                          None => return ()
-                                        | Some mf =>
-                                          mt <- get t.MovingTo;
-                                          case mt of
-                                              None => return ()
-                                            | Some mt =>
-                                              set t.MovingFrom None;
-                                              rpc (reschedule {Them = mf.Them,
-                                                               OldUs = mf.Us,
-                                                               OldTime = mf.Time,
-                                                               NewUs = mt.Us,
-                                                               NewTime = mt.Time})}>
-                        <active code={selected <- source "";
-                                      deleting <- source False;
-                                      return <xml>
-                                        <dyn signal={thsv <- signal ths;
-                                                     (* One button per meeting *)
-                                                     return <xml>
-                                                       {List.mapX (fn (th, tt) => <xml>
-                                                         <div dynClass={mf <- signal t.MovingFrom;
-                                                                        default <- return (case thsv of
-                                                                                               _ :: _ :: _ => meeting_conflict
-                                                                                             | _ => if tt > 1 then meeting_conflict else meeting_default);
-                                                                        return (case mf of
-                                                                                    None => default
-                                                                                  | Some mf =>
-                                                                                    if mf.Us = us
-                                                                                       && mf.Them = th
-                                                                                       && mf.Time = tm then
-                                                                                        meeting_selected
-                                                                                    else
-                                                                                        default)}
-                                                              onclick={fn _ =>
-                                                                          del <- get deleting;
-                                                                          if del then
-                                                                              set deleting False
-                                                                          else
-                                                                              stopPropagation;
-                                                                              set t.MovingFrom
-                                                                                  (Some {Us = us,
-                                                                                         Them = th,
-                                                                                         Time = tm})}>
-                                                           {[th]}
-                                                           {Ui.modalButton ctx (CLASS "close")
-                                                                           <xml>&times;</xml>
-                                                                           (set deleting True;
-                                                                            return (Ui.modal
-                                                                                 (rpc (unschedule (th ++ us ++ tm)))
-                                                                                 <xml>Are you sure you want to delete the {[tm]} meeting between {[us]} and {[th]}?</xml>
-                                                                                 <xml/>
-                                                                                 <xml>Yes!</xml>))}
-                                                         </div>
-                                                       </xml>) thsv}
-
-                                                       {Ui.modalButton ctx (CLASS "btn btn-default btn-xs")
-                                                               <xml>+</xml>
-                                                               (return (Ui.modal
-                                                                            (sel <- get selected;
-                                                                             th <- return (readError sel : $themKey);
-                                                                             rpc (schedule (th ++ us ++ tm)))
-                                                                            <xml>Adding meeting for {[us]} at {[tm]}</xml>
-                                                                            <xml>
-                                                                              <cselect class="form-control"
-                                                                                       source={selected}>
-                                                                                {List.mapX (fn th =>
-                                                                                               if List.exists (fn (th', _) => th' = th) thsv then
-                                                                                                   <xml/>
-                                                                                               else
-                                                                                                   <xml><coption>{[th]}</coption></xml>) t.Thems}
-                                                                              </cselect>
-                                                                            </xml>
-                                                                            <xml>Add Meeting</xml>))}
-                                                     </xml>}/>
-                                      </xml>}/>
-                      </td>
-                    </xml>) tms}
+            fun render filt ctx t =
+                let
+                    val colwidth = show (100 / (1 + List.length t.Times)) ^ "%"
+                    val colwidth = oneProperty noStyle (value (property "width") (atom colwidth))
+                in
+            <xml>
+              <table class="bs3-table table-striped table-fixedheader">
+                <thead>
+                  <tr>
+                    <th style={colwidth}>&nbsp;</th>
+                    (* Header: one column per time *)
+                    {List.mapX (fn tm => <xml><th style={colwidth}>{[tm]}</th></xml>) t.Times}
                   </tr>
-                </xml>) t.Meetings}
+                </thead>
+
+                <tbody style="height: 500px">
+                  (* One row per us *)
+                  {List.mapX (fn (us, off, tms) => <xml>
+                    <tr dynStyle={b <- filt (us ++ off); return (if b then STYLE "" else STYLE "display: none")}>
+                      <td style={colwidth}><strong>{[us]}{[off]}</strong></td>
+
+                      (* One column per time *)
+                      {List.mapX (fn (tm, avail, ths) => <xml>
+                        <td dynClass={mf <- signal t.MovingFrom;
+                                      cls <- (case mf of
+                                                  None => return (CLASS "")
+                                                | Some _ =>
+                                                  mt <- signal t.MovingTo;
+                                                  return (case mt of
+                                                              None => CLASS ""
+                                                            | Some mt =>
+                                                              if mt.Us = us && mt.Time = tm then
+                                                                  CLASS "bs3-active"
+                                                              else
+                                                                  CLASS ""));
+                                     return (if avail then cls else classes cls danger)}
+                            onmouseover={fn _ =>
+                                            set t.MovingTo (Some {Us = us, Time = tm})}
+                            onclick={fn _ =>
+                                        mf <- get t.MovingFrom;
+                                        case mf of
+                                            None => return ()
+                                          | Some mf =>
+                                            mt <- get t.MovingTo;
+                                            case mt of
+                                                None => return ()
+                                              | Some mt =>
+                                                set t.MovingFrom None;
+                                                rpc (reschedule {Them = mf.Them,
+                                                                 OldUs = mf.Us,
+                                                                 OldTime = mf.Time,
+                                                                 NewUs = mt.Us,
+                                                                 NewTime = mt.Time})}
+                            style={colwidth}>
+                          <active code={selected <- source "";
+                                        deleting <- source False;
+                                        return <xml>
+                                          <dyn signal={thsv <- signal ths;
+                                                       (* One button per meeting *)
+                                                       return <xml>
+                                                         {List.mapX (fn (th, tt) => <xml>
+                                                           <div dynClass={mf <- signal t.MovingFrom;
+                                                                          default <- return (case thsv of
+                                                                                                 _ :: _ :: _ => meeting_conflict
+                                                                                               | _ => if tt > 1 then meeting_conflict else meeting_default);
+                                                                          return (case mf of
+                                                                                      None => default
+                                                                                    | Some mf =>
+                                                                                      if mf.Us = us
+                                                                                         && mf.Them = th
+                                                                                         && mf.Time = tm then
+                                                                                          meeting_selected
+                                                                                      else
+                                                                                          default)}
+                                                                onclick={fn _ =>
+                                                                            del <- get deleting;
+                                                                            if del then
+                                                                                set deleting False
+                                                                            else
+                                                                                stopPropagation;
+                                                                                set t.MovingFrom
+                                                                                    (Some {Us = us,
+                                                                                           Them = th,
+                                                                                           Time = tm})}>
+                                                             {[th]}
+                                                             {Ui.modalButton ctx (CLASS "close")
+                                                                             <xml>&times;</xml>
+                                                                             (set deleting True;
+                                                                              return (Ui.modal
+                                                                                   (rpc (unschedule (th ++ us ++ tm)))
+                                                                                   <xml>Are you sure you want to delete the {[tm]} meeting between {[us]} and {[th]}?</xml>
+                                                                                   <xml/>
+                                                                                   <xml>Yes!</xml>))}
+                                                           </div>
+                                                         </xml>) thsv}
+
+                                                         {Ui.modalButton ctx (CLASS "btn btn-default btn-xs")
+                                                                 <xml>+</xml>
+                                                                 (return (Ui.modal
+                                                                              (sel <- get selected;
+                                                                               th <- return (readError sel : $themKey);
+                                                                               rpc (schedule (th ++ us ++ tm)))
+                                                                              <xml>Adding meeting for {[us]} at {[tm]}</xml>
+                                                                              <xml>
+                                                                                <cselect class="form-control"
+                                                                                         source={selected}>
+                                                                                  {List.mapX (fn th =>
+                                                                                                 if List.exists (fn (th', _) => th' = th) thsv then
+                                                                                                     <xml/>
+                                                                                                 else
+                                                                                                     <xml><coption>{[th]}</coption></xml>) t.Thems}
+                                                                                </cselect>
+                                                                              </xml>
+                                                                              <xml>Add Meeting</xml>))}
+                                                       </xml>}/>
+                                        </xml>}/>
+                        </td>
+                      </xml>) tms}
+                    </tr>
+                  </xml>) t.Meetings}
+                </tbody>
               </table>
             </xml>
+                end
 
             fun tweakMeeting (f : themSet -> themSet) (g : int -> int) (us : $usKey) (th : $themKey) (tm : $timeKey) =
                 List.app (fn (us', _, tms) =>
