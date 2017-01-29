@@ -95,4 +95,7 @@ functor Make(M : sig
     (* Away's view: a list of all events, with buttons to change your own RSVP's *)
     structure Away : Ui.S where type input = $M.awayKey
 
+    (* Like above, but a short read-only summary *)
+    structure AwaySummary : Ui.S where type input = $M.awayKey
+
 end

@@ -621,4 +621,33 @@ functor Make(M : sig
 
     end
 
+    structure AwaySummary = struct
+        type input = _
+        type a = _
+
+        fun create aw =
+            List.mapQuery (SELECT event.{{eventKey}}, event.{{eventData}}
+                           FROM awayRsvp JOIN event
+                             ON {@@Sql.easy_join [#Event] [#AwayRsvp] [eventKey]
+                             [eventData ++ eventRest] [awayKey] [_] [_] [_]
+                             ! ! ! ! eventKeyFl}
+                           WHERE {@@Sql.easy_where [#AwayRsvp] [awayKey] [_] [_] [_] [_]
+                             ! ! awayInj' awayKeyFl aw}
+                           ORDER BY {{{@Sql.order_by eventKeyFl
+                             (@Sql.some_fields [#Event] [eventKey] ! ! eventKeyFl)
+                             sql_asc}}})
+                      (fn r => r.Event)
+
+        fun render t = <xml><ul>
+            {List.mapX (fn ev => <xml><li><b>{[(ev --- eventData) : $eventKey]}</b>: {M.render (ev --- eventKey)}</li></xml>) t}
+        </ul></xml>
+
+        fun ui x = {
+            Create = create x,
+            Onload = fn _ => return (),
+            Render = fn _ => render
+        }
+
+    end
+
 end
