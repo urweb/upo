@@ -6,7 +6,6 @@ allow responseHeader Content-Disposition
 jsFile navbar.js
 allow env SSL_CLIENT_S_DN
 allow mime text/csv
-rewrite style MeetingGrid/*
 
 $/list
 $/char

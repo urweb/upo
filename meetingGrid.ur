@@ -235,6 +235,7 @@ functor Make(M : sig
 
                      table preference : ([ByHome = bool] ++ usKey ++ themKey)
                      table unavailable : (usKey ++ timeKey)
+                     table unavailableThem : (themKey ++ timeKey)
 
                      table meeting : (usKey ++ themKey ++ timeKey)
 
@@ -325,6 +326,7 @@ functor Make(M : sig
             type themSet = list ($themKey * int (* number of meetings this them has at this time *))
             type timeMap = list ($timeKey * bool (* available? *) * themSet)
             type usMap = list ($usKey * $usOffice * timeMap)
+            type themMap = list ($themKey * list $timeKey (* unavailable times *))
             type input = _
             type a = _
 
@@ -419,6 +421,24 @@ functor Make(M : sig
                                                     []
                                                     ((time, available, List.rev themsDone) :: timesDone)
                                         end
+
+                    fun mergeThemsWithUnavails (thems : list $themKey) (unavails : list $(themKey ++ timeKey)) (times : list $timeKey) (acc : themMap) : themMap =
+                        case thems of
+                            [] => acc
+                          | them :: thems' =>
+                            case unavails of
+                                [] => List.revAppend (List.mp (fn them' => (them', [])) thems')
+                                                     ((them, times) :: acc)
+                              | r :: unavails' =>
+                                let
+                                    val them' = r --- timeKey
+                                    val tm = r --- themKey
+                                in
+                                    if them' = them then
+                                         mergeThemsWithUnavails thems unavails' (tm :: times) acc
+                                    else
+                                        mergeThemsWithUnavails thems' unavails [] ((them, times) :: acc)
+                                end
                 in
                     uses <- queryL1 (SELECT us.{{usKey}}, us.{{usOffice}}
                                      FROM us
@@ -439,7 +459,13 @@ functor Make(M : sig
                                         (themHardConst ++ themSoftConst)}
                                       ORDER BY {{{@Sql.order_by themFl
                                         (@Sql.some_fields [#Them] [themKey] ! ! themFl)
-                                        sql_asc}}});
+                                        sql_desc}}});
+                    unavailsThem <- queryL1 (SELECT unavailableThem.{{themKey}}, unavailableThem.{{timeKey}}
+                                             FROM unavailableThem
+                                             ORDER BY {{{@Sql.order_by (@Folder.concat ! themFl timeKeyFl)
+                                               (@Sql.some_fields [#UnavailableThem] [themKey ++ timeKey] ! !
+                                                 (@Folder.concat ! themFl timeKeyFl))
+                                               sql_desc}}});
                     unavails <- queryL1 (SELECT unavailable.{{usKey}}, unavailable.{{timeKey}}
                                          FROM unavailable JOIN us
                                            ON {@@Sql.easy_join [#Unavailable] [#Us]
@@ -479,6 +505,7 @@ functor Make(M : sig
                                                    unavails
                                                    []
                                                    []);
+                    thems <- return (mergeThemsWithUnavails thems unavailsThem [] []);
                     chan <- channel;
                     dml (INSERT INTO globalListeners (Channel) VALUES ({[chan]}));
                     mf <- source None;
@@ -592,19 +619,25 @@ functor Make(M : sig
                                                        (* One button per meeting *)
                                                        return <xml>
                                                          {List.mapX (fn (th, tt) => <xml>
-                                                           <div dynClass={mf <- signal t.MovingFrom;
-                                                                          default <- return (case thsv of
-                                                                                                 _ :: _ :: _ => meeting_conflict
-                                                                                               | _ => if tt > 1 then meeting_conflict else meeting_default);
-                                                                          return (case mf of
-                                                                                      None => default
-                                                                                    | Some mf =>
-                                                                                      if mf.Us = us
-                                                                                         && mf.Them = th
-                                                                                         && mf.Time = tm then
-                                                                                          meeting_selected
-                                                                                      else
-                                                                                          default)}
+                                                           <div dynClass={case List.find (fn (th', _) => th' = th) t.Thems of
+                                                                              None => return meeting_default
+                                                                            | Some (_, unavails) =>
+                                                                              mf <- signal t.MovingFrom;
+                                                                              default <- return (if avail && not (List.mem tm unavails) then
+                                                                                                     case thsv of
+                                                                                                         _ :: _ :: _ => meeting_conflict
+                                                                                                       | _ => if tt > 1 then meeting_conflict else meeting_default
+                                                                                                 else
+                                                                                                     meeting_conflict);
+                                                                              return (case mf of
+                                                                                          None => default
+                                                                                        | Some mf =>
+                                                                                          if mf.Us = us
+                                                                                             && mf.Them = th
+                                                                                             && mf.Time = tm then
+                                                                                              meeting_selected
+                                                                                          else
+                                                                                              default)}
                                                                 onclick={fn _ =>
                                                                             del <- get deleting;
                                                                             if del then
@@ -637,7 +670,7 @@ functor Make(M : sig
                                                                               <xml>
                                                                                 <cselect class="form-control"
                                                                                          source={selected}>
-                                                                                  {List.mapX (fn th =>
+                                                                                  {List.mapX (fn (th, _) =>
                                                                                                  if List.exists (fn (th', _) => th' = th) thsv then
                                                                                                      <xml/>
                                                                                                  else
@@ -951,6 +984,7 @@ functor Make(M : sig
                       fun usChannel r = r -- #Away ++ {Them = r.Away}
                       val usListeners = homeListeners
                       val unavailable = homeUnavailable
+                      val unavailableThem = awayUnavailable
 
                       val usInj = homeInj
                       val themInj = awayInj
@@ -1004,6 +1038,7 @@ functor Make(M : sig
                               fun usChannel r = r -- #Home ++ {Them = r.Home}
                               val usListeners = awayListeners
                               val unavailable = awayUnavailable
+                              val unavailableThem = homeUnavailable
 
                               val usInj = awayInj
                               val themInj = homeInj
