@@ -215,6 +215,7 @@ functor Make(M : THEME) = struct
         nid <- fresh;
         mid <- fresh;
         ms <- source <xml/>;
+        bod <- bod {ModalId = mid, ModalSpot = ms};
 
         return <xml>
           <head>
@@ -261,7 +262,7 @@ functor Make(M : THEME) = struct
               </nav>
 
               <div class="container-fluid">
-                {bod {ModalId = mid, ModalSpot = ms}}
+                {bod}
               </div>
             </xml>}
           </body>

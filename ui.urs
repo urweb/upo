@@ -87,7 +87,7 @@ functor Make(M : THEME) : sig
     val tabbedStatic : ts ::: {Unit} -> folder ts
                        -> string
                        -> $(mapU (string * bool (* selected? *) * url) ts)
-                       -> (context -> xbody)
+                       -> (context -> transaction xbody)
                        -> transaction page
 
     (* Generating multiple pages of printed content, with no extra visual style wrapped around each page (so include everything you want in the UI itself)  *)

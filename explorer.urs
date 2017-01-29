@@ -199,9 +199,9 @@ functor Make(M : sig
                  con preTabs :: {Unit} (* To appear *before* the tables *)
                  con postTabs :: {Unit}
                  constraint preTabs ~ postTabs
-                 val preTabs : $(mapU (string (* page title *) * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> xbody)) preTabs)
+                 val preTabs : $(mapU (string (* page title *) * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> transaction xbody)) preTabs)
                  val preFl : folder preTabs
-                 val postTabs : $(mapU (string * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> xbody)) postTabs)
+                 val postTabs : $(mapU (string * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> transaction xbody)) postTabs)
                  val postFl : folder postTabs
                  constraint (preTabs ++ postTabs) ~ tables
              end) : sig

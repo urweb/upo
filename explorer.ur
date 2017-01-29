@@ -699,9 +699,9 @@ functor Make(M : sig
                  con preTabs :: {Unit}
                  con postTabs :: {Unit}
                  constraint preTabs ~ postTabs
-                 val preTabs : $(mapU (string (* page title *) * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> xbody)) preTabs)
+                 val preTabs : $(mapU (string (* page title *) * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> transaction xbody)) preTabs)
                  val preFl : folder preTabs
-                 val postTabs : $(mapU (string * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> xbody)) postTabs)
+                 val postTabs : $(mapU (string * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> transaction xbody)) postTabs)
                  val postFl : folder postTabs
                  constraint (preTabs ++ postTabs) ~ tables
              end) = struct
@@ -733,7 +733,7 @@ functor Make(M : sig
 
     val tabsFl = @Folder.concat ! postFl (@Folder.concat ! (@Folder.mp fl) preFl)
 
-    fun tabbed f (which : variant tabs) : (Ui.context -> xbody) -> transaction page =
+    fun tabbed f (which : variant tabs) : (Ui.context -> transaction xbody) -> transaction page =
         @@tabbedStatic [tabsU] tabsFl
           title
           (@@Variant.mp [tabsU] [_] tabsFl
@@ -771,7 +771,7 @@ functor Make(M : sig
                 <a class="btn btn-primary" link={create which}>New Entry</a>
               </xml>)
           fl which t;
-        tabbed page (weakener which) (fn _ => bod)
+        tabbed page (weakener which) (fn _ => return bod)
 
     and create (which : tag) =
         auth (Create which);
@@ -791,7 +791,7 @@ functor Make(M : sig
                                     redirect (url (index which))}/>
               </xml>)
           fl which t;
-        tabbed page (weakener which) (fn _ => bod)
+        tabbed page (weakener which) (fn _ => return bod)
 
     and doCreate (which : variant (map (fn p => $p.2 * p.7) dup)) =
         auth (Create (@Variant.erase (@Folder.mp fl) which));
@@ -863,7 +863,7 @@ functor Make(M : sig
               end)
           fl which t;
 
-        tabbed page (weakener (@Variant.erase (@Folder.mp fl) which)) (fn ctxv => <xml>
+        tabbed page (weakener (@Variant.erase (@Folder.mp fl) which)) (fn ctxv => return <xml>
           <active code={set ctx (Some ctxv); return <xml></xml>}/>
           {bod}
         </xml>)
