@@ -33,7 +33,7 @@ val urlbox : t string urlbox urlbox_config
 (* This one is earlier in the list so that [textbox] overrides it by default! *)
 
 type htmlbox
-type htmlbox_config
+type htmlbox_config = {}
 val htmlbox : t string htmlbox htmlbox_config
 val html : string -> xbody (* Use this one to parse result of [htmlbox] into real HTML. *)
 

@@ -253,6 +253,49 @@ fun checkbox [full ::: {Type}]
                                              (wsv, aux) <- old.tname.ReadWidgets ws;
                                              return ({col = v} ++ wsv, aux)}}
 
+type htmlbox1 t = t
+type htmlbox2 t = Widget.htmlbox * t
+type htmlbox3 t = t
+
+fun htmlbox [full ::: {Type}]
+            [tname :: Name] [key ::: Type] [col :: Name]
+            [cols ::: {Type}] [colsDone ::: {Type}] [cstrs ::: {{Unit}}]
+            [impl1 ::: Type] [impl2 ::: Type] [impl3 ::: Type] [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
+            [[col] ~ cols] [[col] ~ colsDone] [[tname] ~ old]
+            (lab : string)
+            (old : t full ([tname = (key, [col = string] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)) =
+       old -- tname
+           ++ {tname = old.tname
+                           -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
+                           ++ {Render = fn entry aux r =>
+                                           <xml>
+                                             {old.tname.Render entry aux r}
+                                             <tr>
+                                               <th>{[lab]}</th>
+                                               <td>{Widget.html r.col}</td>
+                                             </tr>
+                                           </xml>,
+                               FreshWidgets =
+                                  s <- @Widget.create Widget.htmlbox ();
+                                  ws <- old.tname.FreshWidgets;
+                                  return (s, ws),
+                               WidgetsFrom = fn r aux =>
+                                  s <- @Widget.initialize Widget.htmlbox () r.col;
+                                  ws <- old.tname.WidgetsFrom r aux;
+                                  return (s, ws),
+                               RenderWidgets = fn cfg (s, ws) =>
+                                                  <xml>
+                                                    {old.tname.RenderWidgets cfg ws}
+                                                    <div class="form-group">
+                                                      <label class="control-label">{[lab]}</label>
+                                                      {@Widget.asWidget Widget.htmlbox s None}
+                                                    </div>
+                                                  </xml>,
+                               ReadWidgets = fn (s, ws) =>
+                                                v <- @Widget.value Widget.htmlbox s;
+                                                (wsv, aux) <- old.tname.ReadWidgets ws;
+                                                return ({col = v} ++ wsv, aux)}}
+
 type foreign1 t key colT = list colT * t
 type foreign2 t key colT = source string * t
 type foreign3 t key colT = list key * t

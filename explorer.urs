@@ -92,6 +92,19 @@ val checkbox : full ::: {Type}
                -> t full ([tname = (key, [col = bool] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)
                -> t full ([tname = (key, [col = bool] ++ cols, [col = bool] ++ colsDone, cstrs, checkbox1 impl1, checkbox2 impl2, checkbox3 impl3)] ++ old)
 
+con htmlbox1 :: Type -> Type
+con htmlbox2 :: Type -> Type
+con htmlbox3 :: Type -> Type
+
+val htmlbox : full ::: {Type}
+              -> tname :: Name -> key ::: Type -> col :: Name
+              -> cols ::: {Type} -> colsDone ::: {Type} -> cstrs ::: {{Unit}}
+              -> impl1 ::: Type -> impl2 ::: Type -> impl3 ::: Type -> old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}
+              -> [[col] ~ cols] => [[col] ~ colsDone] => [[tname] ~ old]
+              => string
+              -> t full ([tname = (key, [col = string] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)
+              -> t full ([tname = (key, [col = string] ++ cols, [col = string] ++ colsDone, cstrs, htmlbox1 impl1, htmlbox2 impl2, htmlbox3 impl3)] ++ old)
+
 con foreign1 :: Type -> Type -> Type -> Type
 con foreign2 :: Type -> Type -> Type -> Type
 con foreign3 :: Type -> Type -> Type -> Type
