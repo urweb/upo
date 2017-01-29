@@ -80,6 +80,9 @@ functor Make(M : sig
                  val amHome : transaction (option $homeKey)
                  val amPrivilegedHome : transaction (option $homeKey)
                  val amAway : transaction (option $awayKey)
+
+                 val homeMayRsvpTo : $homeKey -> transaction (list $eventKey)
+                 val awayMayRsvpTo : $awayKey -> transaction (list $eventKey)
              end) = struct
 
     open M
@@ -138,18 +141,22 @@ functor Make(M : sig
         type input = _
         type a = _
 
-        fun ensure ho =
+        fun ensure ev ho =
             user <- amHome;
             case user of
                 None => error <xml>Must be authenticated to access this page</xml>
               | Some user =>
                 if user = ho then
-                    return ()
+                    allowed <- homeMayRsvpTo ho;
+                    if List.mem ev allowed then
+                        return ()
+                    else
+                        error <xml>You are not allowed to RSVP for that event.</xml>
                 else
                     error <xml>Wrong user to be accessing this page</xml>
 
         fun add ev ho =
-            ensure ho;
+            ensure ev ho;
             da <- oneRow1 (SELECT home.{{homeData}}, home.{{homeSensitiveData}}
                            FROM home
                            WHERE {@@Sql.easy_where [#Home] [homeKey] [_] [_] [_] [_]
@@ -167,7 +174,7 @@ functor Make(M : sig
                                      Operation = Add})
 
         fun del ev ho =
-            ensure ho;
+            ensure ev ho;
             dml (DELETE FROM homeRsvp
                  WHERE {@@Sql.easy_where [#T] [eventKey ++ homeKey] [_] [_] [_] [_]
                    ! ! (eventInj' ++ homeInj') (@Folder.concat ! eventKeyFl homeKeyFl) (ev ++ ho)});
@@ -182,7 +189,7 @@ functor Make(M : sig
 
         fun create ho =
             let
-                fun initEvents (acc : events)
+                fun initEvents (allowed : list $eventKey) (acc : events)
                                (evrows : list $(eventKey ++ eventData))
                                (homerows : list {HomeRsvp : $(homeKey ++ eventKey), Home : $homeShownData})
                                (awayrows : list {AwayRsvp : $(awayKey ++ eventKey), Away : $awayShownData})
@@ -207,7 +214,8 @@ functor Make(M : sig
                         in
                             case opt of
                                 Some (ent, homerows') =>
-                                initEvents acc
+                                initEvents allowed
+                                           acc
                                            evrows
                                            homerows'
                                            awayrows
@@ -227,7 +235,8 @@ functor Make(M : sig
                                 in
                                     case opt of
                                         Some (ent, awayrows') =>
-                                        initEvents acc
+                                        initEvents allowed
+                                                   acc
                                                    evrows
                                                    homerows
                                                    awayrows'
@@ -235,10 +244,14 @@ functor Make(M : sig
                                                    (ent :: aways)
                                       | None =>
                                         (* No matching attendees remain.  Add this event record. *)
-                                        initEvents ({Event = ev --- eventData,
-                                                     Data = ev --- eventKey,
-                                                     Home = List.rev homes,
-                                                     Away = List.rev aways} :: acc)
+                                        initEvents allowed
+                                                   (if List.mem ((ev --- eventData) : $eventKey) allowed then
+                                                        {Event = ev --- eventData,
+                                                         Data = ev --- eventKey,
+                                                         Home = List.rev homes,
+                                                         Away = List.rev aways} :: acc
+                                                    else
+                                                        acc)
                                                    evrows'
                                                    homerows
                                                    awayrows
@@ -252,6 +265,7 @@ functor Make(M : sig
                                    ORDER BY {{{@Sql.order_by eventKeyFl
                                      (@Sql.some_fields [#Event] [eventKey] ! ! eventKeyFl)
                                      sql_asc}}});
+                allowed <- homeMayRsvpTo ho;
                 homes <- queryL (SELECT homeRsvp.*, home.{{homeData}}, home.{{homeSensitiveData}}
                                  FROM homeRsvp
                                    JOIN home ON {@@Sql.easy_join [#HomeRsvp] [#Home] [homeKey]
@@ -274,7 +288,7 @@ functor Make(M : sig
                                         homes <- source r.Home;
                                         aways <- source r.Away;
                                         return (r -- #Home -- #Away ++ {Home = homes, Away = aways}))
-                                    (initEvents [] events
+                                    (initEvents allowed [] events
                                                 (List.mp (fn r => r -- #Home ++ {Home = homeShownData r.Home}) homes)
                                                 (List.mp (fn r => r -- #Away ++ {Away = awayShownData r.Away}) aways)
                                                 [] []);
@@ -485,18 +499,22 @@ functor Make(M : sig
         type a = _
 
 
-        fun ensure aw =
+        fun ensure ev aw =
             user <- amAway;
             case user of
                 None => error <xml>Must be authenticated to access this page</xml>
               | Some user =>
                 if user = aw then
-                    return ()
+                    allowed <- awayMayRsvpTo aw;
+                    if List.mem ev allowed then
+                        return ()
+                    else
+                        error <xml>You are not allowed to RSVP for that event.</xml>
                 else
                     error <xml>Wrong user to be accessing this page</xml>
 
         fun add ev aw =
-            ensure aw;
+            ensure ev aw;
             da <- oneRow1 (SELECT away.{{awayData}}, away.{{awaySensitiveData}}
                            FROM away
                            WHERE {@@Sql.easy_where [#Away] [awayKey] [_] [_] [_] [_]
@@ -514,7 +532,7 @@ functor Make(M : sig
                                              Operation = Add})
 
         fun del ev aw =
-            ensure aw;
+            ensure ev aw;
             dml (DELETE FROM awayRsvp
                  WHERE {@@Sql.easy_where [#T] [eventKey ++ awayKey] [_] [_] [_] [_]
                    ! ! (eventInj' ++ awayInj') (@Folder.concat ! eventKeyFl awayKeyFl) (ev ++ aw)});
@@ -545,6 +563,8 @@ functor Make(M : sig
                           return {Event = r.Event --- eventData,
                                   Data = r.Event --- eventKey,
                                   Registered = regd});
+            allowed <- awayMayRsvpTo aw;
+            events <- return (List.filter (fn r => List.mem r.Event allowed) events);
             return {Self = aw, Events = events}
 
         fun render t =

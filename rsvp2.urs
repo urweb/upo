@@ -80,6 +80,10 @@ functor Make(M : sig
                  val amHome : transaction (option $homeKey)
                  val amPrivilegedHome : transaction (option $homeKey)
                  val amAway : transaction (option $awayKey)
+
+                 (* Access control *)
+                 val homeMayRsvpTo : $homeKey -> transaction (list $eventKey)
+                 val awayMayRsvpTo : $awayKey -> transaction (list $eventKey)
              end) : sig
 
     (* Home's view: a list of all events, with attendee lists and buttons to change your own RSVP's *)
