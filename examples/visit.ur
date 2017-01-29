@@ -237,6 +237,8 @@ structure Meetings = MeetingGrid.Make(struct
                                                   case opt of
                                                       None => return None
                                                     | Some _ => return (Some {AdmitName = ""})
+
+                                          val fixed = return []
                                       end)
 
 val explainMeetings = Ui.h4 <xml>Each meeting slot ends when the next one begins, except for a break from 2:50 to 3:10. The meetings finish at 5:00.</xml>

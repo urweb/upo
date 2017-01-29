@@ -89,6 +89,9 @@ functor Make(M : sig
 
                  val amHome : transaction (option $homeKey)
                  val amAway : transaction (option $awayKey)
+
+                 val fixed : transaction (list {When : $timeKey, Descr : string})
+                 val timeOrd : ord $timeKey
              end) = struct
 
     open M
@@ -776,8 +779,11 @@ functor Make(M : sig
             type themSet = list ($themKey * $themOffice)
             type timeMap = list ($timeKey * themSet)
             type input = $usKey
+            datatype timeslot =
+                     Meeting of source themSet
+                   | Fixed of string
             type a = {Us : $usKey,
-                      Meetings : list ($timeKey * source themSet),
+                      Meetings : list ($timeKey * timeslot),
                       Channel : channel usChannel}
 
             fun create us =
@@ -797,6 +803,17 @@ functor Make(M : sig
                                     doTimes times rows' ((row.Meeting --- timeKey, row.Them) :: thisTime) acc
                                 else
                                     doTimes times' rows [] ((tm, List.rev thisTime) :: acc)
+
+                    fun merge (ls1 : list ($timeKey * source themSet)) (ls2 : list {When : $timeKey, Descr : string})
+                        : list ($timeKey * timeslot) =
+                        case (ls1, ls2) of
+                            ((tm1, s) :: ls1', {When = tm2, Descr = d} :: ls2') =>
+                            if tm1 < tm2 then
+                                (tm1, Meeting s) :: merge ls1' ls2
+                            else
+                                (tm2, Fixed d) :: merge ls1 ls2'
+                          | ([], _) => List.mp (fn {When = tm, Descr = d} => (tm, Fixed d)) ls2
+                          | (_, []) => List.mp (fn (tm, s) => (tm, Meeting s)) ls1
                 in
                     allTimes <- queryL1 (SELECT time.{{timeKey}}
                                          FROM time
@@ -831,7 +848,8 @@ functor Make(M : sig
                       (@Folder.cons [#Channel] [_] ! usFl)
                       usListeners
                       ({Channel = ch} ++ us);
-                    return {Us = us, Meetings = meetings, Channel = ch}
+                    fxd <- fixed;
+                    return {Us = us, Meetings = merge meetings (List.sort (fn a b => a.When > b.When) fxd), Channel = ch}
                 end
 
             (* Note: with a new improvement to Ur/Web type inference, this annotation becomes necessary.
@@ -843,14 +861,17 @@ functor Make(M : sig
                   <th>Meeting</th>
                 </tr>
 
-                {List.mapX (fn (tm, ths) => <xml>
+                {List.mapX (fn (tm, slot) => <xml>
                   <tr>
                     <td>{[tm]}</td>
                     <td>
-                      <dyn signal={ths <- signal ths;
-                                   return (case ths of
-                                               [] => <xml>&mdash;</xml>
-                                             | (th, off) :: ths => <xml>{[th]}{[off]}{List.mapX (fn (th, off) => <xml>, {[th]}{[off]}</xml>) ths}</xml>)}/>
+                      <dyn signal={case slot of
+                                       Fixed d => return <xml><i>{[d]}</i></xml>
+                                     | Meeting ths =>
+                                       ths <- signal ths;
+                                       return (case ths of
+                                                   [] => <xml>&mdash;</xml>
+                                                 | (th, off) :: ths => <xml>{[th]}{[off]}{List.mapX (fn (th, off) => <xml>, {[th]}{[off]}</xml>) ths}</xml>)}/>
                                                                                                                                         </td>
                   </tr>
                 </xml>) t.Meetings}
@@ -862,7 +883,8 @@ functor Make(M : sig
                     fun addTimes tms =
                         case tms of
                             [] => return ()
-                          | (tm', ths) :: tms' =>
+                          | (_, Fixed _) :: tms' => addTimes tms'
+                          | (tm', Meeting ths) :: tms' =>
                             if tm' = tm then
                                 v <- get ths;
                                 set ths (f v)

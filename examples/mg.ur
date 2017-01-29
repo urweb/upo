@@ -63,6 +63,8 @@ structure S = MeetingGrid.Make(struct
                                    val homeSoftConst = {}
                                    val homeHardConst = {}
                                    val awayConst = {}
+
+                                   val fixed = return []
                                end)
 
 val main = Theme.simple "MG"
