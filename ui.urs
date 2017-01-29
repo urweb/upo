@@ -89,6 +89,14 @@ functor Make(M : THEME) : sig
                        -> $(mapU (string * bool (* selected? *) * url) ts)
                        -> (context -> xbody)
                        -> transaction page
+
+    (* Generating multiple pages of printed content, with no extra visual style wrapped around each page (so include everything you want in the UI itself)  *)
+    val printPages : data ::: Type
+                     -> ui ::: Type
+                     -> (data -> t ui)
+                     -> list data
+                     -> string (* page title *)
+                     -> transaction page
 end
 
 (* Create an HTML button that opens a modal dialog with the content

@@ -266,6 +266,36 @@ functor Make(M : THEME) = struct
             </xml>}
           </body>
         </xml>
+
+    fun printPages [data ::: Type] [ui ::: Type] (f : data -> t ui) (ls : list data) (titl : string) =
+        ts <- List.mapM (fn x => t <- (f x).Create; return (x, t)) ls;
+        mid <- fresh;
+        ms <- source <xml/>;
+
+        return <xml>
+          <head>
+            <title>{[titl]}</title>
+            {@mapUX [url] [_]
+              (fn [nm ::_] [rest ::_] [_~_] url =>
+                  <xml><link rel="stylesheet" href={url}/></xml>)
+              M.fl M.css}
+            {case M.icon of
+                 None => <xml></xml>
+               | Some icon => <xml><link rel="shortcut icon" href={icon} type="image/vnd.microsoft.icon"></link></xml>}
+          </head>
+
+          <body onload={List.app (fn (x, t) => (f x).Onload t) ts}>
+            <div class="modal" id={mid}>
+              <dyn signal={signal ms}/>
+            </div>
+
+            {List.mapX (fn (x, t) => <xml>
+              <div style="page-break-after: always">
+                {(f x).Render {ModalId = mid, ModalSpot = ms} t}
+              </div>
+            </xml>) ts}
+          </body>
+        </xml>
 end
 
 fun modalButton ctx cls bod onclick = <xml>
