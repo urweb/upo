@@ -4,5 +4,6 @@ script https://code.jquery.com/jquery-2.1.4.min.js
 script https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js
 script https://cdn.ckeditor.com/4.5.5/standard/ckeditor.js
 file /style.css style.css
+library navbar
 
 default

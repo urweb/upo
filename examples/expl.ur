@@ -65,8 +65,8 @@ open Make(struct
 
               fun authorize _ = return True
 
-              val preTabs = {Before = ("Before", fn mk => <xml>Boring Before page; but consider <a href={mk (make [#After] ())}>After</a></xml>)}
-              val postTabs = {After = ("After", fn mk => <xml>Boring After page; but consider <a href={mk (make [#Before] ())}>Before</a></xml>)}
+              val preTabs = {Before = ("Before", fn mk => return <xml>Boring Before page; but consider <a href={mk (make [#After] ())}>After</a></xml>)}
+              val postTabs = {After = ("After", fn mk => return <xml>Boring After page; but consider <a href={mk (make [#Before] ())}>Before</a></xml>)}
           end)
 
 val main = index (make [#Frog] ())

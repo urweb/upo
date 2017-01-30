@@ -3,7 +3,6 @@ library $/bootstrap/bootstrap3
 library $/ajaxUpload
 library ckeditor
 allow responseHeader Content-Disposition
-jsFile navbar.js
 allow env SSL_CLIENT_S_DN
 allow mime text/csv
 
