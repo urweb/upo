@@ -898,6 +898,7 @@ functor Make(M : sig
 
     and index (which : tag) =
         auth (Read which);
+        mayAdd <- authorize (Create which);
         bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
           (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) () r =>
               rows <- r.List (WHERE TRUE);
@@ -906,7 +907,10 @@ functor Make(M : sig
                   {List.mapX (fn k => <xml><tr><td><a link={entry (maker [fn p => p.1] k)}>{[@show r.Show k]}</a></td></tr></xml>) rows}
                 </table>
 
-                <a class="btn btn-primary" link={create which}>New Entry</a>
+                {if mayAdd then
+                     <xml><a class="btn btn-primary" link={create which}>New Entry</a></xml>
+                 else
+                     <xml></xml>}
               </xml>)
           fl which t;
         tabbed page (weakener which) (fn _ => return bod)
