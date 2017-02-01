@@ -73,6 +73,7 @@ signature THEME = sig
     val icon : option url
     val wrap : xbody -> xbody
     val navclasses : css_class
+    val titleInNavbar : bool
 end
 
 functor Make(M : THEME) = struct
@@ -108,7 +109,7 @@ functor Make(M : THEME) = struct
                       <span class="icon-bar"></span>
                       <span class="icon-bar"></span>
                     </button>
-                    <a class="navbar-brand">{[titl]}</a>
+                    {if M.titleInNavbar then <xml><a class="navbar-brand">{[titl]}</a></xml> else <xml></xml>}
                   </div>
                   <div id={nid} class="collapse navbar-collapse">
                     <ul class="bs3-nav navbar-nav"/>
@@ -171,7 +172,7 @@ functor Make(M : THEME) = struct
                       <span class="icon-bar"></span>
                       <span class="icon-bar"></span>
                     </button>
-                    <a class="navbar-brand">{[titl]}</a>
+                    {if M.titleInNavbar then <xml><a class="navbar-brand">{[titl]}</a></xml> else <xml></xml>}
                   </div>
                   <div id={nid} class="collapse navbar-collapse">
                     <ul class="bs3-nav navbar-nav">
@@ -244,7 +245,7 @@ functor Make(M : THEME) = struct
                       <span class="icon-bar"></span>
                       <span class="icon-bar"></span>
                     </button>
-                    <a class="navbar-brand">{[titl]}</a>
+                    {if M.titleInNavbar then <xml><a class="navbar-brand">{[titl]}</a></xml> else <xml></xml>}
                   </div>
                   <div id={nid} class="collapse navbar-collapse">
                     <ul class="bs3-nav navbar-nav">

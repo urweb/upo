@@ -10,3 +10,4 @@ val css =
 val navclasses = CLASS "navbar navbar-inverse navbar-fixed-top"
 val icon = None
 fun wrap b = b
+val titleInNavbar = True

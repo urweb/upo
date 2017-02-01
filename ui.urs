@@ -66,6 +66,9 @@ signature THEME = sig
 
     (* Styling for top navbar *)
     val navclasses : css_class
+
+    (* Should page titles be rendered in navbars, or should we leave that to [wrap]? *)
+    val titleInNavbar : bool
 end
 
 functor Make(M : THEME) : sig
