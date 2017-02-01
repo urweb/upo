@@ -224,7 +224,7 @@ fun easy_delete
     [others ~ fields]
     (othersInj : $(map sql_injectable others)) 
     (fieldsInj : $(map sql_injectable fields))
-    (fieldsFl : folder others)
+    (othersFl : folder others)
     (fieldsFl : folder fields)
     (tab : sql_table (others ++ fields) uniques)
     (fields : $fields) =
