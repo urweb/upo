@@ -14,4 +14,4 @@ Those are the basics!  The other modules of the library define more complex UI e
 
 ## Installation
 
-Two other Ur/Web libraries are required: [Bootstrap](http://hg.impredicative.com/bootstrap) and [AjaxUpload](http://hg.impredicative.com/ajaxUpload).
+Two other Ur/Web libraries are required: [Bootstrap](https://github.com/urweb/bootstrap) and [AjaxUpload](https://github.com/urweb/ajaxUpload).

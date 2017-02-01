@@ -218,6 +218,7 @@ val custom : full ::: {Type}
               -> read colT
               -> (colT -> transaction (option stash))
               -> (stash -> xtable)
+              -> (colT -> transaction unit) (* Run each time we update the database. *)
               -> t full ([tname = (key, [col = option colT] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)
               -> t full ([tname = (key, [col = option colT] ++ cols, [col = option colT] ++ colsDone, cstrs, custom1 stash impl1, custom2 stash impl2, custom3 stash impl3)] ++ old)
 

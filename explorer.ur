@@ -776,6 +776,7 @@ fun custom [full ::: {Type}]
            (lab : string) (_ : show colT) (_ : read colT)
            (content : colT -> transaction (option stash))
            (render : stash -> xtable)
+           (dbchange : colT -> transaction unit)
            (old : t full ([tname = (key, [col = option colT] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)) =
     old -- tname
         ++ {tname = old.tname
@@ -786,8 +787,8 @@ fun custom [full ::: {Type}]
                                                       | Some v => content v);
                                            aux2 <- old.tname.Auxiliary k row;
                                            return (aux1, aux2),
-                            Insert = fn r (_, aux) => old.tname.Insert r aux,
-                            Update = fn r (_, aux) => old.tname.Update r aux,
+                            Insert = fn r (sto, aux) => old.tname.Insert r aux; Option.app dbchange r.col,
+                            Update = fn r (sto, aux) => old.tname.Update r aux; Option.app dbchange r.col,
                             Render = fn entry (aux1, aux2) r => <xml>
                               {old.tname.Render entry aux2 r}
                               {case aux1 of
