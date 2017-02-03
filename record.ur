@@ -28,6 +28,16 @@ fun ord [ts ::: {Type}] (r : $(map ord ts)) (fl : folder ts) =
                          | _ => True}
     end
 
+fun project 
+    (* Get value from record by field name 
+    
+    Usage:
+    (project [#Key] rec)
+    
+    *)
+    [nm :: Name] [t ::: Type] [ts ::: {Type}] [[nm] ~ ts]
+    (r : $([nm = t] ++ ts)) : t = r.nm
+
 fun select [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [r ::: {K}] (fl : folder r) [out ::: Type]
            (f : t ::: K -> tf1 t -> tf2 t -> out)
            (r : $(map tf1 r)) (v : variant (map tf2 r)) : out =
