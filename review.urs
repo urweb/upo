@@ -21,6 +21,9 @@ functor Make(M : sig
                  val show_reviewed : show $reviewed
                  val summarize : $(map fst3 other) -> xbody
                  val whoami : transaction (option string)
+
+                 (* Adjust values after they are entered. *)
+                 val adjust : $reviewed -> $(map fst3 other) -> transaction $(map fst3 other)
              end) : sig
     structure One : Ui.S where type input = $M.reviewed
     (* Viewing all reviews of one thing *)

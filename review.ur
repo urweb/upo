@@ -21,6 +21,8 @@ functor Make(M : sig
                  val show_reviewed : show $reviewed
                  val summarize : $(map fst3 other) -> xbody
                  val whoami : transaction (option string)
+
+                 val adjust : $reviewed -> $(map fst3 other) -> transaction $(map fst3 other)
              end) = struct
 
     style summary
@@ -166,6 +168,7 @@ functor Make(M : sig
                 None => error <xml>Must be logged in to edit a record</xml>
               | Some u =>
                 tm <- now;
+                other <- adjust key other;
                 @@Sql.easy_update' [[reviewer = _] ++ reviewed]
                   [[When = _] ++ map fst3 other] [_] !
                   ({reviewer = _} ++ reviewedInj)
@@ -188,6 +191,7 @@ functor Make(M : sig
                 None => error <xml>Must be logged in to add a record</xml>
               | Some u =>
                 tm <- now;
+                other <- adjust key other;
                 @@Sql.easy_insert [[When = _, reviewer = _] ++ reviewed ++ map fst3 other] [_]
                   ({When = _, reviewer = _} ++ reviewedInj ++ otherInj)
                   (@Folder.cons [#When] [_] ! (@Folder.cons [reviewer] [_] !

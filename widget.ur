@@ -118,6 +118,10 @@ val basic = Ckeditor.Bar {Nam = Some "Basic Formatting",
                                         :: Ckeditor.RemoveFormat
                                         :: []}
 
+val styles = Ckeditor.Bar {Nam = Some "Styles",
+                           Buttons = Ckeditor.Styles
+                                         :: []}
+
 val links = Ckeditor.Bar {Nam = Some "Links",
                           Buttons = Ckeditor.Link
                                         :: Ckeditor.Unlink
@@ -125,11 +129,11 @@ val links = Ckeditor.Bar {Nam = Some "Links",
 
 fun ed s = Ckeditor.editor {Width = Ckeditor.DefaultSize,
                             Height = Ckeditor.DefaultSize,
-                            ToolbarSet = Ckeditor.Custom (undoEtc :: find :: basic :: links :: []),
+                            ToolbarSet = Ckeditor.Custom (undoEtc :: find :: basic :: styles :: links :: []),
                             InitialText = s}
 
 fun html s =
-    case Html.format (Html.b, Html.i, Html.a, Html.strong, Html.em, Html.p, Html.br) s of
+    case Html.format (Html.b, Html.i, Html.a, Html.strong, Html.em, Html.p, Html.br, Html.code) s of
         Html.Failure msg => <xml><b>HTML error: {[msg]}</b></xml>
       | Html.Success xm => xm
 
