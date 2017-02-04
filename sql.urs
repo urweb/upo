@@ -1,5 +1,14 @@
 (* Metaprogramming utilities for SQL *)
 
+(* Construct SQL equality clause using table name, column name, value *)
+val easy_eq : fs ::: {Type} 
+              -> v ::: Type 
+              -> qtablename :: Name 
+              -> qcolumnname :: Name 
+              -> [fs ~ [qcolumnname=v]]  
+              => sql_exp [qtablename = [qcolumnname=v] ++ fs] [] [] v 
+              -> sql_exp [qtablename = [qcolumnname=v] ++ fs] [] [] bool
+
 (* Build an 'ORDER BY' clause programmatically, with the same sort order for each expression. *)
 val order_by : tables ::: {{Type}} -> exps ::: {Type} -> dummy ::: {Type}
                -> folder dummy
@@ -20,6 +29,15 @@ val easy_foreign : nm ::: Name -> fnm ::: Name -> ft ::: Type -> fs ::: {Type} -
                    -> [[fnm] ~ fs] => [[fnm] ~ munused] => [fs ~ munused] => [[fnm] ~ funused] => [fs ~ funused] => [[nm] ~ uniques] => folder ([fnm = ft] ++ fs)
                    -> sql_table ([fnm = ft] ++ fs ++ funused) ([nm = map (fn _ => ()) ([fnm = ft] ++ fs)] ++ uniques)
                    -> sql_constraint ([fnm = ft] ++ fs ++ munused) []
+
+(* Easy table select *)
+val easy_select : fs ::: {Type} 
+                  -> ks ::: {{Unit}}
+                  -> qtablename :: Name
+                  -> sql_table fs ks
+                  -> sql_exp [qtablename = fs] [] [] bool
+                  -> sql_order_by [qtablename = _] []
+                  -> sql_query [] [] [qtablename = fs] [] 
 
 (* Easy table insert with constants *)
 val easy_insert : fields ::: {Type} -> uniques ::: {{Unit}}
@@ -86,6 +104,34 @@ val easy_update'' : key ::: {Type} -> fields ::: {Type} -> uniques ::: {{Unit}}
                     -> $key
                     -> $fields
                     -> transaction unit
+
+val easy_update''' : pkcolname ::: Name
+                   -> pktype ::: Type
+                   -> fields ::: {Type}
+                   -> other ::: {Type}
+                   -> uniques ::: {{Unit}}
+                   -> [[pkcolname = pktype] ~ fields]
+                   => [[pkcolname = pktype] ~ other]
+                   => [fields ~ other]
+                   => $(map sql_injectable [pkcolname = pktype])
+                   -> sql_injectable_prim pktype
+                   -> $(map sql_injectable (fields))
+                   -> folder [pkcolname = pktype]
+                   -> folder (fields)
+                   -> sql_table ([pkcolname = pktype] ++ fields ++ other) uniques
+                   -> $([pkcolname = pktype])
+                   -> $fields
+                   -> transaction unit 
+
+val easy_delete : others ::: {Type} -> fields ::: {Type} -> uniques ::: {{Unit}}
+                  -> [others ~ fields]
+                  => $(map sql_injectable others)
+                  -> $(map sql_injectable fields)
+                  -> folder others
+                  -> folder fields
+                  -> sql_table (others ++ fields) uniques
+                  -> $fields
+                  -> transaction unit
 
 (* Build a WHERE clause equating fields of a table to constant values. *)
 val easy_where : tab :: Name -> using ::: {Type} -> notUsing ::: {Type} -> otherTables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
