@@ -840,30 +840,36 @@ functor Make(M : sig
 
                  con preTabs :: {Unit}
                  con postTabs :: {Unit}
+                 con hiddenTabs :: {Unit}
                  constraint preTabs ~ postTabs
-                 val preTabs : $(mapU (string (* page title *) * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> transaction xbody)) preTabs)
+                 constraint (preTabs ++ postTabs) ~ hiddenTabs
+                 val preTabs : $(mapU (string * ((variant (mapU unit (preTabs ++ postTabs ++ hiddenTabs)) -> url) -> transaction xbody)) preTabs)
                  val preFl : folder preTabs
-                 val postTabs : $(mapU (string * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> transaction xbody)) postTabs)
+                 val postTabs : $(mapU (string * ((variant (mapU unit (preTabs ++ postTabs ++ hiddenTabs)) -> url) -> transaction xbody)) postTabs)
                  val postFl : folder postTabs
-                 constraint (preTabs ++ postTabs) ~ tables
+                 val hiddenTabs : $(mapU (string * ((variant (mapU unit (preTabs ++ postTabs ++ hiddenTabs)) -> url) -> transaction xbody)) hiddenTabs)
+                 val hiddenFl : folder hiddenTabs
+                 constraint (preTabs ++ postTabs ++ hiddenTabs) ~ tables
              end) = struct
     open M
     open Ui.Make(Theme)
 
     type tag = variant (map (fn _ => unit) tables)
-    con tabs = map (fn _ => unit) tables ++ mapU unit (preTabs ++ postTabs)
-    con tabsU = map (fn _ => ()) tables ++ preTabs ++ postTabs
+    con tabs' = map (fn _ => unit) tables ++ mapU unit (preTabs ++ postTabs)
+    con tabs = tabs' ++ mapU unit hiddenTabs
+    con tabsU' = map (fn _ => ()) tables ++ preTabs ++ postTabs
+    con tabsU = tabsU' ++ hiddenTabs
     type tagPlus = variant tabs
     val eq_tag : eq tag = @Variant.eqU (@@Folder.mp [fn _ => ()] [_] fl)
-    val eq_tagPlus : eq tagPlus = @Variant.eqU (@Folder.concat ! preFl (@Folder.concat ! (@@Folder.mp [fn _ => ()] [_] fl) postFl))
+    val eq_tagPlus : eq (variant tabs') = @Variant.eqU (@Folder.concat ! preFl (@Folder.concat ! (@@Folder.mp [fn _ => ()] [_] fl) postFl))
 
     con dupF (p :: (Type * {Type} * {{Unit}} * Type * Type * Type)) = (p.1, p.2, p.2, p.3, p.4, p.5, p.6)
     con dup = map dupF tables
 
     con tables' = map (fn p => p.1) tables
 
-    val titleOf : variant tabs -> string =
-        @@Variant.proj [string] [tabsU]
+    val titleOf : variant tabs' -> string =
+        @@Variant.proj [string] [tabsU']
           (@Folder.concat ! preFl
             (@Folder.concat ! (@Folder.mp fl) postFl))
           (@mp [fn _ => string * _] [fn _ => string]
@@ -875,11 +881,17 @@ functor Make(M : sig
 
     val tabsFl = @Folder.concat ! postFl (@Folder.concat ! (@Folder.mp fl) preFl)
 
-    fun tabbed f (which : variant tabs) : (Ui.context -> transaction xbody) -> transaction page =
-        @@tabbedStatic [tabsU] tabsFl
+    fun tabbed (f : tagPlus -> transaction page)
+               (which : option (variant tabs'))
+        : (Ui.context -> transaction xbody) -> transaction page =
+        @@tabbedStatic [tabsU'] tabsFl
           title
-          (@@Variant.mp [tabsU] [_] tabsFl
-             (fn v => (titleOf v, @eq eq_tagPlus v which, url (f v))))
+          (@@Variant.mp [tabsU'] [_] tabsFl
+             (fn v => (titleOf v,
+                       case which of
+                           None => False
+                         | Some which => @eq eq_tagPlus v which,
+                       url (f (@Variant.weaken ! (@Folder.mp tabsFl) v)))))
 
     datatype editingState row widgets aux =
              NotEditing of row * aux
@@ -897,8 +909,9 @@ functor Make(M : sig
     fun page (which : tagPlus) =
         @match which
         (@@Variant.mp [map (fn _ => ()) tables] [_] (@Folder.mp fl) (fn v () => index v)
-          ++ @Variant.mp preFl (fn v () => tabbed page (@Variant.weaken ! (@Folder.mp preFl) v) (fn _ => (@Variant.proj preFl preTabs v).2 (fn v' => url (page (@Variant.weaken ! (@Folder.mp (@Folder.concat ! preFl postFl)) v')))))
-          ++ @Variant.mp postFl (fn v () => tabbed page (@Variant.weaken ! (@Folder.mp postFl) v) (fn _ => (@Variant.proj postFl postTabs v).2 (fn v' => url (page (@Variant.weaken ! (@Folder.mp (@Folder.concat ! preFl postFl)) v'))))))
+          ++ @Variant.mp preFl (fn v () => tabbed page (Some (@Variant.weaken ! (@Folder.mp preFl) v)) (fn _ => (@Variant.proj preFl preTabs v).2 (fn v' => url (page (@Variant.weaken ! (@Folder.mp (@Folder.concat ! hiddenFl (@Folder.concat ! preFl postFl))) v')))))
+          ++ @Variant.mp postFl (fn v () => tabbed page (Some (@Variant.weaken ! (@Folder.mp postFl) v)) (fn _ => (@Variant.proj postFl postTabs v).2 (fn v' => url (page (@Variant.weaken ! (@Folder.mp (@Folder.concat ! hiddenFl (@Folder.concat ! preFl postFl))) v')))))
+          ++ @Variant.mp hiddenFl (fn v () => tabbed page None (fn _ => (@Variant.proj hiddenFl hiddenTabs v).2 (fn v' => url (page (@Variant.weaken ! (@Folder.mp (@Folder.concat ! hiddenFl (@Folder.concat ! preFl postFl))) v'))))))
 
     and index (which : tag) =
         auth (Read which);
@@ -919,7 +932,7 @@ functor Make(M : sig
                      <xml></xml>}
               </xml>)
           fl which t;
-        tabbed page (weakener which) (fn _ => return bod)
+        tabbed page (Some (weakener which)) (fn _ => return bod)
 
     and create (which : tag) =
         auth (Create which);
@@ -939,7 +952,7 @@ functor Make(M : sig
                                     redirect (url (index which))}/>
               </xml>)
           fl which t;
-        tabbed page (weakener which) (fn _ => return bod)
+        tabbed page (Some (weakener which)) (fn _ => return bod)
 
     and doCreate (which : variant (map (fn p => $p.2 * p.7) dup)) =
         auth (Create (@Variant.erase (@Folder.mp fl) which));
@@ -1011,7 +1024,7 @@ functor Make(M : sig
               end)
           fl which t;
 
-        tabbed page (weakener (@Variant.erase (@Folder.mp fl) which)) (fn ctxv => return <xml>
+        tabbed page (Some (weakener (@Variant.erase (@Folder.mp fl) which))) (fn ctxv => return <xml>
           <active code={set ctx (Some ctxv); return <xml></xml>}/>
           {bod}
         </xml>)

@@ -244,14 +244,18 @@ functor Make(M : sig
                  (* Other tabs to include, beside those associated with these tables. *)
                  con preTabs :: {Unit} (* To appear *before* the tables *)
                  con postTabs :: {Unit}
+                 con hiddenTabs :: {Unit} (* Available pages without navbar links *)
                  constraint preTabs ~ postTabs
-                 val preTabs : $(mapU (string (* page title *) * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> transaction xbody)) preTabs)
+                 constraint (preTabs ++ postTabs) ~ hiddenTabs
+                 val preTabs : $(mapU (string (* page title *) * ((variant (mapU unit (preTabs ++ postTabs ++ hiddenTabs)) -> url) -> transaction xbody)) preTabs)
                  val preFl : folder preTabs
-                 val postTabs : $(mapU (string * ((variant (mapU unit (preTabs ++ postTabs)) -> url) -> transaction xbody)) postTabs)
+                 val postTabs : $(mapU (string * ((variant (mapU unit (preTabs ++ postTabs ++ hiddenTabs)) -> url) -> transaction xbody)) postTabs)
                  val postFl : folder postTabs
-                 constraint (preTabs ++ postTabs) ~ tables
+                 val hiddenTabs : $(mapU (string * ((variant (mapU unit (preTabs ++ postTabs ++ hiddenTabs)) -> url) -> transaction xbody)) hiddenTabs)
+                 val hiddenFl : folder hiddenTabs
+                 constraint (preTabs ++ postTabs ++ hiddenTabs) ~ tables
              end) : sig
     val index : variant (map (fn _ => unit) M.tables) -> transaction page
     val create : variant (map (fn _ => unit) M.tables) -> transaction page
-    val page : variant (map (fn _ => unit) M.tables ++ mapU unit (M.preTabs ++ M.postTabs)) -> transaction page
+    val page : variant (map (fn _ => unit) M.tables ++ mapU unit (M.preTabs ++ M.postTabs ++ M.hiddenTabs)) -> transaction page
 end
