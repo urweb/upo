@@ -45,6 +45,7 @@ val read_time : read {Hour : int, Minute : int} = mkRead' (fn s => case String.s
                                                                            (Some hr, Some mn) =>
                                                                            Some {Hour = hr, Minute = mn}
                                                                          | _ => None) "time"
+val ord_time : ord {Hour : int, Minute : int} = Record.ord
 
 cookie homeC : { Title : string }
 cookie awayC : { Company : string, EmployeeId : int }

@@ -54,6 +54,7 @@ val timeRead : read {Hour : int, Minute : int} =
                          case (read h, read m) of
                              (Some h, Some m) => Some {Hour = h, Minute = m}
                            | _ => None) "time"
+val timeOrd : ord {Hour : int, Minute : int} = Record.ord
 
 (* Scheduled dinners for specific research areas *)
 table dinner : { Dinner : string, Description : string }
@@ -208,6 +209,13 @@ structure Dinners = Rsvp2.Make(struct
                                    val amHome = amHomeOrAdmin
                                    val amPrivilegedHome = amPiOrAdmin
                                    val amAway = amAway
+
+                                   val allDinners =
+                                       List.mapQuery (SELECT dinner.Dinner
+                                                      FROM dinner)
+                                                     (fn r => r.Dinner)
+                                   fun homeMayRsvpTo _ = allDinners
+                                   fun awayMayRsvpTo _ = allDinners
                                end)
 
 structure Meetings = MeetingGrid.Make(struct
@@ -829,7 +837,7 @@ val cookieSetup =
     sc <- source "";
 
     Theme.tabbed "Cookie Setup"
-    {1 = (Some "Set Cookie",
+    {A = (Some "Set Cookie",
       Ui.const <xml>
         <ctextbox source={sc}/>
         <button value="Set" onclick={fn _ => v <- get sc; rpc (setIt v)}/>

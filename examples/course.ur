@@ -169,6 +169,7 @@ structure PsetGrade = Review.Make(struct
                                                     Comment = "Comment"}
                                       fun summarize r = txt r.Grade
                                       val whoami = getCookie userC
+                                      fun adjust _ r = return r
                                   end)
 
 fun psetGrades n u =
@@ -388,6 +389,7 @@ structure ExamGrade = Review.Make(struct
                                                     Comment = "Comment"}
                                       fun summarize r = txt r.Grade
                                       val whoami = getCookie userC
+                                      fun adjust _ r = return r
                                   end)
 
 structure ExamCal = Calendar.FromTable(struct
@@ -764,7 +766,7 @@ val cookieSetup =
     sc <- source "";
 
     Theme.tabbed "Cookie Setup"
-    {1 = (Some "Set Cookie",
+    {A = (Some "Set Cookie",
       Ui.const <xml>
         <ctextbox source={sc}/>
         <button value="Set" onclick={fn _ => v <- get sc; rpc (setIt v)}/>

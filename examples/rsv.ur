@@ -54,6 +54,12 @@ structure S = Rsvp2.Make(struct
                              val amAway = getCookie awayC
 
                              fun render {Description = d} = txt d
+                             val allEvents =
+                                 List.mapQuery (SELECT event.Event
+                                                FROM event)
+                                 (fn r => r.Event)
+                             fun homeMayRsvpTo _ = allEvents
+                             fun awayMayRsvpTo _ = allEvents
                          end)
 
 fun home s =

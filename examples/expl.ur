@@ -42,10 +42,10 @@ open Make(struct
 
               val title = "Froggyland"
               val t = none
-                      |> one [#Frog] [#Nickname] frog "Frogs"
-                      |> one [#Swamp] [#SwampName] swamp "Swamps"
-                      |> one [#SuperPower] [#Power] superPower "Powers"
-                      |> one [#RestaurantChain] [#Chain] restaurantChain "Chains"
+                      |> one [#Frog] [#Nickname] frog "Frogs" <xml></xml>
+                      |> one [#Swamp] [#SwampName] swamp "Swamps" <xml></xml>
+                      |> one [#SuperPower] [#Power] superPower "Powers" <xml></xml>
+                      |> one [#RestaurantChain] [#Chain] restaurantChain "Chains" <xml></xml>
 
                       |> text [#Frog] [#Nickname] "Nickname"
                       |> text [#Frog] [#Age] "Age"
@@ -67,6 +67,7 @@ open Make(struct
 
               val preTabs = {Before = ("Before", fn mk => return <xml>Boring Before page; but consider <a href={mk (make [#After] ())}>After</a></xml>)}
               val postTabs = {After = ("After", fn mk => return <xml>Boring After page; but consider <a href={mk (make [#Before] ())}>Before</a></xml>)}
+              val hiddenTabs = {}
           end)
 
 val main = index (make [#Frog] ())

@@ -402,7 +402,7 @@ val cookieSetup =
     sc <- source "";
 
     Theme.tabbed "Cookie Setup"
-    {1 = (Some "Set Cookie",
+    {A = (Some "Set Cookie",
       Ui.const <xml>
         <ctextbox source={sc}/>
         <button value="Set" onclick={fn _ => v <- get sc; rpc (setIt v)}/>
