@@ -103,7 +103,7 @@ functor Make(M : THEME) = struct
               <nav class={M.navclasses}>
                 <div class="container">
                   <div class="navbar-header">
-                    <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false" aria-controls="navbar">
+                    <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false">
                       <span class="sr-only">Toggle navigation</span>
                       <span class="icon-bar"></span>
                       <span class="icon-bar"></span>
@@ -166,7 +166,7 @@ functor Make(M : THEME) = struct
               <nav class={M.navclasses}>
                 <div class="container">
                   <div class="navbar-header">
-                    <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false" aria-controls="navbar">
+                    <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false">
                       <span class="sr-only">Toggle navigation</span>
                       <span class="icon-bar"></span>
                       <span class="icon-bar"></span>
@@ -239,7 +239,7 @@ functor Make(M : THEME) = struct
               <nav class={M.navclasses}>
                 <div class="container">
                   <div class="navbar-header">
-                    <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false" aria-controls="navbar">
+                    <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false">
                       <span class="sr-only">Toggle navigation</span>
                       <span class="icon-bar"></span>
                       <span class="icon-bar"></span>
