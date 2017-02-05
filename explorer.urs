@@ -26,6 +26,7 @@ val one : full ::: {Type}
           -> tname :: Name -> key :: Name -> keyT ::: Type -> rest ::: {Type} -> cstrs ::: {{Unit}}
           -> old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}
           -> [[key] ~ rest] => [[tname] ~ old] => sql_table ([key = keyT] ++ rest) cstrs -> string
+          -> xbody (* Extra content to include at top of index page *)
           -> show keyT -> sql_injectable keyT -> $(map sql_injectable rest)
           -> folder rest -> folder old
           -> t full old
@@ -36,6 +37,7 @@ val two : full ::: {Type}
           -> rest ::: {Type} -> cstrs ::: {{Unit}} -> old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}
           -> [[key1] ~ [key2]] => [[key1, key2] ~ rest] => [[tname] ~ old]
           => sql_table ([key1 = keyT1, key2 = keyT2] ++ rest) cstrs -> string
+          -> xbody (* Extra content to include at top of index page *)
           -> show (keyT1 * keyT2) -> sql_injectable keyT1 -> sql_injectable keyT2
           -> $(map sql_injectable rest)
           -> folder rest -> folder old
