@@ -168,6 +168,7 @@ val a = simpleTag' "a" @@a {Href = url "href"}
 val strong = simpleTag "strong" @@strong
 val em = simpleTag "em" @@em
 val code = simpleTag "code" @@tt
+val tt = simpleTag "tt" @@tt
 val p = simpleTag "p" @@p
 
 val br = {Nam = "br",

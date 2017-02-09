@@ -133,7 +133,7 @@ fun ed s = Ckeditor.editor {Width = Ckeditor.DefaultSize,
                             InitialText = s}
 
 fun html s =
-    case Html.format (Html.b, Html.i, Html.a, Html.strong, Html.em, Html.p, Html.br, Html.code) s of
+    case Html.format (Html.b, Html.i, Html.a, Html.strong, Html.em, Html.p, Html.br, Html.code, Html.tt) s of
         Html.Failure msg => <xml><b>HTML error: {[msg]}</b></xml>
       | Html.Success xm => xm
 

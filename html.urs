@@ -36,6 +36,7 @@ val em : tag []
 val p : tag []
 val br : tag []
 val code : tag []
+val tt : tag []
 
 val unhtml : string -> string
 (* Remove all HTML formatting. *)
