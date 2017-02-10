@@ -132,7 +132,7 @@ functor Make(M : sig
                           ! ! ! ! fl}
                         WHERE {@Sql.easy_where [#Message] ! ! kinj fl k}
                           AND {wc}
-                        ORDER BY message.{thread}, message.When)
+                        ORDER BY message.{thread}, message.When DESC)
         in
             rows <- (case acc of
                          Admin _ => thatBigQuery (SQL TRUE)

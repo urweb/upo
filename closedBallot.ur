@@ -134,7 +134,7 @@ functor Make(M : sig
                                                         MyVotes = sql_window (SQL SUM(YourVote.Votes))}} }}}
                                                                               ORDER BY {{{@Sql.order_by choiceKeyFl
                                                                                            (@Sql.some_fields [#Choice] [choiceKey] ! ! choiceKeyFl)
-                                                                                           sql_desc}}});
+                                                                                           sql_asc}}});
         choices <- List.mapM
                        (fn {Choice = k, Votes = n, MyVotes = yn, ...} =>
                            s <- source (Option.get 0 n);
