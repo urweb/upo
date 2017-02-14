@@ -2,7 +2,7 @@ open Bootstrap3
 
 type t1 (full :: {Type}) (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)) =
      {Title : string,
-      Extra : xbody,
+      Extra : transaction xbody,
       Table : sql_table p.2 p.4,
       Insert : $p.2 -> p.7 -> transaction unit,
       Update : $p.2 -> p.7 -> transaction unit,
@@ -33,7 +33,7 @@ fun one [full ::: {Type}]
         [tname :: Name] [key :: Name] [keyT ::: Type] [rest ::: {Type}] [cstrs ::: {{Unit}}]
         [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
         [[key] ~ rest] [[tname] ~ old]
-        (tab : sql_table ([key = keyT] ++ rest) cstrs) (title : string) (extra : xbody)
+        (tab : sql_table ([key = keyT] ++ rest) cstrs) (title : string) (extra : transaction xbody)
         (fltr : sql_exp [Tab = [key = keyT] ++ rest] [] [] bool)
         (sh : show keyT) (inj : sql_injectable keyT) (injs : $(map sql_injectable rest))
         (fl : folder rest) (ofl : folder old) (old : t full old) =
@@ -64,7 +64,7 @@ fun two [full ::: {Type}]
         [tname :: Name] [key1 :: Name] [key2 :: Name] [keyT1 ::: Type] [keyT2 ::: Type]
         [rest ::: {Type}] [cstrs ::: {{Unit}}] [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
         [[key1] ~ [key2]] [[key1, key2] ~ rest] [[tname] ~ old]
-        (tab: sql_table ([key1 = keyT1, key2 = keyT2] ++ rest) cstrs) (title : string) (extra : xbody)
+        (tab: sql_table ([key1 = keyT1, key2 = keyT2] ++ rest) cstrs) (title : string) (extra : transaction xbody)
         (fltr : sql_exp [Tab = [key1 = keyT1, key2 = keyT2] ++ rest] [] [] bool)
         (sh : show (keyT1 * keyT2)) (inj1 : sql_injectable keyT1) (inj2 : sql_injectable keyT2)
         (injs : $(map sql_injectable rest)) (fl : folder rest) (ofl : folder old)
@@ -923,9 +923,10 @@ functor Make(M : sig
         mayAdd <- authorize (Create which);
         bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
           (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) () r =>
+              extra <- r.Extra;
               rows <- r.List r.ForIndex;
               return <xml>
-                {r.Extra}
+                {extra}
 
                 <table class="bs3-table table-striped">
                   {List.mapX (fn k => <xml><tr><td><a link={entry (maker [fn p => p.1] k)}>{[@show r.Show k]}</a></td></tr></xml>) rows}
