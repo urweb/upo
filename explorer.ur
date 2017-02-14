@@ -17,7 +17,8 @@ type t1 (full :: {Type}) (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type 
       WidgetsFrom : $p.2 -> p.7 -> transaction p.6,
       RenderWidgets : p.5 -> p.6 -> xbody,
       ReadWidgets : p.6 -> signal ($p.3 * p.7),
-      KeyOf : $p.2 -> p.1}
+      KeyOf : $p.2 -> p.1,
+      ForIndex : sql_exp [Tab = p.2] [] [] bool}
 
 type t (full :: {Type}) (tables :: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}) =
     $(map (t1 full) tables)
@@ -33,6 +34,7 @@ fun one [full ::: {Type}]
         [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
         [[key] ~ rest] [[tname] ~ old]
         (tab : sql_table ([key = keyT] ++ rest) cstrs) (title : string) (extra : xbody)
+        (fltr : sql_exp [Tab = [key = keyT] ++ rest] [] [] bool)
         (sh : show keyT) (inj : sql_injectable keyT) (injs : $(map sql_injectable rest))
         (fl : folder rest) (ofl : folder old) (old : t full old) =
     {tname = {Title = title,
@@ -55,13 +57,15 @@ fun one [full ::: {Type}]
               WidgetsFrom = fn _ _ => return (),
               RenderWidgets = fn () () => <xml></xml>,
               ReadWidgets = fn () => return ((), ()),
-              KeyOf = fn r => r.key}} ++ old
+              KeyOf = fn r => r.key,
+              ForIndex = fltr}} ++ old
 
 fun two [full ::: {Type}]
         [tname :: Name] [key1 :: Name] [key2 :: Name] [keyT1 ::: Type] [keyT2 ::: Type]
         [rest ::: {Type}] [cstrs ::: {{Unit}}] [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
         [[key1] ~ [key2]] [[key1, key2] ~ rest] [[tname] ~ old]
         (tab: sql_table ([key1 = keyT1, key2 = keyT2] ++ rest) cstrs) (title : string) (extra : xbody)
+        (fltr : sql_exp [Tab = [key1 = keyT1, key2 = keyT2] ++ rest] [] [] bool)
         (sh : show (keyT1 * keyT2)) (inj1 : sql_injectable keyT1) (inj2 : sql_injectable keyT2)
         (injs : $(map sql_injectable rest)) (fl : folder rest) (ofl : folder old)
         (old : t full old) =
@@ -86,7 +90,8 @@ fun two [full ::: {Type}]
               WidgetsFrom = fn _ _ => return (),
               RenderWidgets = fn () () => <xml></xml>,
               ReadWidgets = fn () => return ((), ()),
-              KeyOf = fn r => (r.key1, r.key2)}} ++ old
+              KeyOf = fn r => (r.key1, r.key2),
+              ForIndex = fltr}} ++ old
 
 type text1 t = t
 type text2 t = source string * t
@@ -918,7 +923,7 @@ functor Make(M : sig
         mayAdd <- authorize (Create which);
         bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
           (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) () r =>
-              rows <- r.List (WHERE TRUE);
+              rows <- r.List r.ForIndex;
               return <xml>
                 {r.Extra}
 
