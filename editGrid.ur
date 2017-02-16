@@ -84,7 +84,7 @@ functor Make(M : sig
         List.app (fn r =>
                      @@Sql.easy_update' [key] [rest] [_] ! keyInj restInj
                        keyFl restFl
-                       tab r.OldKey r.New) rows
+                       tab r.OldKey r.New (WHERE TRUE)) rows
 
     fun add row =
         ensure;

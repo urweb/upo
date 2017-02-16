@@ -176,7 +176,8 @@ functor Make(M : sig
                   (@Folder.cons [reviewer] [_] ! reviewedFl)
                   (@Folder.cons [#When] [_] ! (@Folder.mp otherFl))
                   tab ({reviewer = u} ++ key)
-                  ({When = tm, reviewer = u} ++ key ++ other);
+                  ({When = tm, reviewer = u} ++ key ++ other)
+                  (WHERE TRUE);
                 queryI1 (SELECT specificListeners.Channel
                          FROM specificListeners
                          WHERE {@Sql.easy_where [#SpecificListeners] ! ! reviewedInj reviewedFl key})

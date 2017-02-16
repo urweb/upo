@@ -19,14 +19,19 @@ type tag (p :: (Type * Type * Type)) =
       FromDb : p.3 -> p.1 -> transaction p.2,
       Render : p.2 -> xbody,
       Create : p.2 -> transaction (list (time * option string * string) * p.1),
-      Save : p.1 -> p.2 -> transaction (list (time * option string * string) * p.1),
-      Delete : p.1 -> transaction unit,
+
+      Save : p.1 -> p.2 -> string -> time -> transaction (list (time * option string * string) * p.1),
+      Delete : p.1 -> string -> time -> transaction unit,
+      (* For these two, the [string] names a time kind, asking only to touch entries where that kind
+       * is associated with the [time] from another parameter. *)
+
       Eq : eq p.1,
       Show : show p.1,
       Display : option (Ui.context -> p.1 -> transaction xbody),
       MaySee : transaction bool,
       MayModify : transaction bool,
-      ShowTime : bool}
+      ShowTime : bool,
+      MultipleKinds : bool}
 
 type t (keys :: {Type}) (tags :: {(Type * Type * Type)}) =
      [[When, Kind, ShowTime] ~ keys]
@@ -54,6 +59,26 @@ fun create [tag :: Name] [key] [widget] [config] [[When, Kind, ShowTime] ~ key] 
                       None => None
                     | Some v => Some (make [tag] v),
      Tags = {tag = r}}
+
+fun pickFieldFromString [tab :: Name] [t ::: Type] [choosable ::: {Unit}] [others ::: {Type}]
+    [choosable ~ others] (fl : folder choosable) (names : $(mapU string choosable)) (name : string)
+    : sql_exp [tab = mapU t choosable ++ others] [] [] t =
+      let
+          val opt = @foldUR [string] [fn ch => others :: {Type} -> [ch ~ others] => option (sql_exp [tab = mapU t ch ++ others] [] [] t)]
+                    (fn [nm ::_] [r ::_] [[nm] ~ r] (thisName : string)
+                        (acc : others :: {Type} -> [r ~ others] => option (sql_exp [tab = mapU t r ++ others] [] [] t))
+                        [others :: {Type}] [([nm] ++ r) ~ others] =>
+                        if thisName = name then
+                            Some (WHERE {{tab}}.{nm})
+                        else
+                            acc [[nm = t] ++ others])
+                    (fn [others ::_] [[] ~ others] => None)
+                    fl names
+      in
+          case opt [others] of
+              None => error <xml>pickFieldFromString: field doesn't exist</xml>
+            | Some e => e
+      end
 
 functor FromTable(M : sig
                       con tag :: Name
@@ -246,7 +271,7 @@ functor FromTable(M : sig
                   return (tml, r --- map fst3 other)
        end,
        Save = let
-           fun save k r =
+           fun save k r kind tm =
                lv <- auth;
                if lv >= Write then
                    @@Sql.easy_update' [map fst3 key] [mapU time times ++ map fst3 other] [_] !
@@ -254,10 +279,11 @@ functor FromTable(M : sig
                      (@map0 [fn _ => sql_injectable time] (fn [u ::_] => _ : sql_injectable time) flT
                        ++ injO)
                      (@Folder.mp fl) (@Folder.concat ! (@Folder.mp flT) (@Folder.mp flO)) tab k r
+                     (WHERE {@pickFieldFromString [#T] ! flT kinds kind} = {[tm]})
                else
                    error <xml>Not authorized</xml>
        in
-           fn k self =>
+           fn k self kind tm =>
               tms <- @Monad.foldR2 _ [fn _ => string] [fn _ => id * source string]
                       [fn r => option ($(mapU time r) * list (time * option string * string))]
                       (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] k (_, s) acc =>
@@ -272,22 +298,23 @@ functor FromTable(M : sig
                   r <- @Monad.mapR2 _ [Widget.t'] [fn p => id * p.2] [fst3]
                         (fn [nm ::_] [p ::_] (w : Widget.t' p) (_, x) => current (@Widget.value w x))
                         (@Folder.concat ! fl flO) ws self.Widgets;
-                  rpc (save k (tms ++ r));
+                  rpc (save k (tms ++ r) kind tm);
                   return (tml, r --- map fst3 other)
        end,
        Delete = let
-           fun delete k =
+           fun delete k kind tm =
                lv <- auth;
                if lv >= Write then
                    dml (DELETE FROM tab
-                               WHERE {@@Sql.easy_where [#T] [map fst3 key] [_] [_] [_] [_] ! !
-                                 (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst3] [_] fl) inj)
-                                 (@Folder.mp fl) k})
+                        WHERE {@@Sql.easy_where [#T] [map fst3 key] [_] [_] [_] [_] ! !
+                          (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst3] [_] fl) inj)
+                          (@Folder.mp fl) k}
+                          AND {@pickFieldFromString [#T] ! flT kinds kind} = {[tm]})
                else
                    error <xml>Not authorized</xml>
        in
-           fn k =>
-              rpc (delete k)
+           fn k kind tm =>
+              rpc (delete k kind tm)
        end,
        Eq = @@Record.eq [map fst3 key] eqs (@Folder.mp fl),
        Show = sh,
@@ -299,7 +326,10 @@ functor FromTable(M : sig
        MayModify =
          lv <- auth;
          return (lv >= Write),
-       ShowTime = showTime
+       ShowTime = showTime,
+       MultipleKinds = @fold [fn _ => int]
+                        (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] n => n + 1)
+                        0 flT > 1
       }
 end
 
@@ -403,8 +433,8 @@ type del = variant (map fst3 tags)
 
 datatype action =
          Add of add
-       | Del of del
-       | Mod of del * add
+       | Del of del * option {Kind : string, Day : string, Time : string}
+       | Mod of del * add * option {Kind : string, Day : string, Time : string}
 
 table listeners : { Kind : serialized (variant (map (fn _ => unit) tags)),
                     Channel : channel action }
@@ -477,22 +507,25 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                         else
                                                             items)) days) days tml)
 
-                fun doDel r =
+                fun doDel (r, sto) =
                     days <- get ds;
                     set ds (List.mp (fn (tm', tmS', longS, items) =>
                                         (tm', tmS', longS,
-                                         List.filter (fn (_, _, _, r') =>
+                                         List.filter (fn (tm'', tmS'', k, r') =>
                                                          not (@eq (@@Variant.eq [map fst3 tags]
                                                                      (@mp [tag] [fn p => eq p.1]
                                                                        (fn [p] (t : tag p) => t.Eq)
-                                                                       fl t.Tags) (@Folder.mp fl)) r' r)) items)) days)
+                                                                       fl t.Tags) (@Folder.mp fl)) r' r
+                                                              && case sto of
+                                                                     None => True
+                                                                   | Some st => k = st.Kind && tmS'' = Some st.Time && tmS' = st.Day)) items)) days)
 
                 fun loop () =
                     msg <- recv ch;
                     (case msg of
                          Add c => doAdd c
                        | Del c => doDel c
-                       | Mod (c1, c2) => doDel c1; doAdd c2);
+                       | Mod (c1, c2, sto) => doDel (c1, sto); doAdd c2);
                     loop ()
             in
                 spawn (loop ())
@@ -572,16 +605,16 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                      </div>
                                                      </xml>
                                                      <xml>Add to Calendar</xml>))}
-                          {List.mapX (fn (tm, tmS, k, d) =>
+                          {List.mapX (fn (tm, tmS', k, d) =>
                                          let
                                              val maymod = @Record.select [fn _ => bool] [fst3] fl
                                                            (fn [p] (b : bool) _ => b)
                                                            mm d
                                          in
-                                             <xml><div class={item}>{case tmS of
+                                             <xml><div class={item}>{case tmS' of
                                                                          None => <xml></xml>
-                                                                       | Some tmS =>
-                                                                         <xml><span class={time}>{[tmS]}</span>:</xml>}
+                                                                       | Some tmS' =>
+                                                                         <xml><span class={time}>{[tmS']}</span>:</xml>}
                                                <span class={item}>
                                                  {@Record.select [tag] [fst3] fl
                                                    (fn [p] (t : tag p) (x : p.1) =>
@@ -601,8 +634,14 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                         (@Record.select2' [tag] [thd3] [fst3] [fst3] fl
                                                         (fn [p] (t : tag p) (cfg : p.3) (maker : p.1 -> variant (map fst3 tags)) (x : p.1) =>
                                                             widget <- t.FromDb cfg x;
-                                                            return (Ui.modal ((tml, k2) <- t.Save x widget;
-                                                                              rpc (notify d (Mod (maker x, (tml, maker k2)))))
+                                                            return (Ui.modal ((tml, k2) <- t.Save x widget k tm;
+                                                                              sto <- return (if t.MultipleKinds then
+                                                                                                None
+                                                                                            else
+                                                                                                case tmS' of
+                                                                                                    None => None
+                                                                                                  | Some tmS' => Some {Kind = k, Time = tmS', Day = tmS});
+                                                                              rpc (notify d (Mod (maker x, (tml, maker k2), sto))))
                                                                              <xml>Editing a calendar item ({[t.Label]})</xml>
                                                                              <xml>
                                                                                <div class={fields}>
@@ -615,8 +654,14 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                                         <xml/>
                                                                         (return (@Record.select [tag] [fst3] fl
                                                                         (fn [p] (t : tag p) (x : p.1) =>
-                                                                        Ui.modal (t.Delete x;
-                                                                        rpc (notify d (Del d)))
+                                                                        Ui.modal (t.Delete x k tm;
+                                                                        sto <- return (if t.MultipleKinds then
+                                                                                           None
+                                                                                       else
+                                                                                           case tmS' of
+                                                                                               None => None
+                                                                                             | Some tmS' => Some {Kind = k, Time = tmS', Day = tmS});
+                                                                        rpc (notify d (Del (d, sto))))
                                                                         <xml>Deleting a calendar item ({[t.Label]})</xml>
                                                                         <xml>Are you sure you want to delete <b>{[@show t.Show x]}</b>?</xml>
                                                                         <xml>Yes, Delete It</xml>)

@@ -90,6 +90,7 @@ val easy_update' : key ::: {Type} -> fields ::: {Type} -> uniques ::: {{Unit}}
                   -> sql_table (key ++ fields) uniques
                   -> $key
                   -> $(key ++ fields)
+                  -> sql_exp [T = key ++ fields] [] [] bool
                   -> transaction unit
 
 val easy_update'' : key ::: {Type} -> fields ::: {Type} -> uniques ::: {{Unit}}

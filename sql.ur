@@ -146,13 +146,14 @@ fun easy_update' [key] [fields] [uniques] [key ~ fields]
     (keyInj : $(map sql_injectable key)) (fieldsInj : $(map sql_injectable fields))
     (keyFl : folder key) (fieldsFl : folder fields)
     (tab : sql_table (key ++ fields) uniques)
-    (key : $key) (fields : $(key ++ fields)) =
+    (key : $key) (fields : $(key ++ fields))
+    (whr : sql_exp [T = key ++ fields] [] [] bool) =
     dml (update [key ++ fields]
                 (@Top.map2 [sql_injectable] [ident] [sql_exp _ _ _]
                   (fn [t] => @sql_inject)
                   (@Folder.concat ! keyFl fieldsFl) (keyInj ++ fieldsInj) fields)
                 tab
-                (@easy_where [#T] ! ! keyInj keyFl key))
+                (WHERE {@easy_where [#T] ! ! keyInj keyFl key} AND {whr}))
 
 fun easy_update'' [key] [fields] [uniques] [leftAlone]
     [key ~ fields] [key ++ fields ~ leftAlone]
