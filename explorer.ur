@@ -18,7 +18,7 @@ type t1 (full :: {Type}) (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type 
       RenderWidgets : p.5 -> p.6 -> xbody,
       ReadWidgets : p.6 -> signal ($p.3 * p.7 * option string (* Error message, if something is amiss *)),
       KeyOf : $p.2 -> p.1,
-      ForIndex : sql_exp [Tab = p.2] [] [] bool}
+      ForIndex : transaction (list (p.1 * xbody))}
 
 type t (full :: {Type}) (tables :: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}) =
     $(map (t1 full) tables)
@@ -29,12 +29,16 @@ type base3 = unit
 
 val none [full ::: {Type}] = {}
 
+datatype index_style exp row =
+         Default of exp
+       | Custom of transaction (list row)
+
 fun one [full ::: {Type}]
         [tname :: Name] [key :: Name] [keyT ::: Type] [rest ::: {Type}] [cstrs ::: {{Unit}}]
         [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
         [[key] ~ rest] [[tname] ~ old]
         (tab : sql_table ([key = keyT] ++ rest) cstrs) (title : string) (extra : transaction xbody)
-        (fltr : sql_exp [Tab = [key = keyT] ++ rest] [] [] bool)
+        (isty : index_style (sql_exp [Tab = [key = keyT] ++ rest] [] [] bool) (keyT * xbody))
         (sh : show keyT) (inj : sql_injectable keyT) (injs : $(map sql_injectable rest))
         (fl : folder rest) (ofl : folder old) (old : t full old) =
     {tname = {Title = title,
@@ -58,14 +62,20 @@ fun one [full ::: {Type}]
               RenderWidgets = fn () () => <xml></xml>,
               ReadWidgets = fn () => return ((), (), None),
               KeyOf = fn r => r.key,
-              ForIndex = fltr}} ++ old
+              ForIndex = case isty of
+                             Default fltr => List.mapQuery (SELECT tab.{key}
+                                                            FROM tab
+                                                            WHERE {fltr}
+                                                            ORDER BY tab.{key})
+                                                           (fn {Tab = r} => (r.key, txt r.key))
+                           | Custom xa => xa}} ++ old
 
 fun two [full ::: {Type}]
         [tname :: Name] [key1 :: Name] [key2 :: Name] [keyT1 ::: Type] [keyT2 ::: Type]
         [rest ::: {Type}] [cstrs ::: {{Unit}}] [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
         [[key1] ~ [key2]] [[key1, key2] ~ rest] [[tname] ~ old]
         (tab: sql_table ([key1 = keyT1, key2 = keyT2] ++ rest) cstrs) (title : string) (extra : transaction xbody)
-        (fltr : sql_exp [Tab = [key1 = keyT1, key2 = keyT2] ++ rest] [] [] bool)
+        (isty : index_style (sql_exp [Tab = [key1 = keyT1, key2 = keyT2] ++ rest] [] [] bool) (keyT1 * keyT2 * xbody))
         (sh : show (keyT1 * keyT2)) (inj1 : sql_injectable keyT1) (inj2 : sql_injectable keyT2)
         (injs : $(map sql_injectable rest)) (fl : folder rest) (ofl : folder old)
         (old : t full old) =
@@ -91,7 +101,15 @@ fun two [full ::: {Type}]
               RenderWidgets = fn () () => <xml></xml>,
               ReadWidgets = fn () => return ((), (), None),
               KeyOf = fn r => (r.key1, r.key2),
-              ForIndex = fltr}} ++ old
+              ForIndex = case isty of
+                             Default fltr => List.mapQuery (SELECT tab.{key1}, tab.{key2}
+                                                            FROM tab
+                                                            WHERE {fltr}
+                                                            ORDER BY tab.{key1}, tab.{key2})
+                                                           (fn {Tab = r} => ((r.key1, r.key2), txt (r.key1, r.key2)))
+                           | Custom xa =>
+                             ls <- xa;
+                             return (List.mp (fn (k1, k2, b) => ((k1, k2), b)) ls)}} ++ old
 
 type text1 t = t
 type text2 t = source string * t
@@ -981,12 +999,12 @@ functor Make(M : sig
         bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
           (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) () r =>
               extra <- r.Extra;
-              rows <- r.List r.ForIndex;
+              rows <- r.ForIndex;
               return <xml>
                 {extra}
 
                 <table class="bs3-table table-striped">
-                  {List.mapX (fn k => <xml><tr><td><a link={entry (maker [fn p => p.1] k)}>{[@show r.Show k]}</a></td></tr></xml>) rows}
+                  {List.mapX (fn (k, bod) => <xml><tr><td><a link={entry (maker [fn p => p.1] k)}>{bod}</a></td></tr></xml>) rows}
                 </table>
 
                 {if mayAdd then
