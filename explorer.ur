@@ -732,7 +732,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                             if sv = "" then
                                                                                 return ()
                                                                             else
-                                                                                set changed True;
+                                                                                set changed False;
                                                                                 sv <- return (readError sv);
                                                                                 slv <- get sl;
                                                                                 if List.mem sv slv then
