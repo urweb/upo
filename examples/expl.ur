@@ -42,10 +42,10 @@ open Make(struct
 
               val title = "Froggyland"
               val t = none
-                      |> one [#Frog] [#Nickname] frog "Frogs" (return <xml></xml>) (WHERE TRUE)
-                      |> one [#Swamp] [#SwampName] swamp "Swamps" (return <xml></xml>) (WHERE TRUE)
-                      |> one [#SuperPower] [#Power] superPower "Powers" (return <xml></xml>) (WHERE TRUE)
-                      |> one [#RestaurantChain] [#Chain] restaurantChain "Chains" (return <xml></xml>) (WHERE TRUE)
+                      |> one [#Frog] [#Nickname] frog "Frogs" (return <xml></xml>) (Default (WHERE TRUE))
+                      |> one [#Swamp] [#SwampName] swamp "Swamps" (return <xml></xml>) (Default (WHERE TRUE))
+                      |> one [#SuperPower] [#Power] superPower "Powers" (return <xml></xml>) (Default (WHERE TRUE))
+                      |> one [#RestaurantChain] [#Chain] restaurantChain "Chains" (return <xml></xml>) (Default (WHERE TRUE))
 
                       |> text [#Frog] [#Nickname] "Nickname"
                       |> text [#Frog] [#Age] "Age"
