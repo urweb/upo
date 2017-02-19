@@ -200,7 +200,7 @@ fun image [full ::: {Type}]
           [cols ::: {Type}] [colsDone ::: {Type}] [cstrs ::: {{Unit}}]
           [impl1 ::: Type] [impl2 ::: Type] [impl3 ::: Type] [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
           [[col] ~ cols] [[col] ~ colsDone] [[tname] ~ old]
-          (lab : string) (_ : show colT) (_ : read colT)
+          (lab : string) (_ : show colT) (_ : read colT) (cls : css_class)
           (old : t full ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)) =
     old -- tname
         ++ {tname = old.tname
@@ -212,7 +212,7 @@ fun image [full ::: {Type}]
                                                None => <xml></xml>
                                              | Some url => <xml><tr>
                                                <th>{[lab]}</th>
-                                               <td><img src={url}/></td>
+                                               <td><img src={url} class={cls}/></td>
                                              </tr></xml>}
                                         </xml>,
                             FreshWidgets =

@@ -86,6 +86,7 @@ val image : full ::: {Type}
             => string
             -> show colT
             -> read colT
+            -> css_class
             -> t full ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)
             -> t full ([tname = (key, [col = colT] ++ cols, [col = colT] ++ colsDone, cstrs, text1 impl1, text2 impl2, text3 impl3)] ++ old)
 
