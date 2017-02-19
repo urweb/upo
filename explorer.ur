@@ -5,7 +5,7 @@ type t1 (full :: {Type}) (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type 
       Extra : transaction xbody,
       Table : sql_table p.2 p.4,
       Insert : $p.2 -> p.7 -> transaction unit,
-      Update : $p.2 -> p.7 -> transaction unit,
+      Update : p.1 -> $p.2 -> p.7 -> transaction unit,
       Delete : p.1 -> transaction unit,
       List : sql_exp [Tab = p.2] [] [] bool -> transaction (list p.1),
       KeyIs : nm :: Name -> p.1 -> sql_exp [nm = p.2] [] [] bool,
@@ -45,7 +45,7 @@ fun one [full ::: {Type}]
               Extra = extra,
               Table = tab,
               Insert = fn r () => @@Sql.easy_insert [[key = _] ++ rest] [_] ({key = inj} ++ injs) (@Folder.cons [_] [_] ! fl) tab r,
-              Update = fn r () => @@Sql.easy_update [[key = _]] [rest] [_] ! {key = inj} injs _ fl tab (r --- rest) (r -- key),
+              Update = fn k r () => @@Sql.easy_update' [[key = _]] [rest] [_] ! {key = inj} injs _ fl tab {key = k} r (WHERE TRUE),
               Delete = fn _ => return (),
               List = fn wher => List.mapQuery (SELECT tab.{key}
                                                FROM tab
@@ -83,7 +83,7 @@ fun two [full ::: {Type}]
               Extra = extra,
               Table = tab,
               Insert = fn r () => @@Sql.easy_insert [[key1 = _, key2 = _] ++ rest] [_] ({key1 = inj1, key2 = inj2} ++ injs) (@Folder.cons [_] [_] ! (@Folder.cons [_] [_] ! fl)) tab r,
-              Update = fn r () => @@Sql.easy_update [[key1 = _, key2 = _]] [rest] [_] ! {key1 = inj1, key2 = inj2} injs _ fl tab (r --- rest) (r -- key1 -- key2),
+              Update = fn (k1, k2) r () => @@Sql.easy_update' [[key1 = _, key2 = _]] [rest] [_] ! {key1 = inj1, key2 = inj2} injs _ fl tab {key1 = k1, key2 = k2} r (WHERE TRUE),
               Delete = fn _ => return (),
               List = fn wher => List.mapQuery (SELECT tab.{key1}, tab.{key2}
                                                FROM tab
@@ -429,7 +429,7 @@ fun foreign [full ::: {Type}]
            ftname = old.ftname
                         -- #Insert -- #Update -- #Auxiliary -- #Render -- #ReadWidgets -- #WidgetsFrom
                         ++ {Insert = fn r (_, aux) => old.ftname.Insert r aux,
-                            Update = fn r (_, aux) => old.ftname.Update r aux,
+                            Update = fn k r (_, aux) => old.ftname.Update k r aux,
                             Auxiliary = fn fkey row =>
                                            let
                                                val tab = old.tname.Table
@@ -488,8 +488,8 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                 List.app (fn k2 => dml (INSERT INTO rel({col1}, {col2})
                                                         VALUES ({[r.col1]}, {[k2]}))) k2s,
                              Update =
-                             fn r (k2s, aux) =>
-                                old.tname1.Update r aux;
+                             fn k r (k2s, aux) =>
+                                old.tname1.Update k r aux;
                                 dml (DELETE FROM rel
                                      WHERE t.{col1} = {[r.col1]});
                                 List.app (fn k2 => dml (INSERT INTO rel({col1}, {col2})
@@ -589,8 +589,8 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                        ++ {Insert = fn r (k1s, aux) =>                         old.tname2.Insert r aux;
                            List.app (fn k1 => dml (INSERT INTO rel({col1}, {col2})
                                                    VALUES ({[k1]}, {[r.col2]}))) k1s,
-                           Update = fn r (k1s, aux) =>
-                             old.tname2.Update r aux;
+                           Update = fn k r (k1s, aux) =>
+                             old.tname2.Update k r aux;
                              dml (DELETE FROM rel
                                   WHERE t.{col2} = {[r.col2]});
                              List.app (fn k1 => dml (INSERT INTO rel({col1}, {col2})
@@ -714,8 +714,8 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                 List.appi (fn i k2 => dml (INSERT INTO rel(SeqNum, {col1}, {col2})
                                                            VALUES ({[i]}, {[r.col1]}, {[k2]}))) k2s,
                              Update =
-                             fn r (k2s, aux) =>
-                                old.tname1.Update r aux;
+                             fn k r (k2s, aux) =>
+                                old.tname1.Update k r aux;
                                 dml (DELETE FROM rel
                                      WHERE t.{col1} = {[r.col1]});
                                 List.appi (fn i k2 => dml (INSERT INTO rel(SeqNum, {col1}, {col2})
@@ -840,7 +840,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
           tname2 = old.tname2
                        -- #Insert -- #Update -- #Delete -- #Config -- #Auxiliary -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
                        ++ {Insert = fn r (k1s, aux) => old.tname2.Insert r aux,
-                           Update = fn r (k1s, aux) => old.tname2.Update r aux,
+                           Update = fn k r (k1s, aux) => old.tname2.Update k r aux,
                            Delete = fn k2 => dml (DELETE FROM rel WHERE t.{col2} = {[k2]}),
                            Config =
                            let
@@ -912,7 +912,7 @@ fun custom [full ::: {Type}]
                                            aux2 <- old.tname.Auxiliary k row;
                                            return (aux1, aux2),
                             Insert = fn r (sto, aux) => old.tname.Insert r aux; Option.app dbchange r.col,
-                            Update = fn r (sto, aux) => old.tname.Update r aux; Option.app dbchange r.col,
+                            Update = fn k r (sto, aux) => old.tname.Update k r aux; Option.app dbchange r.col,
                             Render = fn entry (aux1, aux2) r => <xml>
                               {old.tname.Render entry aux2 r}
                               {case aux1 of
@@ -1144,7 +1144,7 @@ functor Make(M : sig
                                                                            None => return True
                                                                          | Some msg => confirm ("Are you sure you want to proceed with saving that entry?  The following issues were noted:\n\n" ^ msg));
                                                            if proceed then
-                                                               rpc (save (maker [fn p => $p.2 * p.6] (row1, row2)));
+                                                               rpc (save (maker [fn p => p.1 * $p.2 * p.6] (k, row1, row2)));
                                                                set est (NotEditing (row1, row2))
                                                            else
                                                                return ()}>Save</button>
@@ -1163,11 +1163,11 @@ functor Make(M : sig
           {bod}
         </xml>)
 
-    and save (which : variant (map (fn p => $p.2 * p.6) tables)) =
-        @@Variant.destrR' [fn p => $p.2 * p.6] [fn p => t1 tables' (dupF p)] [transaction unit] [tables]
-          (fn [p ::_] (mk : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) (vs : $p.2, aux : p.6) r =>
-              auth (Update (mk [fn p => p.1] (r.KeyOf vs)));
-              r.Update vs aux)
+    and save (which : variant (map (fn p => p.1 * $p.2 * p.6) tables)) =
+        @@Variant.destrR' [fn p => p.1 * $p.2 * p.6] [fn p => t1 tables' (dupF p)] [transaction unit] [tables]
+          (fn [p ::_] (mk : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) (k : p.1, vs : $p.2, aux : p.6) r =>
+              auth (Update (mk [fn p => p.1] k));
+              r.Update k vs aux)
           fl which t
 
     and delete (which : variant (map (fn p => p.1) tables)) =
