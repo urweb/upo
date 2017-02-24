@@ -1106,35 +1106,35 @@ functor Make(M : sig
                 (* Try to find a compatible open slot. *)
                 slot <- oneOrNoRows1 (SELECT time.{{timeKey}}
                                       FROM time
-                                      WHERE (SELECT TRUE
+                                      WHERE (SELECT DISTINCT TRUE
                                              FROM meeting
                                              WHERE {@@Sql.easy_where [#Meeting] [homeKey] [_] [_] [_] [_]
                                                  ! ! homeInj' homeKeyFl (r --- awayKey)}
                                                AND {@@Sql.easy_join [#Meeting] [#Time] [timeKey]
                                                  [homeKey ++ awayKey] [timeRest] [_] [_] [_]
                                                  ! ! ! ! timeKeyFl}) IS NULL
-                                        AND (SELECT TRUE
+                                        AND (SELECT DISTINCT TRUE
                                              FROM meeting
                                              WHERE {@@Sql.easy_where [#Meeting] [awayKey] [_] [_] [_] [_]
                                                  ! ! awayInj' awayKeyFl (r --- homeKey)}
                                                AND {@@Sql.easy_join [#Meeting] [#Time] [timeKey]
                                                  [homeKey ++ awayKey] [timeRest] [_] [_] [_]
                                                  ! ! ! ! timeKeyFl}) IS NULL
-                                        AND (SELECT TRUE
+                                        AND (SELECT DISTINCT TRUE
                                              FROM homeUnavailable
                                              WHERE {@@Sql.easy_where [#HomeUnavailable] [homeKey] [_] [_] [_] [_]
                                                  ! ! homeInj' homeKeyFl (r --- awayKey)}
                                                AND {@@Sql.easy_join [#HomeUnavailable] [#Time] [timeKey]
                                                  [homeKey] [timeRest] [_] [_] [_]
                                                  ! ! ! ! timeKeyFl}) IS NULL
-                                        AND (SELECT TRUE
+                                        AND (SELECT DISTINCT TRUE
                                              FROM awayUnavailable
                                              WHERE {@@Sql.easy_where [#AwayUnavailable] [awayKey] [_] [_] [_] [_]
                                                  ! ! awayInj' awayKeyFl (r --- homeKey)}
                                                AND {@@Sql.easy_join [#AwayUnavailable] [#Time] [timeKey]
                                                  [awayKey] [timeRest] [_] [_] [_]
                                                  ! ! ! ! timeKeyFl}) IS NULL
-                                        AND NOT ((SELECT TRUE
+                                        AND NOT ((SELECT DISTINCT TRUE
                                                   FROM home
                                                   WHERE {@@Sql.easy_where [#Home] [homeKey] [_] [_] [_] [_]
                                                     ! ! homeInj' homeKeyFl (r --- awayKey)}
@@ -1143,7 +1143,7 @@ functor Make(M : sig
                                                     ! ! (homeHardConstInj ++ homeSoftConstInj)
                                                     (@Folder.concat ! homeHardConstFl homeSoftConstFl)
                                                     (homeHardConst ++ homeSoftConst)}) IS NULL)
-                                        AND NOT ((SELECT TRUE
+                                        AND NOT ((SELECT DISTINCT TRUE
                                                   FROM away
                                                   WHERE {@@Sql.easy_where [#Away] [awayKey] [_] [_] [_] [_]
                                                     ! ! awayInj' awayKeyFl (r --- homeKey)}
