@@ -3,26 +3,27 @@ fun csvFold [fs] [acc] (f : $fs -> acc -> acc)
     let
         fun doLine line acc =
             let
-                val (commas, total, line, acc') =
-                    @foldR [read] [fn r => string -> int * int * string * $r]
-                     (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : read t) acc line =>
-                         case String.split line #"," of
-                             None =>
-                             let
-                                 val (commas, total, line, r) = acc line
-                             in
-                                 (commas, total+1, "", {nm = readError (String.trim line)} ++ r)
-                             end
-                           | Some (token, line) =>
-                             let
-                                 val (commas, total, line, r) = acc line
-                             in
-                                 (commas+1, total+1, line, {nm = readError (String.trim token)} ++ r)
-                             end)
-                     (fn line => (0, 0, line, {})) fl reads line
+                fun fields (line, acc) =
+                    case String.split line #"," of
+                        None =>
+                        if line = "" then
+                            acc
+                        else
+                            line :: acc
+                      | Some (field, line') => fields (line', field :: acc)
+
+                val (fields, acc') =
+                    @foldR [read] [fn r => list string * $r]
+                     (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : read t)
+                                  (fields, r) =>
+                         case fields of
+                             [] => error <xml>Not enough fields in CSV line</xml>
+                           | token :: fields' =>
+                             (fields', {nm = readError (String.trim token)} ++ r))
+                     (fields (line, []), {}) fl reads
             in
-                if commas <> total-1 || line <> "" then
-                    error <xml>Wrong number of commas in CSV input ({[commas]}, {[total]}, {[line]})</xml>
+                if List.length fields <> 0 then
+                    error <xml>Too many commas in CSV input ({[List.length fields]} unmatched)</xml>
                 else
                     f acc' acc
             end

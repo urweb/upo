@@ -1,0 +1,5 @@
+database dbname=upotest
+library ../default
+safeGet Csvbig/main
+
+csvbig
