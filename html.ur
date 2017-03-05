@@ -170,6 +170,9 @@ val em = simpleTag "em" @@em
 val code = simpleTag "code" @@tt
 val tt = simpleTag "tt" @@tt
 val p = simpleTag "p" @@p
+val ol = simpleTag "ol" @@ol
+val ul = simpleTag "ul" @@ul
+val li = simpleTag "li" @@li
 
 val br = {Nam = "br",
           Attributes = {},
