@@ -28,26 +28,30 @@ fun csvFold [fs] [acc] (f : $fs -> acc -> acc)
                     f acc' acc
             end
 
-        fun loop input acc =
+        fun loop (header : int) input acc =
             case String.split input #"\n" of
                 None =>
                 (case input of
                      "" => acc
-                   | _ => doLine input acc)
+                   | _ => if header = 0
+                          then acc
+                          else doLine input acc)
               | Some (line, input) =>
-                loop input (doLine line acc)
+                if header = 0
+                then loop 0 input (doLine line acc)
+                else loop (header-1) input acc
     in
         loop
     end
 
 
 fun parse [fs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs)
-          (input : string) =
-    @csvFold (fn r acc => r :: acc) injs reads fl input []
+          (header : int) (input : string) =
+    @csvFold (fn r acc => r :: acc) injs reads fl header input []
 
 fun importTable [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs)
-                (tab : sql_table fs cs) (input : string) =
-    List.app (@Sql.easy_insert injs fl tab) (@parse injs reads fl input)
+                (tab : sql_table fs cs) (header : int) (input : string) =
+    List.app (@Sql.easy_insert injs fl tab) (@parse injs reads fl header input)
 
 open Bootstrap3
 
