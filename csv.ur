@@ -34,8 +34,8 @@ fun csvFold [fs] [acc] (f : $fs -> acc -> acc)
                 (case input of
                      "" => acc
                    | _ => if header = 0
-                          then acc
-                          else doLine input acc)
+                          then doLine input acc
+                          else acc)
               | Some (line, input) =>
                 if header = 0
                 then loop 0 input (doLine line acc)
