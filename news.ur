@@ -72,7 +72,7 @@ functor Make(M : sig
             tail <- source Nil;
             posts <- queryL1 (SELECT *
                               FROM post
-                              ORDER BY post.When);
+                              ORDER BY post.When DESC);
             head <- List.foldlM (fn p ps =>
                                     p <- source p;
                                     mode <- source Hidden;
