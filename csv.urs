@@ -3,11 +3,13 @@
 val importTable : fs ::: {Type} -> cs ::: {{Unit}}
                   -> $(map sql_injectable fs) -> $(map read fs) -> folder fs
                   -> sql_table fs cs
+                  -> int (* the number of header lines to skip *)
                   -> string
                   -> transaction unit
 
 val parse : fs ::: {Type}
             -> $(map sql_injectable fs) -> $(map read fs) -> folder fs
+            -> int (* the number of header lines to skip *)
             -> string
             -> list $fs
 

@@ -182,7 +182,7 @@ task initialize = fn () =>
          dml (INSERT INTO time (Hour, Minute, Description) VALUES (12, 00, 'noon'))
 
 
-val importHomes = Csv.importTable h
+val importHomes = Csv.importTable h 0
 
 open Bootstrap3
 
