@@ -40,7 +40,7 @@ function sizeOut(v) {
 }
 
 function uw_ckeditor_replace(r) {
-    var config = {};
+    var config = {entities : false};
 
     var width = sizeOut(r._Width);
     if (width != null)
@@ -58,7 +58,7 @@ function uw_ckeditor_replace(r) {
     var ed = CKEDITOR.replace(r._Id, config);
     var src = r._Source;
     ed.setData(sg(src));
-    ed.on('change', function(e) { sv(src, ed.getData()); });
+    ed.on('change', function(e) { sv(src, ed.getSnapshot()); });
 }
 
 function uw_ckeditor_setContent(id, s) {
