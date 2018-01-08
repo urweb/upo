@@ -137,10 +137,17 @@ fun ed s = Ckeditor.editor {Width = Ckeditor.DefaultSize,
                             ToolbarSet = Ckeditor.Custom (undoEtc :: find :: basic :: lists :: styles :: links :: []),
                             InitialText = s}
 
+val tags = (Html.b, Html.i, Html.a, Html.strong, Html.em, Html.p, Html.br, Html.code, Html.tt, Html.ol, Html.ul, Html.li)
+
 fun html s =
-    case Html.format (Html.b, Html.i, Html.a, Html.strong, Html.em, Html.p, Html.br, Html.code, Html.tt, Html.ol, Html.ul, Html.li) s of
+    case Html.format tags s of
         Html.Failure msg => <xml><b>HTML error: {[msg]}</b></xml>
       | Html.Success xm => xm
+
+fun textFromHtml s =
+    case Html.formatPlainText tags s of
+        Html.Failure msg => "HTML error: " ^ msg
+      | Html.Success txt => txt
 
 val htmlbox = { Configure = return (),
                 Create = fn () => ed "",

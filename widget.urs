@@ -36,6 +36,7 @@ type htmlbox
 type htmlbox_config = {}
 val htmlbox : t string htmlbox htmlbox_config
 val html : string -> xbody (* Use this one to parse result of [htmlbox] into real HTML. *)
+val textFromHtml : string -> string (* Use this one to parse result of [htmlbox] into Markdown-style plain text. *)
 
 type textbox
 type textbox_config
