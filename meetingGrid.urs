@@ -129,4 +129,7 @@ functor Make(M : sig
     (* Using preferences from both sides, try to schedule more meetings heuristically. *)
     val scheduleSome : transaction unit
 
+    (* And if you really want an SQL view of the current meeting state, use this one. *)
+    view meetings : (M.homeKey ++ M.timeKey ++ M.awayKey)
+
 end

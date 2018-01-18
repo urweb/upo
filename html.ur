@@ -316,7 +316,7 @@ val tt = simpleTag (fn s => s) "tt" @@tt
 val p = simpleTag (fn s => s ^ "\n\n") "p" @@p
 val ol = simpleTag (fn s => s) "ol" @@ol
 val ul = simpleTag (fn s => s) "ul" @@ul
-val li = simpleTag (fn s => " * " ^ s ^ "\n") "li" @@li
+val li = simpleTag (fn s => " - " ^ s ^ "\n") "li" @@li
 
 val br = {Nam = "br",
           Attributes = {},

@@ -110,6 +110,11 @@ functor Make(M : sig
       {{one_constraint [#Away] (@Sql.easy_foreign ! ! ! ! ! ! awayKeyFl away)}},
       {{one_constraint [#Time] (@Sql.easy_foreign ! ! ! ! ! ! timeKeyFl time)}}
 
+    con all = homeKey ++ awayKey ++ timeKey
+    val allFl = @Folder.concat ! homeKeyFl (@Folder.concat ! timeKeyFl awayKeyFl)
+
+    view meetings = {@Sql.viewOf allFl meeting}
+
     datatype operation = Add | Del
     type action = { Operation : operation, Home : $homeKey, Away : $awayKey, Time : $timeKey }
     table globalListeners : { Channel : channel action }
@@ -139,9 +144,6 @@ functor Make(M : sig
                     (awayInj ++ timeInj)}},
       {{one_constraint [#Away] (@Sql.easy_foreign ! ! ! ! ! ! awayKeyFl away)}},
       {{one_constraint [#Time] (@Sql.easy_foreign ! ! ! ! ! ! timeKeyFl time)}}
-
-    con all = homeKey ++ awayKey ++ timeKey
-    val allFl = @Folder.concat ! homeKeyFl (@Folder.concat ! timeKeyFl awayKeyFl)
 
     val allInj = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim allFl (homeInj ++ awayInj ++ timeInj)
     val homeInj' = @mp [sql_injectable_prim] [sql_injectable] @@sql_prim homeKeyFl homeInj

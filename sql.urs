@@ -154,3 +154,6 @@ val easy_join : tab1 :: Name -> tab2 :: Name -> using ::: {Type}
 val unnull : fs ::: {Type} -> folder fs -> $(map option fs) -> option $fs
 
 val unopt : fs ::: {Type} -> folder fs -> $(map option fs) -> option $fs
+
+val viewOf : fs ::: {Type} -> ks ::: {{Unit}} -> folder fs -> sql_table fs ks
+             -> sql_query [] [] [] fs

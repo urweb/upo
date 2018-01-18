@@ -268,3 +268,28 @@ fun unopt [fs ::: {Type}] (fl : folder fs) (r : $(map option fs)) : option $fs =
                 None => None
               | Some acc => Some ({nm = x} ++ acc))
     (Some {}) fl r
+
+fun viewOf [fs ::: {Type}] [ks ::: {{Unit}}] (fl : folder fs) (t : sql_table fs ks) =
+    let
+        val step1 = @some_fields [#T] [fs] ! ! fl
+
+        val step2 = @mp [sql_exp [T = fs]
+                                 [T = fs]
+                                 []]
+                     [sql_expw [T = fs] [T = fs] []]
+                     (fn [t] (e : sql_exp [T = fs]
+                                          [T = fs]
+                                          [] t) =>
+                         sql_window e)
+                     fl step1
+    in
+        ({{{sql_query1 [[T]]
+                       {Distinct = False,
+                        From = (FROM t),
+                        Where = (WHERE TRUE),
+                        GroupBy = sql_subset_all [_],
+                        Having = (WHERE TRUE),
+                        SelectFields = sql_subset [[T = ([], _)]],
+                        SelectExps = step2}}}})
+    end
+
