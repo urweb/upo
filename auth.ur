@@ -18,6 +18,7 @@ signature S = sig
     val unmasquerade : transaction unit
 
     val inGroup : variant (mapU unit groups) -> transaction bool
+    val inGroupWithMasquerade : variant (mapU unit groups) -> transaction bool
 
     val requireGroup : variant (mapU unit groups) -> transaction unit
 
@@ -183,6 +184,18 @@ functor Make(M : sig
 
     fun inGroup g =
         u <- whoami;
+        case u of
+            None => return False
+          | Some u =>
+            bo <- oneOrNoRowsE1 (SELECT ({variantToExp g})
+                                 FROM users
+                                 WHERE users.{name} = {[u]});
+            return (case bo of
+                        None => False
+                      | Some b => b)
+
+    fun inGroupWithMasquerade g =
+        u <- whoamiWithMasquerade;
         case u of
             None => return False
           | Some u =>

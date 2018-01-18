@@ -18,6 +18,7 @@ signature S = sig
     (* Begin/end masquerading *)
 
     val inGroup : variant (mapU unit groups) -> transaction bool
+    val inGroupWithMasquerade : variant (mapU unit groups) -> transaction bool
     (* Does the current user belong to the specified group? *)
 
     val requireGroup : variant (mapU unit groups) -> transaction unit

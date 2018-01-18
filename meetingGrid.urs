@@ -88,6 +88,9 @@ functor Make(M : sig
                  (* We also allow for interleaving fixed events in individual schedules, calling this function to get the list. *)
                  val fixed : transaction (list {When : $timeKey, Descr : string})
                  val timeOrd : ord $timeKey
+
+                 (* Sometimes we want to make the schedule read-only past some point. *)
+                 val isNowReadOnly : transaction bool
              end) : sig
 
     (* Two nested modules provide views centered on the home and away perspectives, respectively. *)

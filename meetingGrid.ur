@@ -3,6 +3,7 @@ style table_fixedheader
 style meeting_default
 style meeting_selected
 style meeting_conflict
+style meeting_movable
 
 open Bootstrap3
 
@@ -92,6 +93,8 @@ functor Make(M : sig
 
                  val fixed : transaction (list {When : $timeKey, Descr : string})
                  val timeOrd : ord $timeKey
+
+                 val isNowReadOnly : transaction bool
              end) = struct
 
     open M
@@ -515,8 +518,10 @@ functor Make(M : sig
                     dml (INSERT INTO globalListeners (Channel) VALUES ({[chan]}));
                     mf <- source None;
                     mt <- source None;
+                    ro <- isNowReadOnly;
                     return {Thems = thems, Times = allTimes, Meetings = meetings,
-                            Channel = chan, MovingFrom = mf, MovingTo = mt}
+                            Channel = chan, MovingFrom = mf, MovingTo = mt,
+                            ReadOnly = ro}
                 end
 
             val ensureUser =
@@ -525,8 +530,16 @@ functor Make(M : sig
                     None => error <xml>Must be authenticated to access this page</xml>
                   | Some us' => return ()
 
+            val ensureWritable =
+                ro <- isNowReadOnly;
+                if ro then
+                    error <xml>Changes to the schedule have been disabled</xml>
+                else
+                    return ()
+
             fun schedule r =
                 ensureUser;
+                ensureWritable;
                 alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
                                               FROM meeting
                                               WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
@@ -538,6 +551,7 @@ functor Make(M : sig
 
             fun unschedule r =
                 ensureUser;
+                ensureWritable;
                 alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
                                               FROM meeting
                                               WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
@@ -549,6 +563,7 @@ functor Make(M : sig
 
             fun reschedule (r : {Them : $themKey, OldUs : $usKey, OldTime : $timeKey, NewUs : $usKey, NewTime : $timeKey}) =
                 ensureUser;
+                ensureWritable;
                 alreadyScheduled <- oneRowE1 (SELECT COUNT( * ) > 0
                                               FROM meeting
                                               WHERE {@@Sql.easy_where [#Meeting] [all] [_] [_] [_] [_]
@@ -600,22 +615,28 @@ functor Make(M : sig
                                                                   CLASS ""));
                                      return (if avail then cls else classes cls danger)}
                             onmouseover={fn _ =>
-                                            set t.MovingTo (Some {Us = us, Time = tm})}
+                                            if t.ReadOnly then
+                                                return ()
+                                            else
+                                                set t.MovingTo (Some {Us = us, Time = tm})}
                             onclick={fn _ =>
-                                        mf <- get t.MovingFrom;
-                                        case mf of
-                                            None => return ()
-                                          | Some mf =>
-                                            mt <- get t.MovingTo;
-                                            case mt of
+                                        if t.ReadOnly then
+                                            return ()
+                                        else
+                                            mf <- get t.MovingFrom;
+                                            case mf of
                                                 None => return ()
-                                              | Some mt =>
-                                                set t.MovingFrom None;
-                                                rpc (reschedule {Them = mf.Them,
-                                                                 OldUs = mf.Us,
-                                                                 OldTime = mf.Time,
-                                                                 NewUs = mt.Us,
-                                                                 NewTime = mt.Time})}
+                                              | Some mf =>
+                                                mt <- get t.MovingTo;
+                                                case mt of
+                                                    None => return ()
+                                                  | Some mt =>
+                                                    set t.MovingFrom None;
+                                                    rpc (reschedule {Them = mf.Them,
+                                                                     OldUs = mf.Us,
+                                                                     OldTime = mf.Time,
+                                                                     NewUs = mt.Us,
+                                                                     NewTime = mt.Time})}
                             style={colwidth}>
                           <active code={selected <- source "";
                                         deleting <- source False;
@@ -625,15 +646,15 @@ functor Make(M : sig
                                                        return <xml>
                                                          {List.mapX (fn (th, tt) => <xml>
                                                            <div dynClass={case List.find (fn (th', _) => th' = th) t.Thems of
-                                                                              None => return meeting_default
+                                                                              None => return (if t.ReadOnly then meeting_default else classes meeting_default meeting_movable)
                                                                             | Some (_, unavails) =>
                                                                               mf <- signal t.MovingFrom;
                                                                               default <- return (if avail && not (List.mem tm unavails) then
                                                                                                      case thsv of
-                                                                                                         _ :: _ :: _ => meeting_conflict
-                                                                                                       | _ => if tt > 1 then meeting_conflict else meeting_default
+                                                                                                         _ :: _ :: _ => if t.ReadOnly then meeting_conflict else classes meeting_conflict meeting_movable
+                                                                                                       | _ => if tt > 1 then meeting_conflict else if t.ReadOnly then meeting_default else classes meeting_default meeting_movable
                                                                                                  else
-                                                                                                     meeting_conflict);
+                                                                                                     if t.ReadOnly then meeting_conflict else classes meeting_conflict meeting_movable);
                                                                               return (case mf of
                                                                                           None => default
                                                                                         | Some mf =>
@@ -644,17 +665,23 @@ functor Make(M : sig
                                                                                           else
                                                                                               default)}
                                                                 onclick={fn _ =>
-                                                                            del <- get deleting;
-                                                                            if del then
-                                                                                set deleting False
+                                                                            if t.ReadOnly then
+                                                                                return ()
                                                                             else
-                                                                                stopPropagation;
-                                                                                set t.MovingFrom
-                                                                                    (Some {Us = us,
-                                                                                           Them = th,
-                                                                                           Time = tm})}>
+                                                                                del <- get deleting;
+                                                                                if del then
+                                                                                    set deleting False
+                                                                                else
+                                                                                    stopPropagation;
+                                                                                    set t.MovingFrom
+                                                                                        (Some {Us = us,
+                                                                                               Them = th,
+                                                                                               Time = tm})}>
                                                              {[th]}
-                                                             {Ui.modalButton ctx (CLASS "close")
+                                                             {if t.ReadOnly then
+                                                                  <xml></xml>
+                                                              else
+                                                                  Ui.modalButton ctx (CLASS "close")
                                                                              <xml>&times;</xml>
                                                                              (set deleting True;
                                                                               return (Ui.modal
@@ -665,7 +692,10 @@ functor Make(M : sig
                                                            </div>
                                                          </xml>) thsv}
 
-                                                         {Ui.modalButton ctx (CLASS "btn btn-default btn-xs")
+                                                         {if t.ReadOnly then
+                                                              <xml></xml>
+                                                          else
+                                                              Ui.modalButton ctx (CLASS "btn btn-default btn-xs")
                                                                  <xml>+</xml>
                                                                  (return (Ui.modal
                                                                               (sel <- get selected;
