@@ -355,7 +355,7 @@ fun items [keys ::: {Type}] [tags ::: {(Type * Type * Type)}] [[When, Kind, Show
     : transaction (list (time * string * bool * variant (map fst3 tags))) =
     q <- t.Query [[]] ! _ {};
     List.mapQuery ({{{q}}}
-                   ORDER BY When)
+                   ORDER BY When, Kind)
     (fn r => case t.Extract [[]] ! (r -- #When -- #Kind -- #ShowTime) of
                  Some x => (r.When, r.Kind, r.ShowTime, x)
                | None => error <xml>Calendar: impossible: query result doesn't correspond to a tag</xml>)
