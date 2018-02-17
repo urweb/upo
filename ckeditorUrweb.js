@@ -1,5 +1,9 @@
 window.CKEDITOR_BASEPATH = 'https://cdn.ckeditor.com/4.5.5/';
 
+CKEDITOR.stylesSet.add( 'upo_styles', [
+    { name: 'Typewriter', element: 'tt' }
+]);
+
 function toolbar_set(toolbars) {
     var toolbarsOut = [];
 
@@ -40,7 +44,7 @@ function sizeOut(v) {
 }
 
 function uw_ckeditor_replace(r) {
-    var config = {entities : false};
+    var config = {entities : false, stylesSet : 'upo_styles'};
 
     var width = sizeOut(r._Width);
     if (width != null)
