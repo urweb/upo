@@ -10,7 +10,8 @@ con tag = fn ts => {Nam : string,
                     Folder : folder ts,
                     Construct : ctx ::: {Unit} -> [[Body] ~ ctx] => $ts
                                 -> xml ([Body] ++ ctx) [] [] -> xml ([Body] ++ ctx) [] [],
-                    ConstructPlainText : $ts -> string -> string}
+                    ConstructPlainText : $ts -> string -> string,
+                    ForceNoChildren : bool}
 
 fun tag [use] [ignore] [use ~ ignore] (fl : folder use) (name : string) (attrs : $(map attribute use))
         (construct : ctx ::: {Unit} -> [[Body] ~ ctx] => Basis.tag (use ++ ignore) ([Body] ++ ctx) ([Body] ++ ctx) [] [])
@@ -20,7 +21,8 @@ fun tag [use] [ignore] [use ~ ignore] (fl : folder use) (name : string) (attrs :
      Folder = fl,
      Construct = fn [ctx] [[Body] ~ ctx] (ats : $use) (inner : xml ([Body] ++ ctx) [] []) =>
                     Basis.tag null None noStyle None ats construct inner,
-     ConstructPlainText = constructPlainText}
+     ConstructPlainText = constructPlainText,
+     ForceNoChildren = False}
 
 fun simpleTag [ignore] fmt name (bt : bodyTag ignore) : tag [] =
     @@tag [[]] [ignore] ! _ name {} (fn [ctx] [[Body] ~ ctx] => bt ()) (fn {} => fmt)
@@ -137,6 +139,7 @@ fun format [tags] (fl : folder tags) (tags : $(map tag tags)) [ctx] [[Body] ~ ct
                                                                  meta.Folder, False) of
                                             (Good (ats, post), isClosed) =>
                                             let
+                                                val isClosed = isClosed || meta.ForceNoChildren
                                                 val ats =
                                                     @map2 [attribute] [option] [ident]
                                                      (fn [t] meta v =>
@@ -272,6 +275,7 @@ fun formatPlainText [tags] (fl : folder tags) (tags : $(map tag tags)) s =
                                                                  meta.Folder, False) of
                                             (Good (ats, post), isClosed) =>
                                             let
+                                                val isClosed = isClosed || meta.ForceNoChildren
                                                 val ats =
                                                     @map2 [attribute] [option] [ident]
                                                      (fn [t] meta v =>
@@ -322,7 +326,8 @@ val br = {Nam = "br",
           Attributes = {},
           Folder = _,
           Construct = fn [ctx ::: {Unit}] [[Body] ~ ctx] () _ => <xml><br/></xml>,
-          ConstructPlainText = fn {} _ => "\n"}
+          ConstructPlainText = fn {} _ => "\n",
+          ForceNoChildren = True}
 
 fun unhtml s =
     case String.msplit {Haystack = s, Needle = "&<"} of

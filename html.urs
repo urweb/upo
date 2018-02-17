@@ -12,7 +12,8 @@ con tag = fn ts => {Nam : string,
                     Folder : folder ts,
                     Construct : ctx ::: {Unit} -> [[Body] ~ ctx] => $ts
                                 -> xml ([Body] ++ ctx) [] [] -> xml ([Body] ++ ctx) [] [],
-                    ConstructPlainText : $ts -> string (* inner text *) -> string}
+                    ConstructPlainText : $ts -> string (* inner text *) -> string,
+                    ForceNoChildren : bool}
 
 val tag : use ::: {Type} -> ignore ::: {Type} -> [use ~ ignore] => folder use -> string
           -> $(map attribute use)
