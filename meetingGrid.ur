@@ -309,6 +309,9 @@ functor Make(M : sig
 
         (* Delete all of this person's meetings. *)
         val deleteFor : $N.usKey -> transaction unit
+
+        (* Display who asked to meet with this person. *)
+        structure WhoAskedFor : Ui.S where type input = $N.usKey
     end = struct
 
         open N
@@ -1009,6 +1012,39 @@ functor Make(M : sig
             dml (DELETE FROM meeting
                         WHERE {@@Sql.easy_where [#T] [usKey] [_] [_] [_] [_]
                           ! ! usInj' usFl r})
+
+        structure WhoAskedFor = struct
+            type input = $usKey
+            type a = list $themKey
+
+            fun create us =
+                queryL1 (SELECT preference.{{themKey}}
+                         FROM preference
+                         WHERE {@@Sql.easy_where [#Preference] [usKey] [_] [_] [_] [_]
+                           ! ! usInj' usFl us}
+                           AND preference.ByHome = {[not byHome]}
+                         ORDER BY {{{@Sql.order_by themFl
+                                       (@Sql.some_fields [#Preference] [themKey] ! ! themFl)
+                                       sql_asc}}})
+
+            fun render (t : a) = <xml>
+              <table class="bs3-table table-striped">
+                {List.mapX (fn them => <xml>
+                  <tr>
+                    <td>{[them]}</td>
+                  </tr>
+                </xml>) t}
+              </table>
+            </xml>
+
+            fun onload _ = return ()
+
+            fun ui x = {
+                Create = create x,
+                Onload = onload,
+                Render = fn _ => render
+            }
+        end
     end
 
     val show_unit : show unit = mkShow (fn () => "")

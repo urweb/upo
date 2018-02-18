@@ -110,6 +110,9 @@ functor Make(M : sig
 
         (* Delete all of this person's meetings. *)
         val deleteFor : $M.homeKey -> transaction unit
+
+        (* Display who asked to meet with a home. *)
+        structure WhoAskedFor : Ui.S where type input = $M.homeKey
     end
 
     structure Away : sig
@@ -127,6 +130,9 @@ functor Make(M : sig
 
         (* Delete all of this person's meetings. *)
         val deleteFor : $M.awayKey -> transaction unit
+
+        (* Display who asked to meet with an away. *)
+        structure WhoAskedFor : Ui.S where type input = $M.awayKey
     end
 
     (* Using preferences from both sides, try to schedule more meetings heuristically. *)
