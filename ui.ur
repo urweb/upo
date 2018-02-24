@@ -292,7 +292,7 @@ functor Make(M : THEME) = struct
             </div>
 
             {List.mapX (fn (x, t) => <xml>
-              <div style="page-break-after: always">
+              <div style="page-break-after: right">
                 {(f x).Render {ModalId = mid, ModalSpot = ms} t}
               </div>
             </xml>) ts}
