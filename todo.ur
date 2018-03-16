@@ -284,6 +284,82 @@ functor WithCompletionFlag(M : sig
        Label = title}
 end
 
+functor WithCompletionFlagAndDueDate(M : sig
+                                         con tag :: Name
+                                         con key :: {Type}
+                                         con subkey :: {Type}
+                                         con due :: Name
+                                         con done :: Name
+                                         con other :: {Type}
+                                         con user :: Name
+                                         con aother :: {Type}
+                                         constraint key ~ subkey
+                                         constraint (key ++ subkey) ~ other
+                                         constraint key ~ aother
+                                         constraint [due] ~ [done]
+                                         constraint [due, done] ~ (key ++ subkey ++ other)
+                                         constraint [user] ~ (key ++ aother)
+                                         constraint [Assignee, Due, Done, Kind] ~ (key ++ subkey)
+                                         val fl : folder key
+                                         val sfl : folder subkey
+                                         val inj : $(map sql_injectable_prim key)
+                                         val sinj : $(map sql_injectable_prim subkey)
+
+                                         table items : (key ++ subkey ++ [due = time, done = bool] ++ other)
+                                         (* The set of items that must be done *)
+                                         table assignments : (key ++ [user = option string] ++ aother)
+                                         (* Recording who is responsible for which items *)
+
+                                         val title : string
+                                         val render : $(key ++ subkey) -> string (* username *) -> xbody
+                    end) = struct
+    open M
+
+    con private = $(key ++ subkey)
+
+    type window_env = [Items = key ++ subkey ++ [due = time, done = bool] ++ other,
+                       Assignments = key ++ [user = option string] ++ aother]
+
+    con expw = sql_expw window_env window_env []
+    con exp = sql_exp window_env window_env []
+
+    val todo : t (key ++ subkey) [tag = private] =
+        @@create [tag] [key ++ subkey] ! (@Folder.concat ! fl sfl)
+        (fn [otherKeys :: {Type}] [([Assignee = option string, Due = option time, Done = option bool, Kind = string] ++ key ++ subkey) ~ otherKeys]
+            (flo : folder otherKeys)
+            (primo : $(map sql_injectable_prim otherKeys)) uo =>
+            sql_forget_tables (sql_query1 [[Items, Assignments]]
+                                          {Distinct = False,
+                                           From = (FROM items JOIN assignments ON
+                                                     {@@Sql.easy_join [#Items] [#Assignments] [key] [_] [_] [_] [_] [_] ! ! ! ! fl}),
+                                           Where = case uo of
+                                                       None => (WHERE NOT (assignments.{user} IS NULL))
+                                                     | Some u => (WHERE assignments.{user} = {[Some u]}),
+                                           GroupBy = sql_subset_all [_],
+                                           Having = (WHERE TRUE),
+                                           SelectFields = sql_subset [[Items = ([], _), Assignments = ([], _)]],
+                                           SelectExps = {Assignee = (sql_window (SQL assignments.{user}) : expw (option string)),
+                                                         Due = (sql_window (sql_nullable (SQL items.{due})) : expw (option time)),
+                                                         Done = (sql_window (sql_nullable (SQL items.{done})) : expw (option bool)),
+                                                         Kind = (sql_window (SQL {[title]}) : expw string)}
+                                                         ++ @map2 [sql_injectable_prim] [exp] [fn t => expw (option t)]
+                                                           (fn [t] prim e => sql_window (@sql_nullable prim e) : expw (option t))
+                                                           (@Folder.concat ! fl sfl) (inj ++ sinj)
+                                                           (@@Sql.some_fields [#Items] [key ++ subkey]
+                                                              [[due = _, done = _] ++ other]
+                                                              [[Assignments = key ++ [user = option string] ++ aother]] [window_env] [[]] ! ! (@Folder.concat ! fl sfl))
+                                                         ++ @mp [sql_injectable_prim]
+                                                           [fn t => expw (option t)]
+                                                           (fn [t] (pr : sql_injectable_prim t) =>
+                                                               sql_window (SQL NULL) : expw (option t))
+                                                           flo primo}))
+      {Render = fn r u =>
+                   case u of
+                       None => error <xml>Todo: impossible lack of user</xml>
+                     | Some u => render r u,
+       Label = title}
+end
+
 functor Happenings(M : sig
                        con tag :: Name
                        con key :: {Type}
