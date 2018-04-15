@@ -9,7 +9,7 @@ functor Make(M : sig
                  con thread :: Name
                  constraint [thread] ~ key
                  constraint [thread] ~ [When, Who, Text, Closed, Private, Subject]
-                 constraint key ~ [Thread, When, Who, Text, Closed, Private]
+                 constraint key ~ [Thread, When, Who, Text, Closed, Private, Subject]
                  val fl : folder key
                  val kinj : $(map sql_injectable_prim key)
                  con rest :: {Type}
@@ -27,7 +27,7 @@ functor Make(M : sig
                  val showOpenVsClosed : bool
                  val allowPrivate : bool
                  val onNewMessage : transaction (list string)
-                    -> {thread : time, Subject : string, Who : string, Text : string}
+                    -> $(key ++ [thread = time, Subject = string, Who = string, Text = string])
                     -> transaction unit
              end) : sig
     include Ui.S where type input = $M.key

@@ -19,7 +19,7 @@ functor Make(M : sig
                  con key :: {Type}
                  con thread :: Name
                  constraint [thread] ~ [When, Who, Text, Closed, Private, Subject]
-                 constraint key ~ [thread, When, Who, Text, Closed, Private]
+                 constraint key ~ [thread, When, Who, Text, Closed, Private, Subject]
                  val fl : folder key
                  val kinj : $(map sql_injectable key)
 
@@ -39,7 +39,7 @@ functor Make(M : sig
 
                  val onNewMessage : transaction (list string)
                     (* Run to get list of all users who have posted in the thread. *)
-                    -> {thread : time, Subject : string, Who : string, Text : string}
+                    -> $(key ++ [thread = time, Subject = string, Who = string, Text = string])
                     -> transaction unit
                  (* Callback for every new message posted in any thread *)
              end) : sig

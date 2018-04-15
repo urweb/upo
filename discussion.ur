@@ -38,7 +38,7 @@ functor Make(M : sig
                  con key :: {Type}
                  con thread :: Name
                  constraint [thread] ~ [When, Who, Text, Closed, Private, Subject]
-                 constraint key ~ [thread, When, Who, Text, Closed, Private]
+                 constraint key ~ [thread, When, Who, Text, Closed, Private, Subject]
                  val fl : folder key
                  val kinj : $(map sql_injectable key)
 
@@ -53,7 +53,7 @@ functor Make(M : sig
                  val showOpenVsClosed : bool
                  val allowPrivate : bool
                  val onNewMessage : transaction (list string)
-                    -> {thread : time, Subject : string, Who : string, Text : string}
+                    -> $(key ++ [thread = time, Subject = string, Who = string, Text = string])
                     -> transaction unit
              end) = struct
 
@@ -387,7 +387,7 @@ functor Make(M : sig
                                       (@Folder.concat ! _ fl)
                                       (k ++ {thread = thread})})
                                    (fn {Message = {Who = w}} => w))
-                    {thread = thread, Subject = row.Text, Who = u, Text = text}
+                    (k ++ {thread = thread, Subject = row.Text, Who = u, Text = text})
 
     fun saveMsg k thread msg text =
         acc <- access k;
