@@ -619,7 +619,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                  {@Record.select [tag] [fst3] fl
                                                    (fn [p] (t : tag p) (x : p.1) =>
                                                        case t.Display of
-                                                           None => <xml><i>{[@show t.Show x]}</i></xml>
+                                                           None => <xml><i>{[@show t.Show x]} {[k]}</i></xml>
                                                          | Some display =>
                                                            Ui.modalButton ctx (CLASS "btn btn-link")
                                                                           <xml>{[@show t.Show x]} {[k]}</xml>
