@@ -90,7 +90,7 @@ functor Make(M : THEME) = struct
       </head>
     </xml>
 
-    fun themed_body titl onl mid nid ms tabs bod = <xml>
+    fun themed_body url titl onl mid nid ms tabs bod = <xml>
       <body onload={onl}>
         <div class="modal" id={mid}>
           <dyn signal={signal ms}/>
@@ -99,7 +99,7 @@ functor Make(M : THEME) = struct
         {M.wrap <xml>
           <header>
             <nav class={M.navclasses}>
-              {if M.titleInNavbar then <xml><a class="navbar-brand">{[titl]}</a></xml> else <xml></xml>}
+              {if M.titleInNavbar then <xml><a class="navbar-brand" href={url}>{[titl]}</a></xml> else <xml></xml>}
               <button class="navbar-toggler" data-toggle="collapse" data-target={"#" ^ show nid} aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"/>
               </button>
@@ -118,23 +118,26 @@ functor Make(M : THEME) = struct
       </body>
     </xml>
 
-    fun themed titl onl mid nid ms tabs bod = <xml>
+    fun themed url titl onl mid nid ms tabs bod = <xml>
       {themed_head titl}
-      {themed_body titl onl mid nid ms tabs bod}
+      {themed_body url titl onl mid nid ms tabs bod}
     </xml>
 
     fun simple [a] titl (t : t a) =
+        url <- currentUrl;
         nid <- fresh;
         mid <- fresh;
         ms <- source <xml/>;
         state <- t.Create;
-        return (themed titl
+        return (themed url
+                       titl
                        (t.Onload state)
                        mid nid ms
                        <xml/>
                        (t.Render {ModalId = mid, ModalSpot = ms} state))
 
     fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => option string * t a) ts)) =
+        url <- currentUrl;
         nid <- fresh;
         mid <- fresh;
         ms <- source <xml/>;
@@ -153,7 +156,8 @@ functor Make(M : THEME) = struct
                                                  | Some _ => cur))
                                           (size-1, size) fl ts).2;
 
-        return (themed titl
+        return (themed url
+                       titl
                        (@Monad.appR2 _ [fn a => option string * t a] [ident]
                          (fn [nm ::_] [t ::_] (_, r) => r.Onload)
                          fl ts state)
@@ -187,12 +191,14 @@ functor Make(M : THEME) = struct
                          </xml>)
 
     fun tabbedStatic [ts] (fl : folder ts) titl (ts : $(mapU (string * bool * url) ts)) bod =
+        url <- currentUrl;
         nid <- fresh;
         mid <- fresh;
         ms <- source <xml/>;
         bod <- bod {ModalId = mid, ModalSpot = ms};
 
-        return (themed titl
+        return (themed url
+                       titl
                        (return ())
                        mid nid ms
                        (@mapUX_rev [string * bool * url] [body]
