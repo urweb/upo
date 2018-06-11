@@ -551,7 +551,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                <xml/>
                            else
                                Ui.modalButton ctx (CLASS "buttn btn btn-default btn-xs")
-                               <xml><span class="glyphicon glyphicon-plus-sign"/></xml>
+                               <xml><span class="glyphicon glyphicon-plus"/></xml>
                                (widgets <- @Monad.mapR2 _ [tag] [thd3] [snd3]
                                             (fn [nm ::_] [p ::_] (r : tag p) (cfg : p.3) => r.Fresh cfg longS)
                                             fl t.Tags cfg;
