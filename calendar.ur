@@ -584,11 +584,14 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                         (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (t : tag p) (n, b) =>
                                                             (n+1,
                                                              <xml>
-                                                               <li dynClass={wt <- signal whichTab;
-                                                                             return (if n = wt then
-                                                                                         CLASS "bs-active"
-                                                                                     else
-                                                                                         CLASS "")}><a onclick={fn _ => set whichTab n}>{[t.Label]}</a></li>
+                                                               <li class="nav-item">
+                                                                 <a dynClass={wt <- signal whichTab;
+                                                                              return (if n = wt then
+                                                                                          CLASS "nav-link bs-active"
+                                                                                      else
+                                                                                          CLASS "nav-link")}
+                                                                    onclick={fn _ => set whichTab n}>{[t.Label]}</a>
+                                                               </li>
                                                                {b}
                                                              </xml>)) (0, <xml/>) fl t.Tags).2}
                                                      </ul>
