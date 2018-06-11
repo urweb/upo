@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 functor Make(M : sig
                  type input
@@ -19,7 +19,7 @@ functor Make(M : sig
     fun onload _ = return ()
 
     fun render _ a = <xml>
-      <table class="bs3-table table-striped">
+      <table class="bs-table table-striped">
         <tr>
           {@mapX [fn _ => string] [tr]
             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] lab => <xml><th>{[lab]}</th></xml>)

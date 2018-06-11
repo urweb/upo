@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 type permission = {Add : bool,
                    Delete : bool,
@@ -164,7 +164,7 @@ functor Make(M : sig
         onModify r
 
     fun render ctx a = <xml>
-      <table class="bs3-table table-striped">
+      <table class="bs-table table-striped">
         <tr>
           <th/>
           {@mapX [fn _ => string] [tr]
@@ -179,8 +179,8 @@ functor Make(M : sig
                                                 None => <xml>
                                                   <td>
                                                     {if a.Perm.Delete then
-                                                         Ui.modalButton ctx (CLASS "btn glyphicon glyphicon-remove")
-                                                                        <xml/>
+                                                         Ui.modalButton ctx (CLASS "btn")
+                                                                        <xml><span class="glyphicon glyphicon-remove"/></xml>
                                                                         (return (Ui.modal
                                                                                      (rpc (del r.Content))
                                                                                      <xml>Are you sure you want to delete this row?</xml>
@@ -189,10 +189,12 @@ functor Make(M : sig
                                                      else
                                                          <xml/>}
                                                     {if a.Perm.Modify then <xml>
-                                                         <button class="btn glyphicon glyphicon-pencil"
+                                                         <button class="btn"
                                                                  onclick={fn _ =>
                                                                              fr <- initRow a.Config r.Content;
-                                                                             set r.Editing (Some fr)}/>
+                                                                             set r.Editing (Some fr)}>
+                                                           <span class="glyphicon glyphicon-pencil"/>
+                                                         </button>
                                                      </xml> else
                                                          <xml/>}
                                                   </td>
@@ -204,14 +206,18 @@ functor Make(M : sig
                                                 </xml>
                                               | Some ws => <xml>
                                                 <td>
-                                                  <button class="btn glyphicon glyphicon-ok"
+                                                  <button class="btn"
                                                           onclick={fn _ =>
                                                                       vs <- rowOut ws;
                                                                       set r.Editing None;
                                                                       rpc (mod {Old = r.Content,
-                                                                                New = vs})}/>
-                                                  <button class="btn glyphicon glyphicon-remove"
-                                                          onclick={fn _ => set r.Editing None}/>
+                                                                                New = vs})}>
+                                                    <span class="glyphicon glyphicon-ok"/>
+                                                  </button>
+                                                  <button class="btn"
+                                                          onclick={fn _ => set r.Editing None}>
+                                                    <span class="glyphicon glyphicon-remove"/>
+                                                  </button>
                                                 </td>
                                                 {@mapX2 [Widget.t'] [snd3] [_]
                                                   (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]

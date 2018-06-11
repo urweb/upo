@@ -1,6 +1,6 @@
 (* Organizing dinners for the MIT EECS junior faculty *)
 
-open Bootstrap3
+open Bootstrap4
 structure Theme = Ui.Make(Default)
 
 (* Local MIT people *)

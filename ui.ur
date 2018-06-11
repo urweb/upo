@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 type context = {
      ModalId : id,
@@ -77,52 +77,62 @@ signature THEME = sig
 end
 
 functor Make(M : THEME) = struct
+    fun themed_head titl = <xml>
+      <head>
+        <title>{[titl]}</title>
+        {@mapUX [url] [_]
+          (fn [nm ::_] [rest ::_] [_~_] url =>
+              <xml><link rel="stylesheet" href={url}/></xml>)
+          M.fl M.css}
+        {case M.icon of
+             None => <xml></xml>
+           | Some icon => <xml><link rel="shortcut icon" href={icon} type="image/vnd.microsoft.icon"></link></xml>}
+      </head>
+    </xml>
+
+    fun themed_body titl onl mid nid ms tabs bod = <xml>
+      <body onload={onl}>
+        <div class="modal" id={mid}>
+          <dyn signal={signal ms}/>
+        </div>
+
+        {M.wrap <xml>
+          <header>
+            <nav class={M.navclasses}>
+              {if M.titleInNavbar then <xml><a class="navbar-brand">{[titl]}</a></xml> else <xml></xml>}
+              <button class="navbar-toggler" data-toggle="collapse" data-target={"#" ^ show nid} aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"/>
+              </button>
+              <div id={nid} class="collapse navbar-collapse">
+                <ul class="bs-nav navbar-nav">
+                  {tabs}
+                </ul>
+              </div>
+            </nav>
+          </header>
+
+          <main role="main" class="container">
+            {bod}
+          </main>
+        </xml>}
+      </body>
+    </xml>
+
+    fun themed titl onl mid nid ms tabs bod = <xml>
+      {themed_head titl}
+      {themed_body titl onl mid nid ms tabs bod}
+    </xml>
+
     fun simple [a] titl (t : t a) =
         nid <- fresh;
         mid <- fresh;
         ms <- source <xml/>;
         state <- t.Create;
-        return <xml>
-          <head>
-            <title>{[titl]}</title>
-            {@mapUX [url] [_]
-              (fn [nm ::_] [rest ::_] [_~_] url =>
-                  <xml><link rel="stylesheet" href={url}/></xml>)
-              M.fl M.css}
-            {case M.icon of
-                 None => <xml></xml>
-               | Some icon => <xml><link rel="shortcut icon" href={icon} type="image/vnd.microsoft.icon"></link></xml>}
-          </head>
-
-          <body onload={t.Onload state}>
-            <div class="modal" id={mid}>
-              <dyn signal={signal ms}/>
-            </div>
-
-            {M.wrap <xml>
-              <nav class={M.navclasses}>
-                <div class="container">
-                  <div class="navbar-header">
-                    <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false">
-                      <span class="sr-only">Toggle navigation</span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                    </button>
-                    {if M.titleInNavbar then <xml><a class="navbar-brand">{[titl]}</a></xml> else <xml></xml>}
-                  </div>
-                  <div id={nid} class="collapse navbar-collapse">
-                    <ul class="bs3-nav navbar-nav"/>
-                  </div>
-                </div>
-              </nav>
-
-              <div class="container-fluid">
-                {t.Render {ModalId = mid, ModalSpot = ms} state}
-              </div>
-            </xml>}
-          </body>
-        </xml>
+        return (themed titl
+                       (t.Onload state)
+                       mid nid ms
+                       <xml/>
+                       (t.Render {ModalId = mid, ModalSpot = ms} state))
 
     fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => option string * t a) ts)) =
         nid <- fresh;
@@ -143,74 +153,38 @@ functor Make(M : THEME) = struct
                                                  | Some _ => cur))
                                           (size-1, size) fl ts).2;
 
-        return <xml>
-          <head>
-            <title>{[titl]}</title>
-            {@mapUX [url] [_]
-              (fn [nm ::_] [rest ::_] [_~_] url =>
-                  <xml><link rel="stylesheet" href={url}/></xml>)
-              M.fl M.css}
-            {case M.icon of
-                 None => <xml></xml>
-               | Some icon => <xml><link rel="shortcut icon" href={icon} type="image/vnd.microsoft.icon"></link></xml>}
-          </head>
-
-          <body onload={@Monad.appR2 _ [fn a => option string * t a] [ident]
+        return (themed titl
+                       (@Monad.appR2 _ [fn a => option string * t a] [ident]
                          (fn [nm ::_] [t ::_] (_, r) => r.Onload)
-                         fl ts state}>
-            <div class="modal" id={mid}>
-              <dyn signal={signal ms}/>
-            </div>
-
-            {M.wrap <xml>
-              <nav class={M.navclasses}>
-                <div class="container">
-                  <div class="navbar-header">
-                    <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false">
-                      <span class="sr-only">Toggle navigation</span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                    </button>
-                    {if M.titleInNavbar then <xml><a class="navbar-brand">{[titl]}</a></xml> else <xml></xml>}
-                  </div>
-                  <div id={nid} class="collapse navbar-collapse">
-                    <ul class="bs3-nav navbar-nav">
-                      {(@foldR2 [fn a => option string * t a] [ident]
-                        [fn _ => xbody * int]
-                       (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (labl : option string, r) st (bod, n) =>
-                           (case labl of
-                                None => bod
-                              | Some labl => <xml>
-                                <li dynClass={ct <- signal curTab;
-                                                    return (if ct = n then
-                                                                bs3_active
-                                                            else
-                                                                null)}
-                                    onclick={fn _ => set curTab n}><a>{[labl]}</a></li>
-                                    {bod}
-                              </xml>,
-                            n-1))
-                       (<xml/>, size-1)
-                       fl ts state).1}
-                    </ul>
-                  </div>
-                </div>
-              </nav>
-
-              <div class="container-fluid">
-                <dyn signal={ct <- signal curTab;
-                             return (@foldR2 [fn a => option string * t a] [ident] [fn _ => xbody * int]
-                                      (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_, t) st (acc, n) =>
-                                          (if ct = n then
-                                               t.Render {ModalId = mid, ModalSpot = ms} st
-                                           else
-                                               acc, n-1))
-                                      (<xml/>, size-1) fl ts state).1}/>
-              </div>
-              </xml>}
-          </body>
-        </xml>
+                         fl ts state)
+                       mid nid ms
+                       ((@foldR2 [fn a => option string * t a] [ident]
+                          [fn _ => xbody * int]
+                         (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (labl : option string, r) st (bod, n) =>
+                             (case labl of
+                                  None => bod
+                                | Some labl => <xml>
+                                  <li dynClass={ct <- signal curTab;
+                                                      return (if ct = n then
+                                                                  classes nav_item bs_active
+                                                              else
+                                                                  nav_item)}
+                                      onclick={fn _ => set curTab n}><a class="nav-link">{[labl]}</a></li>
+                                      {bod}
+                                </xml>,
+                              n-1))
+                         (<xml/>, size-1)
+                         fl ts state).1)
+                         <xml>
+                           <dyn signal={ct <- signal curTab;
+                                        return (@foldR2 [fn a => option string * t a] [ident] [fn _ => xbody * int]
+                                                 (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_, t) st (acc, n) =>
+                                                     (if ct = n then
+                                                          t.Render {ModalId = mid, ModalSpot = ms} st
+                                                      else
+                                                          acc, n-1))
+                                                 (<xml/>, size-1) fl ts state).1}/>
+                         </xml>)
 
     fun tabbedStatic [ts] (fl : folder ts) titl (ts : $(mapU (string * bool * url) ts)) bod =
         nid <- fresh;
@@ -218,56 +192,18 @@ functor Make(M : THEME) = struct
         ms <- source <xml/>;
         bod <- bod {ModalId = mid, ModalSpot = ms};
 
-        return <xml>
-          <head>
-            <title>{[titl]}</title>
-            {@mapUX [url] [_]
-              (fn [nm ::_] [rest ::_] [_~_] url =>
-                  <xml><link rel="stylesheet" href={url}/></xml>)
-              M.fl M.css}
-            {case M.icon of
-                 None => <xml></xml>
-               | Some icon => <xml><link rel="shortcut icon" href={icon} type="image/vnd.microsoft.icon"></link></xml>}
-          </head>
-
-          <body>
-            <div class="modal" id={mid}>
-              <dyn signal={signal ms}/>
-            </div>
-
-            {M.wrap <xml>
-              <nav class={M.navclasses}>
-                <div class="container">
-                  <div class="navbar-header">
-                    <button class="navbar-toggle collapsed" data-toggle="collapse" data-target={"#" ^ show nid} aria-expanded="false">
-                      <span class="sr-only">Toggle navigation</span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                    </button>
-                    {if M.titleInNavbar then <xml><a class="navbar-brand">{[titl]}</a></xml> else <xml></xml>}
-                  </div>
-                  <div id={nid} class="collapse navbar-collapse">
-                    <ul class="bs3-nav navbar-nav">
-                      {@mapUX_rev [string * bool * url] [body]
-                       (fn [nm ::_] [r ::_] [[nm] ~ r] (labl, ct, url) => <xml>
-                         <li class={if ct then
-                                        bs3_active
-                                    else
-                                        null}><a href={url}>{[labl]}</a></li>
-                       </xml>)
-                       fl ts}
-                    </ul>
-                  </div>
-                </div>
-              </nav>
-
-              <div class="container-fluid">
-                {bod}
-              </div>
-            </xml>}
-          </body>
-        </xml>
+        return (themed titl
+                       (return ())
+                       mid nid ms
+                       (@mapUX_rev [string * bool * url] [body]
+                         (fn [nm ::_] [r ::_] [[nm] ~ r] (labl, ct, url) => <xml>
+                           <li class={if ct then
+                                          classes nav_item bs_active
+                                      else
+                                          nav_item}><a class="nav-link" href={url}>{[labl]}</a></li>
+                         </xml>)
+                       fl ts)
+                       bod)
 
     fun printPages [data ::: Type] [ui ::: Type] (f : data -> t ui) (ls : list data) (titl : string) =
         ts <- List.mapM (fn x => t <- (f x).Create; return (x, t)) ls;

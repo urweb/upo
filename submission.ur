@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 functor Make(M : sig
                  con key1 :: Name
@@ -236,7 +236,7 @@ functor Make(M : sig
           <h2>Submissions</h2>
 
           <dyn signal={fs <- signal me.Files;
-                       return <xml><table class="bs3-table table-striped">
+                       return <xml><table class="bs-table table-striped">
                          {List.mapX (fn r => <xml><tr>
                            <td>{[r.When]}</td>
                            <td><a link={retrieve me.Key me.User r.When}><tt>{[r.Filename]}</tt></a></td>
@@ -283,7 +283,7 @@ functor Make(M : sig
 
         fun render _ me = <xml><div class="file">
           <dyn signal={fs <- signal me.Files;
-                       return <xml><table class="bs3-table table-striped">
+                       return <xml><table class="bs-table table-striped">
                          {List.mapX (fn r => <xml><tr>
                            <td>{[r.When]}</td>
                            <td><a link={retrieve me.Key r.ukey r.When}><tt>{[r.Filename]}</tt></a></td>
@@ -307,7 +307,7 @@ functor Make(M : sig
         fun onload _ = return ()
 
         fun render _ fs = <xml>
-          <table class="bs3-table table-striped">
+          <table class="bs-table table-striped">
             {List.mapX (fn r => <xml><tr>
               <td>{[(r -- #Filename -- #When -- ukey) : $key]}</td>
               <td><a link={retrieve (r -- #Filename -- #When -- ukey) r.ukey r.When}><tt>{[r.Filename]}</tt></a></td>

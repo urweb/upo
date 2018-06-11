@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 functor Make(M : sig
                  con assignable :: {Type}
@@ -191,7 +191,7 @@ functor Make(M : sig
                                                               </xml>)}/>
                                    </xml>)}/>
 
-          <table class="bs3-table table-striped">
+          <table class="bs-table table-striped">
             <tr> <th>Task</th> <th>Assigned to</th> </tr>
 
             <dyn signal={asbls <- signal a.Assignables;

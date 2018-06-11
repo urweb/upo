@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 type t1 (full :: {Type}) (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)) =
      {Title : string,
@@ -564,8 +564,10 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                       <dyn signal={slv <- signal sl;
                                                                    return (List.mapX (fn k2 => <xml><tr>
                                                                      <td>{[k2]}</td>
-                                                                     <td><button class="btn glyphicon glyphicon-remove"
-                                                                       onclick={fn _ => set sl (List.filter (fn k2' => k2' <> k2) slv)}/></td>
+                                                                     <td><button class="btn"
+                                                                       onclick={fn _ => set sl (List.filter (fn k2' => k2' <> k2) slv)}>
+                                                                       <span class="glyphicon glyphicon-remove"/>
+                                                                     </button></td>
                                                                    </tr></xml>) slv)}/>
                                                     </table>
                                                 </div>
@@ -667,8 +669,10 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                     <dyn signal={slv <- signal sl;
                                                                  return (List.mapX (fn k1 => <xml><tr>
                                                                    <td>{[k1]}</td>
-                                                                   <td><button class="btn glyphicon glyphicon-remove"
-                                                                               onclick={fn _ => set sl (List.filter (fn k1' => k1' <> k1) slv)}/></td>
+                                                                   <td><button class="btn"
+                                                                               onclick={fn _ => set sl (List.filter (fn k1' => k1' <> k1) slv)}>
+                                                                     <span class="glyphicon glyphicon-remove"/>
+                                                                   </button></td>
                                                                  </tr></xml>) slv)}/>
                                                   </table>
                                                 </div>
@@ -794,7 +798,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                      <td>{if i = 0 then
                                                                               <xml></xml>
                                                                           else
-                                                                              <xml><button class="btn glyphicon glyphicon-arrow-up"
+                                                                              <xml><button class="btn"
                                                                                            onclick={fn _ =>
                                                                                                        let
                                                                                                            val (before, after) = List.splitAt (i-1) slv
@@ -803,11 +807,13 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                                              | prev :: this :: after =>
                                                                                                                set sl (List.append before (this :: prev :: after))
                                                                                                              | _ => error <xml>Explorer: impossible splitAt</xml>
-                                                                                                       end}/></xml>}</td>
+                                                                                                       end}>
+                                                                                     <span class="glyphicon glyphicon-arrow-up"/>
+                                                                                   </button></xml>}</td>
                                                                      <td>{if i = len-1 then
                                                                               <xml></xml>
                                                                           else
-                                                                              <xml><button class="btn glyphicon glyphicon-arrow-down"
+                                                                              <xml><button class="btn"
                                                                                            onclick={fn _ =>
                                                                                                        let
                                                                                                            val (before, after) = List.splitAt i slv
@@ -816,9 +822,13 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                                              | this :: next :: after =>
                                                                                                                set sl (List.append before (next :: this :: after))
                                                                                                              | _ => error <xml>Explorer: impossible splitAt</xml>
-                                                                                                       end}/></xml>}</td>
-                                                                     <td><button class="btn glyphicon glyphicon-remove"
-                                                                       onclick={fn _ => set sl (List.filter (fn k2' => k2' <> k2) slv)}/></td>
+                                                                                                       end}>
+                                                                                     <span class="glyphicon glyphicon-arrow-down"/>
+                                                                                   </button></xml>}</td>
+                                                                     <td><button class="btn"
+                                                                       onclick={fn _ => set sl (List.filter (fn k2' => k2' <> k2) slv)}>
+                                                                       <span class="glyphicon glyphicon-remove"/>
+                                                                     </button></td>
                                                                    </tr></xml>) slv)}/>
                                                     </table>
                                                 </div>
@@ -1044,7 +1054,7 @@ functor Make(M : sig
               return <xml>
                 {extra}
 
-                <table class="bs3-table table-striped">
+                <table class="bs-table table-striped">
                   {List.mapX (fn (k, bod) => <xml><tr><td><a link={entry (maker [fn p => p.1] k)}>{bod}</a></td></tr></xml>) rows}
                 </table>
 
@@ -1131,7 +1141,7 @@ functor Make(M : sig
                                                 <xml/>}
                                            </p>
 
-                                         <table class="bs3-table table-striped">
+                                         <table class="bs-table table-striped">
                                            {r.Render (fn key text => <xml><a link={entry key}>{[text]}</a></xml>) aux row}
                                          </table>
                                       </xml>)

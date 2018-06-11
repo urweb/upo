@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 functor Make(M : sig
                  con voterKey1 :: Name
@@ -299,19 +299,23 @@ functor Make(M : sig
                          myVotes <- return (Option.get 0 (List.assoc a.Voter votes));
                          return <xml>
                            <button class={if myVotes = 0 then
-                                              CLASS "disabled btn glyphicon glyphicon-minus"
+                                              CLASS "disabled btn"
                                           else
-                                              CLASS "btn glyphicon glyphicon-minus"}
+                                              CLASS "btn"}
                                    onclick={fn _ => rpc (del {Ballot = a.Ballot,
-                                                              Choice = ch.Key})}/>
+                                                              Choice = ch.Key})}>
+                             <span class="glyphicon glyphicon-minus"/>
+                           </button>
                            <button class={if (case maxVotesPerVoter of
                                                   None => False
                                                 | Some n => myVotes >= n) then
-                                              CLASS "disabled btn glyphicon glyphicon-plus"
+                                              CLASS "disabled btn"
                                           else
-                                              CLASS "btn glyphicon glyphicon-plus"}
+                                              CLASS "btn"}
                                    onclick={fn _ => rpc (add {Ballot = a.Ballot,
-                                                                     Choice = ch.Key})}/>
+                                                                     Choice = ch.Key})}>
+                             <span class="glyphicon glyphicon-plus"/>
+                           </button>
                          </xml>}/>
           </td>
           {if showKey then
@@ -335,15 +339,19 @@ functor Make(M : sig
                                           {if showVotes then
                                                <xml/>
                                            else
-                                               <xml><button class="btn glyphicon glyphicon-chevron-left"
-                                                            onclick={fn _ => set ch.ShowVoters False}/></xml>}
+                                               <xml><button class="btn"
+                                                            onclick={fn _ => set ch.ShowVoters False}>
+                                                      <span class="glyphicon glyphicon-chevron-left"/>
+                                                    </button>></xml>}
 
                                           {List.mapX (fn (k, n) => <xml><br/>{[k]}{case maxVotesPerVoter of
                                                                                        Some 1 => <xml/>
                                                                                      | _ => <xml> ({[n]})</xml>}</xml>) votes}
                                         </xml> else <xml>
-                                          <button class="btn glyphicon glyphicon-chevron-right"
-                                                  onclick={fn _ => set ch.ShowVoters True}/>
+                                          <button class="btn"
+                                                  onclick={fn _ => set ch.ShowVoters True}>
+                                            <span class="glyphicon glyphicon-chevron-right"/>
+                                          </button>
                                         </xml>)}/>
                          </xml>}/>
           </td>
@@ -351,7 +359,7 @@ functor Make(M : sig
       </xml>
 
     fun render _ a = <xml>
-      <table class="bs3-table table-striped">
+      <table class="bs-table table-striped">
         <tr>
           <th/>
           <th>Choice</th>
@@ -412,7 +420,7 @@ functor Make(M : sig
         val onload a = onload a.Base
 
         fun render _ a = <xml>
-          <table class="bs3-table table-striped">
+          <table class="bs-table table-striped">
             <tr>
               <th/>
               <th>Your Vote</th>

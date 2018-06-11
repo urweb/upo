@@ -1,9 +1,10 @@
 library .
 file /bootstrap.min.css cached/bootstrap.min.css
-file /jquery-2.1.4.min.js cached/jquery-2.1.4.min.js
+file /jquery-3.2.1.min.js cached/jquery-3.2.1.min.js
+file /popper.min.js cached/popper.min.js
 file /bootstrap.min.js cached/bootstrap.min.js
 file /ckeditor.js cached/ckeditor.js
-script /jquery-2.1.4.min.js
+script /jquery-3.2.1.min.js
 script /bootstrap.min.js
 script /ckeditor.js
 file /style.css style.css

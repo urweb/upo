@@ -1,6 +1,6 @@
 (* Moving through steps in the life cycle of an application *)
 
-open Bootstrap3
+open Bootstrap4
 
 datatype activatedAs = NextStep | FastForward | Rewind
 

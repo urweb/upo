@@ -1,6 +1,6 @@
 (* Adapted version of app for MIT CS admitted PhD student visit weekend *)
 
-open Bootstrap3
+open Bootstrap4
 structure Theme = Ui.Make(Default)
 
 (* Has the visit weekend started yet?  (Only admins may set it.) *)
@@ -247,6 +247,7 @@ structure Meetings = MeetingGrid.Make(struct
                                                     | Some _ => return (Some {AdmitName = ""})
 
                                           val fixed = return []
+                                          val isNowReadOnly = return False
                                       end)
 
 val explainMeetings = Ui.h4 <xml>Each meeting slot ends when the next one begins, except for a break from 2:50 to 3:10. The meetings finish at 5:00.</xml>
@@ -580,7 +581,7 @@ structure Locals = struct
                                                  local (r ++ {IsAdmin = False, IsPI = True, Attending = False,
                                                               PhoneNumber = "", DietaryRestriction = "", FiveMinute = "",
                                                               Transport = ""}))
-                 (Csv.parse s)
+                 (Csv.parse 0 s)
 
     fun importAdmits s =
         requireAdmin;
@@ -595,7 +596,7 @@ structure Locals = struct
                                                                           Departure = "",
                                                                           Gender = "",
                                                                           Affiliation = ""}))
-                 (Csv.parse s)
+                 (Csv.parse 0 s)
 
     val startVisit =
         requireAdmin;
@@ -778,13 +779,13 @@ structure Locals = struct
                    </xml>)),
                    (Some "PI Masquerade",
                     Ui.const <xml>
-                      <table class="bs3-table table-striped">
+                      <table class="bs-table table-striped">
                         {pisMasq}
                       </table>
                     </xml>),
                    (Some "Admit Masquerade",
                     Ui.const <xml>
-                      <table class="bs3-table table-striped">
+                      <table class="bs-table table-striped">
                         {admitsMasq}
                       </table>
                     </xml>),

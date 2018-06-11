@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 datatype level = Forbidden | Read | Write
 
@@ -550,8 +550,8 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                True fl mm then
                                <xml/>
                            else
-                               Ui.modalButton ctx (CLASS "buttn btn btn-default btn-xs glyphicon glyphicon-plus-sign")
-                               <xml/>
+                               Ui.modalButton ctx (CLASS "buttn btn btn-default btn-xs")
+                               <xml><span class="glyphicon glyphicon-plus-sign"/></xml>
                                (widgets <- @Monad.mapR2 _ [tag] [thd3] [snd3]
                                             (fn [nm ::_] [p ::_] (r : tag p) (cfg : p.3) => r.Fresh cfg longS)
                                             fl t.Tags cfg;
@@ -579,14 +579,14 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                         end) (fn [o ::_] [o ~ []] _ => (0, alert "Impossible tab!")) fl t.Tags widgets [[]] ! (fn x => x)).2)
                                                  <xml>Adding an item to the calendar</xml>
                                                  <xml>
-                                                   <ul class="bs3-nav nav-tabs">
+                                                   <ul class="bs-nav nav-tabs">
                                                      {(@foldR [tag] [fn _ => int * xbody]
                                                         (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (t : tag p) (n, b) =>
                                                             (n+1,
                                                              <xml>
                                                                <li dynClass={wt <- signal whichTab;
                                                                              return (if n = wt then
-                                                                                         CLASS "bs3-active"
+                                                                                         CLASS "bs-active"
                                                                                      else
                                                                                          CLASS "")}><a onclick={fn _ => set whichTab n}>{[t.Label]}</a></li>
                                                                {b}
@@ -629,8 +629,8 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                         <xml/>
                                                     else <xml>
                                                       <span class={buttn}>
-                                                        {Ui.modalButton ctx (CLASS "btn btn-default btn-xs glyphicon glyphicon-edit")
-                                                        <xml/>
+                                                        {Ui.modalButton ctx (CLASS "btn btn-default btn-xs")
+                                                        <xml><span class="glyphicon glyphicon-edit"/></xml>
                                                         (@Record.select2' [tag] [thd3] [fst3] [fst3] fl
                                                         (fn [p] (t : tag p) (cfg : p.3) (maker : p.1 -> variant (map fst3 tags)) (x : p.1) =>
                                                             widget <- t.FromDb cfg x;
@@ -650,8 +650,8 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                                              </xml>
                                                                              <xml>Save Calendar Entry</xml>))
                                                         t.Tags cfg d)}
-                                                        {Ui.modalButton ctx (CLASS "btn btn-default btn-xs glyphicon glyphicon-trash")
-                                                                        <xml/>
+                                                        {Ui.modalButton ctx (CLASS "btn btn-default btn-xs")
+                                                                        <xml><span class="glyphicon glyphicon-trash"/></xml>
                                                                         (return (@Record.select [tag] [fst3] fl
                                                                         (fn [p] (t : tag p) (x : p.1) =>
                                                                         Ui.modal (t.Delete x k tm;

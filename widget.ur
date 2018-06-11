@@ -26,8 +26,8 @@ val textbox = { Configure = return (),
                 Reset = fn s => set s "",
                 AsWidget = fn s ido =>
                               case ido of
-                                  None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
-                                | Some id => <xml><ctextbox class={Bootstrap3.form_control} source={s} id={id}/></xml>,
+                                  None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
+                                | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
                 Value = signal,
                 AsValue = txt }
 
@@ -37,8 +37,8 @@ val opt_textbox = { Configure = return (),
                     Reset = fn s => set s "",
                     AsWidget = fn s ido =>
                                   case ido of
-                                      None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
-                                    | Some id => <xml><ctextbox class={Bootstrap3.form_control} source={s} id={id}/></xml>,
+                                      None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
+                                    | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
                 Value = fn s =>
                            v <- signal s;
                            return (case v of
@@ -54,8 +54,8 @@ val checkbox = { Configure = return (),
                  Reset = fn s => set s False,
                  AsWidget = fn s ido =>
                                case ido of
-                                   None => <xml><ccheckbox class={Bootstrap3.form_control} source={s}/></xml>
-                                 | Some id => <xml><ccheckbox class={Bootstrap3.form_control} source={s} id={id}/></xml>,
+                                   None => <xml><ccheckbox class={Bootstrap4.form_control} source={s}/></xml>
+                                 | Some id => <xml><ccheckbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
                  Value = signal,
                  AsValue = txt }
 
@@ -65,8 +65,8 @@ val intbox = { Configure = return (),
                Reset = fn s => set s "",
                AsWidget = fn s ido =>
                              case ido of
-                                 None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
-                               | Some id => <xml><ctextbox class={Bootstrap3.form_control} source={s} id={id}/></xml>,
+                                 None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
+                               | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
                Value = fn s => v <- signal s; return (Option.get 0 (read v)),
                AsValue = txt }
 
@@ -76,8 +76,8 @@ val timebox = { Configure = return (),
                 Reset = fn s => set s "",
                 AsWidget = fn s ido =>
                               case ido of
-                                  None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
-                                | Some id => <xml><ctextbox class={Bootstrap3.form_control} source={s} id={id}/></xml>,
+                                  None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
+                                | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
                 Value = fn s => v <- signal s; return (Option.get minTime (read v)),
                 AsValue = fn t => if t = minTime then <xml><b>INVALID</b></xml> else txt t }
 
@@ -87,8 +87,8 @@ val urlbox = { Configure = return (),
                Reset = fn s => set s "",
                AsWidget = fn s ido =>
                              case ido of
-                                 None => <xml><ctextbox class={Bootstrap3.form_control} source={s}/></xml>
-                               | Some id => <xml><ctextbox class={Bootstrap3.form_control} source={s} id={id}/></xml>,
+                                 None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
+                               | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
                Value = signal,
                AsValue = fn s =>
                            case checkUrl s of
@@ -179,8 +179,8 @@ fun choicebox [a ::: Type] (_ : show a) (_ : read a) (choice : a) (choices : lis
                         </xml>
                     in
                         case id of
-                            None => <xml><cselect class={Bootstrap3.form_control} source={me.Source}>{inner}</cselect></xml>
-                          | Some id => <xml><cselect class={Bootstrap3.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
+                            None => <xml><cselect class={Bootstrap4.form_control} source={me.Source}>{inner}</cselect></xml>
+                          | Some id => <xml><cselect class={Bootstrap4.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
                     end,
       Value = fn me =>
                  s <- signal me.Source;
@@ -212,8 +212,8 @@ fun foreignbox [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : sql_quer
                         </xml>
                     in
                         case id of
-                            None => <xml><cselect class={Bootstrap3.form_control} source={me.Source}>{inner}</cselect></xml>
-                          | Some id => <xml><cselect class={Bootstrap3.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
+                            None => <xml><cselect class={Bootstrap4.form_control} source={me.Source}>{inner}</cselect></xml>
+                          | Some id => <xml><cselect class={Bootstrap4.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
                     end,
       Value = fn me =>
                  v <- signal me.Source;
@@ -242,8 +242,8 @@ fun foreignbox_default [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : 
                         </xml>
                     in
                         case id of
-                            None => <xml><cselect class={Bootstrap3.form_control} source={me.Source}>{inner}</cselect></xml>
-                          | Some id => <xml><cselect class={Bootstrap3.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
+                            None => <xml><cselect class={Bootstrap4.form_control} source={me.Source}>{inner}</cselect></xml>
+                          | Some id => <xml><cselect class={Bootstrap4.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
                     end,
       Value = fn me =>
                  v <- signal me.Source;

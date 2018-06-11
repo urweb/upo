@@ -53,7 +53,7 @@ fun importTable [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $(map read 
                 (tab : sql_table fs cs) (header : int) (input : string) =
     List.app (@Sql.easy_insert injs fl tab) (@parse injs reads fl header input)
 
-open Bootstrap3
+open Bootstrap4
 
 functor Generate1(M : sig
                       con fs :: {Type}

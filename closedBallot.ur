@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 functor Make(M : sig
                  con voterKey1 :: Name
@@ -275,19 +275,24 @@ functor Make(M : sig
                          myVotes <- signal ch.MyVotes;
                          return <xml>
                            <button class={if myVotes = 0 then
-                                              CLASS "disabled btn glyphicon glyphicon-minus"
+                                              CLASS "disabled btn"
                                           else
-                                              CLASS "btn glyphicon glyphicon-minus"}
+                                              CLASS "btn"}
                                    onclick={fn _ => rpc (del {Ballot = a.Ballot,
-                                                              Choice = ch.Key})}/>
+                                                              Choice = ch.Key})}>
+                             <span class="glyphicon glyphicon-minus"/>
+                           </button>
                            <button class={if (case maxVotesPerVoter of
                                                   None => False
                                                 | Some n => myVotes >= n) then
-                                              CLASS "disabled btn glyphicon glyphicon-plus"
+                                              CLASS "disabled btn"
                                           else
-                                              CLASS "btn glyphicon glyphicon-plus"}
+                                              CLASS "btn"}
                                    onclick={fn _ => rpc (add {Ballot = a.Ballot,
-                                                              Choice = ch.Key})}/>
+                                                              Choice = ch.Key})}>
+
+                             <span class="glyphicon glyphicon-plus"/>
+                           </button>
                          </xml>}/>
           </td>
           {if showKey then
@@ -306,7 +311,7 @@ functor Make(M : sig
       </xml>
 
     fun render _ a = <xml>
-      <table class="bs3-table table-striped">
+      <table class="bs-table table-striped">
         <tr>
           <th/>
           <th>Choice</th>

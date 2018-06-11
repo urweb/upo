@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 functor Make(M : sig
                  con const :: {Type}
@@ -88,7 +88,7 @@ functor Make(M : sig
                ! ! (constInj ++ givenInj ++ chosenInj) (@Folder.concat ! constFl (@Folder.concat ! givenFl chosenFl)) (const ++ gv ++ ch)})
 
     fun render t = <xml>
-      <table class="bs3-table table-striped">
+      <table class="bs-table table-striped">
         <dyn signal={chs <- signal t.Prefs;
                      return <xml>
                        {List.mapX (fn ch => <xml>

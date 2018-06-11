@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 functor Make(M : sig
                  con hidden :: {Type}
@@ -89,7 +89,7 @@ functor Make(M : sig
             (fn r => send r.Channel rs)
 
     fun render _ a = <xml>
-      <table class="bs3-table table-striped">
+      <table class="bs-table table-striped">
         <tr>
           {@mapX [fn _ => string] [tr]
             (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (s : string) => <xml><th>{[s]}</th></xml>)

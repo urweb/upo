@@ -1,6 +1,6 @@
 (* A simple course *)
 
-open Bootstrap3
+open Bootstrap4
 structure Theme = Ui.Make(Default)
 
 table section : { Section : string }

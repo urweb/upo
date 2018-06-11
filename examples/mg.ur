@@ -66,6 +66,7 @@ structure S = MeetingGrid.Make(struct
                                    val awayConst = {}
 
                                    val fixed = return []
+                                   val isNowReadOnly = return False
                                end)
 
 val main = Theme.simple "MG"
@@ -184,7 +185,7 @@ task initialize = fn () =>
 
 val importHomes = Csv.importTable h 0
 
-open Bootstrap3
+open Bootstrap4
 
 val admin =
     input <- source "";

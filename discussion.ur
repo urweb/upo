@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 datatype access =
          Forbidden
@@ -526,8 +526,8 @@ functor Make(M : sig
                                                                   {case mayEdit a.Access r.Who of
                                                                        None => <xml></xml>
                                                                      | Some _ =>
-                                                                       Ui.modalButton ctx (CLASS "btn glyphicon glyphicon-edit")
-                                                                                      <xml></xml>
+                                                                       Ui.modalButton ctx (CLASS "btn")
+                                                                                      <xml><span class="glyphicon glyphicon-edit"/></xml>
                                                                                       (newText <- @Widget.initialize text a.Config r.Text;
                                                                                        return (Ui.modal
                                                                                                    (text' <- current (@Widget.value text newText);

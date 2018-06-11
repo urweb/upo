@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 functor Make(M : sig
                  con key :: {Type}
@@ -106,7 +106,7 @@ functor Make(M : sig
                                                       New = new}) vs;
                           rpc (save vs)}/>
 
-      <table class="bs3-table table-striped">
+      <table class="bs-table table-striped">
         <tr>
           <th/>
           {@mapX [fn _ => string] [tr]
@@ -119,7 +119,8 @@ functor Make(M : sig
                      return (List.mapX (fn r => <xml>
                        <tr>
                          <td>
-                           {Ui.modalButton ctx (CLASS "btn glyphicon glyphicon-remove") <xml/>
+                           {Ui.modalButton ctx (CLASS "btn")
+                                           <xml><span class="glyphicon glyphicon-remove"/></xml>
                                            (return (Ui.modal
                                                         (rpc (del r.OldKey);
                                                          set t.Rows (List.filter (fn r' => r'.OldKey <> r.OldKey) vs))

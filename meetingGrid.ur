@@ -5,7 +5,7 @@ style meeting_selected
 style meeting_conflict
 style meeting_movable
 
-open Bootstrap3
+open Bootstrap4
 
 functor Make(M : sig
                  con homeKey1 :: Name
@@ -587,7 +587,7 @@ functor Make(M : sig
                     val colwidth = oneProperty noStyle (value (property "width") (atom colwidth))
                 in
             <xml>
-              <table class="bs3-table table-striped table-fixedheader">
+              <table class="bs-table table-striped table-fixedheader">
                 <thead>
                   <tr>
                     <th style={colwidth}>&nbsp;</th>
@@ -613,7 +613,7 @@ functor Make(M : sig
                                                               None => CLASS ""
                                                             | Some mt =>
                                                               if mt.Us = us && mt.Time = tm then
-                                                                  CLASS "bs3-active"
+                                                                  CLASS "bs-active"
                                                               else
                                                                   CLASS ""));
                                      return (if avail then cls else classes cls danger)}
@@ -890,7 +890,7 @@ functor Make(M : sig
             (* Note: with a new improvement to Ur/Web type inference, this annotation becomes necessary.
              * Should probably look further into why, some day. *)
             fun render (t : a) = <xml>
-              <table class="bs3-table table-striped">
+              <table class="bs-table table-striped">
                 <tr>
                   <th>Time</th>
                   <th>Meeting</th>
@@ -1028,7 +1028,7 @@ functor Make(M : sig
                                        sql_asc}}})
 
             fun render (t : a) = <xml>
-              <table class="bs3-table table-striped">
+              <table class="bs-table table-striped">
                 {List.mapX (fn them => <xml>
                   <tr>
                     <td>{[them]}</td>

@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 type tag (t :: Type) =
      {Label : string,
@@ -581,7 +581,7 @@ functor Make(M : sig
         fun onload _ = return ()
 
         fun render _ a = <xml>
-          <table class="bs3-table table-striped">
+          <table class="bs-table table-striped">
             <tr>
               <th>Task</th>
               <th>Due</th>
@@ -615,7 +615,7 @@ functor Make(M : sig
         fun onload _ = return ()
 
         fun render _ a = <xml>
-          <table class="bs3-table table-striped">
+          <table class="bs-table table-striped">
             <tr>
               <th>Task</th>
               <th>Due</th>

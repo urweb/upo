@@ -1,7 +1,9 @@
 library .
-allow url https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css
-script https://code.jquery.com/jquery-2.1.4.min.js
-script https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js
+allow url https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css
+allow url https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css
+script https://code.jquery.com/jquery-3.2.1.slim.min.js
+script https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js
+script https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js
 script https://cdn.ckeditor.com/4.5.5/standard/ckeditor.js
 file /style.css style.css
 library navbar

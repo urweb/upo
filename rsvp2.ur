@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 functor Make(M : sig
                  val homeLabel : string
@@ -302,14 +302,16 @@ functor Make(M : sig
               <active code={expanded <- source False;
                             return <xml><div>
                               <h2>
-                                <button dynClass={exp <- signal expanded;
-                                                  return (if exp then
-                                                              CLASS "btn btn-xs glyphicon glyphicon-chevron-up"
-                                                          else
-                                                              CLASS "btn btn-xs glyphicon glyphicon-chevron-down")}
+                                <button class="btn btn-xs"
                                         onclick={fn _ =>
                                                     exp <- get expanded;
-                                                    set expanded (not exp)}/>
+                                                    set expanded (not exp)}>
+                                  <span dynClass={exp <- signal expanded;
+                                                  return (if exp then
+                                                              CLASS "glyphicon glyphicon-chevron-up"
+                                                          else
+                                                              CLASS "glyphicon glyphicon-chevron-down")}/>
+                                </button>
                                 {[@show eventKeyShow ev.Event]}
                               </h2>
 
@@ -346,7 +348,7 @@ functor Make(M : sig
                                                     | _ => <xml>
                                                       <h3>{[awayLabel]} ({[List.length aws]})</h3>
 
-                                                      <table class="bs3-table table-striped">
+                                                      <table class="bs-table table-striped">
                                                         <tr>
                                                           <th/>
                                                           {@mapX [fn _ => string] [tr]
@@ -370,7 +372,7 @@ functor Make(M : sig
                                                     | _ => <xml>
                                                       <h3>{[homeLabel]} ({[List.length hos]})</h3>
 
-                                                      <table class="bs3-table table-striped">
+                                                      <table class="bs-table table-striped">
                                                         <tr>
                                                           <th/>
                                                           {@mapX [fn _ => string] [tr]
@@ -572,14 +574,16 @@ functor Make(M : sig
               <active code={expanded <- source False;
                             return <xml><div>
                               <h2>
-                                <button dynClass={exp <- signal expanded;
-                                                  return (if exp then
-                                                              CLASS "btn btn-xs glyphicon glyphicon-chevron-up"
-                                                          else
-                                                              CLASS "btn btn-xs glyphicon glyphicon-chevron-down")}
+                                <button class="btn btn-xs"
                                         onclick={fn _ =>
                                                     exp <- get expanded;
-                                                    set expanded (not exp)}/>
+                                                    set expanded (not exp)}>
+                                  <span dynClass={exp <- signal expanded;
+                                                  return (if exp then
+                                                              CLASS "glyphicon glyphicon-chevron-up"
+                                                          else
+                                                              CLASS "glyphicon glyphicon-chevron-down")}/>
+                                </button>
                                 {[@show eventKeyShow ev.Event]}
                               </h2>
 

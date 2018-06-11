@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 datatype single_student =
          Atomic of string * option int
@@ -46,8 +46,9 @@ functor OneStudent(M : sig
             <dyn signal={expV <- signal exp;
                          return (if expV then
                                      <xml><li>
-                                       <button class="glyphicon glyphicon-collapse-up"
-                                               onclick={fn _ => set exp False}/>
+                                       <button onclick={fn _ => set exp False}>
+                                         <span class="glyphicon glyphicon-collapse-up"/>
+                                       </button>
                                        {[lab]} ({[min]}{if min = max then
                                                             <xml/>
                                                         else
@@ -58,8 +59,9 @@ functor OneStudent(M : sig
                                      </li></xml>
                                  else
                                      <xml><li>
-                                       <button class="glyphicon glyphicon-collapse-down"
-                                               onclick={fn _ => set exp True}/>
+                                       <button onclick={fn _ => set exp True}>
+                                         <span class="glyphicon glyphicon-collapse-down"/>
+                                       </button>
                                        {[lab]} ({[min]}{if min = max then
                                                             <xml/>
                                                         else
@@ -107,7 +109,7 @@ functor AllStudents(M : sig
                                <button class="btn"
                                        onclick={fn _ => set exp False}
                                        value="Hide Grades"/>
-                               <table class="bs3-table table-striped">
+                               <table class="bs-table table-striped">
                                  <tr>
                                    <th>Student</th>
                                    <th>Grade</th>
@@ -126,18 +128,20 @@ functor AllStudents(M : sig
           | WCategory (expA, expC, lab, avg, ws) => <xml><li>
             <dyn signal={expV <- signal expC;
                                    return (if expV then <xml>
-                                     <button class="glyphicon glyphicon-collapse-up"
-                                             onclick={fn _ => set expC False}/>
+                                     <button onclick={fn _ => set expC False}>
+                                       <span class="glyphicon glyphicon-collapse-up"/>
+                                     </button>
                                    </xml> else <xml>
-                                     <button class="glyphicon glyphicon-collapse-down"
-                                             onclick={fn _ => set expC True}/>
+                                     <button onclick={fn _ => set expC True}>
+                                       <span class="glyphicon glyphicon-collapse-down"/>
+                                     </button>
                                    </xml>)}/>{[lab]}
             <dyn signal={expV <- signal expA;
                          return (if expV then <xml>
                            <button class="btn"
                                    onclick={fn _ => set expA False}
                                    value="Hide Averages"/>
-                           <table class="bs3-table table-striped">
+                           <table class="bs-table table-striped">
                              <tr>
                                <th>Student</th>
                                <th>Grade</th>

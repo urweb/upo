@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 style item
 style header
@@ -221,10 +221,14 @@ functor Make(M : sig
                                  <div class={header}>
                                    <dyn signal={mode <- signal r.Mode;
                                                 return (case mode of
-                                                            Hidden => <xml><button class="btn glyphicon glyphicon-collapse-down"
-                                                                                   onclick={fn _ => set r.Mode Expanded}/></xml>
-                                                          | _ => <xml><button class="btn glyphicon glyphicon-collapse-up"
-                                                                              onclick={fn _ => set r.Mode Hidden}/></xml>)}/>
+                                                            Hidden => <xml><button class="btn"
+                                                                                   onclick={fn _ => set r.Mode Expanded}>
+                                                                             <span class="glyphicon glyphicon-collapse-down"/>
+                                                                           </button></xml>
+                                                          | _ => <xml><button class="btn"
+                                                                              onclick={fn _ => set r.Mode Hidden}>
+                                                                        <span class="glyphicon glyphicon-collapse-up"/>
+                                                                      </button></xml>)}/>
                                    <dyn signal={p <- signal r.Post;
                                                 return <xml>
                                                   {[@Widget.asValue title p.Title]} -- {[p.Poster]} at {[p.When]}
@@ -233,13 +237,15 @@ functor Make(M : sig
                                                      <xml></xml>
                                                    else
                                                      <xml>
-                                                       <button class="btn glyphicon glyphicon-edit"
+                                                       <button class="btn"
                                                                onclick={fn _ =>
                                                                            title <- @Widget.initialize title a.TitleConfig p.Title;
                                                                            body <- @Widget.initialize body a.BodyConfig p.Body;
                                                                            tid <- fresh;
                                                                            bid <- fresh;
-                                                                           set r.Mode (Editing {Title = title, Body = body, TitleId = tid, BodyId = bid})}/>
+                                                                           set r.Mode (Editing {Title = title, Body = body, TitleId = tid, BodyId = bid})}>
+                                                         <span class="glyphicon glyphicon-edit"/>
+                                                       </button>
                                                      </xml>}
 
                                                   {if not (mayDelete a.Access p.Poster) then

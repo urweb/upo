@@ -1,4 +1,4 @@
-open Bootstrap3
+open Bootstrap4
 
 functor Make(M : sig
                  con const :: {Type}
@@ -76,14 +76,16 @@ functor Make(M : sig
 
     fun render t = <xml>
       <h2>
-        <button dynClass={exp <- signal t.Editing;
-                          return (if exp then
-                                      CLASS "btn glyphicon glyphicon-remove"
-                                  else
-                                      CLASS "btn glyphicon glyphicon-pencil")}
+        <button class="btn"
                 onclick={fn _ =>
                             exp <- get t.Editing;
-                            set t.Editing (not exp)}/>
+                            set t.Editing (not exp)}>
+          <span dynClass={exp <- signal t.Editing;
+                          return (if exp then
+                                      CLASS "glyphicon glyphicon-remove"
+                                  else
+                                      CLASS "glyphicon glyphicon-pencil")}/>
+        </button>
         {[textLabel]}
       </h2>
 
