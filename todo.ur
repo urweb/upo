@@ -595,7 +595,7 @@ functor Make(M : sig
               <td>{[r.Due]}</td>
               <td>{[r.Assignee]}</td>
               <td>{case r.Done of
-                       Some True => <xml><span class="glyphicon glyphicon-ok"/></xml>
+                       Some True => <xml><span class="glyphicon glyphicon-check"/></xml>
                      | _ => <xml></xml>}</td>
             </tr></xml>) a}
           </table>
@@ -637,7 +637,7 @@ functor Make(M : sig
                    else
                        <xml>{[r.Due]}</xml>}</td>
               <td>{case r.Done of
-                       Some True => <xml><span class="glyphicon glyphicon-ok"/></xml>
+                       Some True => <xml><span class="glyphicon glyphicon-check"/></xml>
                      | _ => <xml></xml>}</td>
             </tr></xml>) a}
           </table>

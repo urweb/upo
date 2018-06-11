@@ -117,7 +117,7 @@ functor Make(M : sig
                                       return (case st of
                                                   Idle => CLASS ""
                                                 | Uploading => CLASS "glyphicon glyphicon-cloud-upload"
-                                                | Uploaded _ => CLASS "glyphicon glyphicon-ok"
+                                                | Uploaded _ => CLASS "glyphicon glyphicon-check"
                                                 | Error => CLASS "glyphicon glyphicon-fire")}/>
                         {up}
                     </span>

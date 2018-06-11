@@ -342,7 +342,7 @@ functor Make(M : sig
                                                <xml><button class="btn"
                                                             onclick={fn _ => set ch.ShowVoters False}>
                                                       <span class="glyphicon glyphicon-chevron-left"/>
-                                                    </button>></xml>}
+                                                    </button></xml>}
 
                                           {List.mapX (fn (k, n) => <xml><br/>{[k]}{case maxVotesPerVoter of
                                                                                        Some 1 => <xml/>

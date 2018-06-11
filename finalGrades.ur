@@ -274,7 +274,7 @@ functor Make(M : sig
                                                                                    rpc (setRanges ar')
                                                                                end
                                                                              | _ => error <xml>FinalGrades: Unknown bound spec</xml>}>
-                                                 <span class="glyphicon glyphicon-ok"/>
+                                                 <span class="glyphicon glyphicon-check"/>
                                                </button>
                                                <button class="btn btn-sm"
                                                        onclick={fn _ => set rb None}>
@@ -391,7 +391,7 @@ functor Make(M : sig
                                                            g <- return (@Variant.fromString gfl grades g);
                                                            set gr g;
                                                            rpc (setSpecialCase key g)}>
-                                         <span class="glyphicon glyphicon-ok"/>
+                                         <span class="glyphicon glyphicon-check"/>
                                        </button>
                                        <button class="btn btn-sm"
                                                onclick={fn _ => set newgr None}>

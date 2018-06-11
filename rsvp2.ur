@@ -327,7 +327,7 @@ functor Make(M : sig
                                                  <div>({[count]} attendee{[if count = 1 then "" else "s"]})</div>
                                                  {if List.exists (fn ho => ho.Home = t.Self) hos then
                                                       <xml>
-                                                        <span class="glyphicon glyphicon-ok"/>
+                                                        <span class="glyphicon glyphicon-check"/>
                                                         <span>Attending</span>
                                                         <button class="btn btn-primary"
                                                                 value="Un-RSVP"
@@ -596,7 +596,7 @@ functor Make(M : sig
                                                  <div>{M.render ev.Data}</div>
                                                  {if regd then
                                                       <xml>
-                                                        <span class="glyphicon glyphicon-ok"/>
+                                                        <span class="glyphicon glyphicon-check"/>
                                                         <span>Attending</span>
                                                         <button class="btn btn-primary"
                                                                 value="Un-RSVP"

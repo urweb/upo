@@ -212,7 +212,7 @@ functor Make(M : sig
                                                                       set r.Editing None;
                                                                       rpc (mod {Old = r.Content,
                                                                                 New = vs})}>
-                                                    <span class="glyphicon glyphicon-ok"/>
+                                                    <span class="glyphicon glyphicon-check"/>
                                                   </button>
                                                   <button class="btn"
                                                           onclick={fn _ => set r.Editing None}>
