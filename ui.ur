@@ -80,6 +80,7 @@ functor Make(M : THEME) = struct
     fun themed_head titl = <xml>
       <head>
         <title>{[titl]}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
         {@mapUX [url] [_]
           (fn [nm ::_] [rest ::_] [_~_] url =>
               <xml><link rel="stylesheet" href={url}/></xml>)
@@ -218,6 +219,7 @@ functor Make(M : THEME) = struct
 
         return <xml>
           <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
             <title>{[titl]}</title>
             {@mapUX [url] [_]
               (fn [nm ::_] [rest ::_] [_~_] url =>
