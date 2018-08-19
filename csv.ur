@@ -100,13 +100,13 @@ functor Generate1(M : sig
                                           (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) acc =>
                                               case acc of
                                                   "" => escape (show x)
-                                                | _ => acc ^ "," ^ escape (show x))
+                                                | _ => escape (show x) ^ "," ^ acc)
                                           "" fl shows r.tab ^ "\n"))
         (@foldR [fn _ => string] [fn _ => string]
           (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] s acc =>
               case acc of
                   "" => escape s
-                | _ => acc ^ "," ^ escape s)
+                | _ => escape s  ^ "," ^ acc)
           "" fl labels ^ "\n")
 
     fun generate () : transaction page =
