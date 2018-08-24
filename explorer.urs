@@ -9,7 +9,8 @@ con t :: {Type}
  * (3) Part of schema that has already been tiled with input widgets
  * (4) Constraints, present just to plug into [sql_table] below
  * (5) Internal Explorer implementation type #1
- * (5) Internal Explorer implementation type #2
+ * (6) Internal Explorer implementation type #2
+ * (7) Internal Explorer implementation type #3
  *
  * The first argument is the final schema, prognosticated before we start adding concrete tables.
  * The second argument only includes the tables we have added already.
