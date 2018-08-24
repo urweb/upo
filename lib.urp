@@ -5,6 +5,7 @@ library ckeditor
 allow responseHeader Content-Disposition
 allow env SSL_CLIENT_S_DN
 allow mime text/csv
+allow meta viewport
 
 $/list
 $/char
