@@ -1193,4 +1193,8 @@ functor Make(M : sig
               end)
           [tables] fl which t
 
+    val tableNames = @mp [fn p => t1 tables' (dupF p)] [fn _ => string]
+                      (fn [p :::_] (t : t1 tables' (dupF p)) => t.Title)
+                      fl t
+
 end

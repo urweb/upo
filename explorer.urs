@@ -279,4 +279,6 @@ functor Make(M : sig
     val index : variant (map (fn _ => unit) M.tables) -> transaction page
     val create : variant (map (fn _ => unit) M.tables) -> transaction page
     val page : variant (map (fn _ => unit) M.tables ++ mapU unit (M.preTabs ++ M.postTabs ++ M.hiddenTabs)) -> transaction page
+
+    val tableNames : $(map (fn _ => string) M.tables)
 end
