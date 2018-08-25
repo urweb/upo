@@ -163,17 +163,17 @@ con manyToMany22 :: Type -> Type -> Type -> Type
 con manyToMany23 :: Type -> Type -> Type -> Type
 
 val manyToMany : full ::: {Type}
-                 -> tname1 :: Name -> key1 ::: Type -> col1 :: Name
+                 -> tname1 :: Name -> key1 ::: Type -> col1 :: Name -> colR1 :: Name
                  -> cols1 ::: {Type} -> colsDone1 ::: {Type} -> cstrs1 ::: {{Unit}}
                  -> impl11 ::: Type -> impl12 ::: Type -> impl13 ::: Type
-                 -> tname2 :: Name -> key2 ::: Type -> col2 :: Name
+                 -> tname2 :: Name -> key2 ::: Type -> col2 :: Name -> colR2 :: Name
                  -> cols2 ::: {Type} -> colsDone2 ::: {Type} -> cstrs2 ::: {{Unit}}
                  -> impl21 ::: Type -> impl22 ::: Type -> impl23 ::: Type
                  -> cstrs ::: {{Unit}}
                  -> old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}
                  -> [[tname1] ~ [tname2]] => [[tname1, tname2] ~ old] => [[tname1, tname2] ~ full]
-                 => [[col1] ~ cols1] => [[col2] ~ cols2] => [[col1] ~ [col2]]
-                 => sql_table [col1 = key1, col2 = key2] cstrs
+                 => [[col1] ~ cols1] => [[col2] ~ cols2] => [[col1] ~ [col2]] => [[colR1] ~ [colR2]]
+                 => sql_table [colR1 = key1, colR2 = key2] cstrs
                  -> string
                  -> string
                  -> eq key1

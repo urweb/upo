@@ -462,17 +462,17 @@ type manyToMany21 t key1 key2 = list key1 * t
 type manyToMany22 t key1 key2 = source string * source (list key1) * source bool * t
 type manyToMany23 t key1 key2 = list key1 * t
 
-fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
+fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name] [colR1 :: Name]
                [cols1 ::: {Type}] [colsDone1 ::: {Type}] [cstrs1 ::: {{Unit}}]
                [impl11 ::: Type] [impl12 ::: Type] [impl13 ::: Type]
-               [tname2 :: Name] [key2 ::: Type] [col2 :: Name]
+               [tname2 :: Name] [key2 ::: Type] [col2 :: Name] [colR2 :: Name]
                [cols2 ::: {Type}] [colsDone2 ::: {Type}] [cstrs2 ::: {{Unit}}]
                [impl21 ::: Type] [impl22 ::: Type] [impl23 ::: Type]
                [cstrs ::: {{Unit}}]
                [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
                [[tname1] ~ [tname2]] [[tname1, tname2] ~ old] [[tname1, tname2] ~ full]
-               [[col1] ~ cols1] [[col2] ~ cols2] [[col1] ~ [col2]]
-               (rel : sql_table [col1 = key1, col2 = key2] cstrs)
+               [[col1] ~ cols1] [[col2] ~ cols2] [[col1] ~ [col2]] [[colR1] ~ [colR2]]
+               (rel : sql_table [colR1 = key1, colR2 = key2] cstrs)
                (lab1 : string) (lab2 : string)
                (_ : eq key1) (_ : ord key1) (_ : show key1) (_ : read key1) (_ : sql_injectable key1)
                (_ : eq key2) (_ : ord key2) (_ : show key2) (_ : read key2) (_ : sql_injectable key2)
@@ -485,16 +485,16 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                          ++ {Insert =
                              fn r (k2s, aux) =>
                                 old.tname1.Insert r aux;
-                                List.app (fn k2 => dml (INSERT INTO rel({col1}, {col2})
+                                List.app (fn k2 => dml (INSERT INTO rel({colR1}, {colR2})
                                                         VALUES ({[r.col1]}, {[k2]}))) k2s,
                              Update =
                              fn k r (k2s, aux) =>
                                 old.tname1.Update k r aux;
                                 dml (DELETE FROM rel
-                                     WHERE t.{col1} = {[r.col1]});
-                                List.app (fn k2 => dml (INSERT INTO rel({col1}, {col2})
+                                     WHERE t.{colR1} = {[r.col1]});
+                                List.app (fn k2 => dml (INSERT INTO rel({colR1}, {colR2})
                                                         VALUES ({[r.col1]}, {[k2]}))) k2s,
-                             Delete = fn k1 => dml (DELETE FROM rel WHERE t.{col1} = {[k1]}),
+                             Delete = fn k1 => dml (DELETE FROM rel WHERE t.{colR1} = {[k1]}),
                              Config =
                              let
                                  val tab = old.tname2.Table
@@ -507,11 +507,11 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                  return (keys, cfg)
                              end,
                              Auxiliary = fn k1 row =>
-                                 keys <- List.mapQuery (SELECT rel.{col2}
+                                 keys <- List.mapQuery (SELECT rel.{colR2}
                                                         FROM rel
-                                                        WHERE rel.{col1} = {[k1]}
-                                                        ORDER BY rel.{col2})
-                                                       (fn r => r.Rel.col2);
+                                                        WHERE rel.{colR1} = {[k1]}
+                                                        ORDER BY rel.{colR2})
+                                                       (fn r => r.Rel.colR2);
                                  aux <- old.tname1.Auxiliary k1 row;
                                  return (keys, aux),
                              Render = fn entry (k2s, aux) r =>
@@ -589,16 +589,16 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
           tname2 = old.tname2
                        -- #Insert -- #Update -- #Delete -- #Config -- #Auxiliary -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
                        ++ {Insert = fn r (k1s, aux) =>                         old.tname2.Insert r aux;
-                           List.app (fn k1 => dml (INSERT INTO rel({col1}, {col2})
+                           List.app (fn k1 => dml (INSERT INTO rel({colR1}, {colR2})
                                                    VALUES ({[k1]}, {[r.col2]}))) k1s,
                            Update = fn k r (k1s, aux) =>
                              old.tname2.Update k r aux;
                              dml (DELETE FROM rel
-                                  WHERE t.{col2} = {[r.col2]});
-                             List.app (fn k1 => dml (INSERT INTO rel({col1}, {col2})
+                                  WHERE t.{colR2} = {[r.col2]});
+                             List.app (fn k1 => dml (INSERT INTO rel({colR1}, {colR2})
                                                      VALUES ({[k1]}, {[r.col2]}))) k1s,
                            Delete =
-                           fn k2 => dml (DELETE FROM rel WHERE t.{col2} = {[k2]}),
+                           fn k2 => dml (DELETE FROM rel WHERE t.{colR2} = {[k2]}),
                            Config =
                            let
                                val tab = old.tname1.Table
@@ -611,11 +611,11 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                return (keys, cfg)
                            end,
                            Auxiliary = fn k2 row =>
-                               keys <- List.mapQuery (SELECT rel.{col1}
+                               keys <- List.mapQuery (SELECT rel.{colR1}
                                                       FROM rel
-                                                      WHERE rel.{col2} = {[k2]}
-                                                      ORDER BY rel.{col1})
-                                                     (fn r => r.Rel.col1);
+                                                      WHERE rel.{colR2} = {[k2]}
+                                                      ORDER BY rel.{colR1})
+                                                     (fn r => r.Rel.colR1);
                                aux <- old.tname2.Auxiliary k2 row;
                                return (keys, aux),
                            Render = fn entry (k1s, aux) r =>

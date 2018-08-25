@@ -57,7 +57,7 @@ open Make(struct
                       |> text [#Swamp] [#SwampName] "Name"
                       |> text [#Swamp] [#SmellinessLevel] "Smelliness Level"
                       |> foreign [#Frog] [#Swamp] [#Swamp] [#SwampName] "Swamp" "Frogs"
-                      |> manyToMany [#Frog] [#Nickname] [#Swamp] [#SwampName] protector "Protecting" "Protectors"
+                      |> manyToMany [#Frog] [#Nickname] [#Nickname] [#Swamp] [#SwampName] [#SwampName] protector "Protecting" "Protectors"
                       |> manyToManyOrdered [#Swamp] [#SwampName] [#RestaurantChain] [#Chain] favoriteFoodOptions "Favorite Food Options" "Swamps"
 
                       |> text [#SuperPower] [#Power] "Power"
