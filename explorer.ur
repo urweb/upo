@@ -13,8 +13,8 @@ type t1 (full :: {Type}) (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type 
       Config : transaction p.5,
       Auxiliary : p.1 -> $p.2 -> transaction p.7,
       Render : (variant full -> string -> xbody) -> p.7 -> $p.2 -> xtable,
-      FreshWidgets : transaction p.6,
-      WidgetsFrom : $p.2 -> p.7 -> transaction p.6,
+      FreshWidgets : p.5 -> transaction p.6,
+      WidgetsFrom : p.5 -> $p.2 -> p.7 -> transaction p.6,
       RenderWidgets : p.5 -> p.6 -> xbody,
       ReadWidgets : p.6 -> signal ($p.3 * p.7 * option string (* Error message, if something is amiss *)),
       KeyOf : $p.2 -> p.1,
@@ -57,8 +57,8 @@ fun one [full ::: {Type}]
               Config = return (),
               Auxiliary = fn _ _ => return (),
               Render = fn _ _ _ => <xml></xml>,
-              FreshWidgets = return (),
-              WidgetsFrom = fn _ _ => return (),
+              FreshWidgets = fn () => return (),
+              WidgetsFrom = fn () _ _ => return (),
               RenderWidgets = fn () () => <xml></xml>,
               ReadWidgets = fn () => return ((), (), None),
               KeyOf = fn r => r.key,
@@ -96,8 +96,8 @@ fun two [full ::: {Type}]
               Config = return (),
               Auxiliary = fn _ _ => return (),
               Render = fn _ _ _ => <xml></xml>,
-              FreshWidgets = return (),
-              WidgetsFrom = fn _ _ => return (),
+              FreshWidgets = fn () => return (),
+              WidgetsFrom = fn () _ _ => return (),
               RenderWidgets = fn () () => <xml></xml>,
               ReadWidgets = fn () => return ((), (), None),
               KeyOf = fn r => (r.key1, r.key2),
@@ -133,13 +133,13 @@ fun text [full ::: {Type}]
                                             <td>{[r.col]}</td>
                                           </tr>
                                         </xml>,
-                            FreshWidgets =
+                            FreshWidgets = fn cfg =>
                                s <- source "";
-                               ws <- old.tname.FreshWidgets;
+                               ws <- old.tname.FreshWidgets cfg;
                                return (s, ws),
-                            WidgetsFrom = fn r aux =>
+                            WidgetsFrom = fn cfg r aux =>
                                s <- source (show r.col);
-                               ws <- old.tname.WidgetsFrom r aux;
+                               ws <- old.tname.WidgetsFrom cfg r aux;
                                return (s, ws),
                             RenderWidgets = fn cfg (s, ws) =>
                                                <xml>
@@ -174,13 +174,13 @@ fun hyperref [full ::: {Type}]
                                                <td><a href={url}><tt>{[r.col]}</tt></a></td>
                                              </tr></xml>}
                                         </xml>,
-                            FreshWidgets =
+                            FreshWidgets = fn cfg =>
                                s <- source "";
-                               ws <- old.tname.FreshWidgets;
+                               ws <- old.tname.FreshWidgets cfg;
                                return (s, ws),
-                            WidgetsFrom = fn r aux =>
+                            WidgetsFrom = fn cfg r aux =>
                                s <- source (show r.col);
-                               ws <- old.tname.WidgetsFrom r aux;
+                               ws <- old.tname.WidgetsFrom cfg r aux;
                                return (s, ws),
                             RenderWidgets = fn cfg (s, ws) =>
                                                <xml>
@@ -215,13 +215,13 @@ fun image [full ::: {Type}]
                                                <td><img src={url} class={cls}/></td>
                                              </tr></xml>}
                                         </xml>,
-                            FreshWidgets =
+                            FreshWidgets = fn cfg =>
                                s <- source "";
-                               ws <- old.tname.FreshWidgets;
+                               ws <- old.tname.FreshWidgets cfg;
                                return (s, ws),
-                            WidgetsFrom = fn r aux =>
+                            WidgetsFrom = fn cfg r aux =>
                                s <- source (show r.col);
-                               ws <- old.tname.WidgetsFrom r aux;
+                               ws <- old.tname.WidgetsFrom cfg r aux;
                                return (s, ws),
                             RenderWidgets = fn cfg (s, ws) =>
                                                <xml>
@@ -254,13 +254,13 @@ fun textOpt [full ::: {Type}]
                                             <td>{[r.col]}</td>
                                           </tr>
                                         </xml>,
-                            FreshWidgets =
+                            FreshWidgets = fn cfg =>
                                s <- source "";
-                               ws <- old.tname.FreshWidgets;
+                               ws <- old.tname.FreshWidgets cfg;
                                return (s, ws),
-                            WidgetsFrom = fn r aux =>
+                            WidgetsFrom = fn cfg r aux =>
                                s <- source (show r.col);
-                               ws <- old.tname.WidgetsFrom r aux;
+                               ws <- old.tname.WidgetsFrom cfg r aux;
                                return (s, ws),
                             RenderWidgets = fn cfg (s, ws) =>
                                                <xml>
@@ -299,13 +299,13 @@ fun checkbox [full ::: {Type}]
                                             <td>{[r.col]}</td>
                                           </tr>
                                         </xml>,
-                            FreshWidgets =
+                            FreshWidgets = fn cfg =>
                                s <- source False;
-                               ws <- old.tname.FreshWidgets;
+                               ws <- old.tname.FreshWidgets cfg;
                                return (s, ws),
-                            WidgetsFrom = fn r aux =>
+                            WidgetsFrom = fn cfg r aux =>
                                s <- source r.col;
-                               ws <- old.tname.WidgetsFrom r aux;
+                               ws <- old.tname.WidgetsFrom cfg r aux;
                                return (s, ws),
                             RenderWidgets = fn cfg (s, ws) =>
                                                <xml>
@@ -342,13 +342,13 @@ fun htmlbox [full ::: {Type}]
                                                <td>{Widget.html r.col}</td>
                                              </tr>
                                            </xml>,
-                               FreshWidgets =
+                               FreshWidgets = fn cfg =>
                                   s <- @Widget.create Widget.htmlbox ();
-                                  ws <- old.tname.FreshWidgets;
+                                  ws <- old.tname.FreshWidgets cfg;
                                   return (s, ws),
-                               WidgetsFrom = fn r aux =>
+                               WidgetsFrom = fn cfg r aux =>
                                   s <- @Widget.initialize Widget.htmlbox () r.col;
-                                  ws <- old.tname.WidgetsFrom r aux;
+                                  ws <- old.tname.WidgetsFrom cfg r aux;
                                   return (s, ws),
                                RenderWidgets = fn cfg (s, ws) =>
                                                   <xml>
@@ -404,13 +404,13 @@ fun foreign [full ::: {Type}]
                                             <td>{entry (make [ftname] r.col) (show r.col)}</td>
                                           </tr>
                                         </xml>,
-                            FreshWidgets =
+                            FreshWidgets = fn (_, cfg) =>
                                s <- source "";
-                               ws <- old.tname.FreshWidgets;
+                               ws <- old.tname.FreshWidgets cfg;
                                return (s, ws),
-                            WidgetsFrom = fn r aux =>
+                            WidgetsFrom = fn (_, cfg) r aux =>
                                s <- source (show r.col);
-                               ws <- old.tname.WidgetsFrom r aux;
+                               ws <- old.tname.WidgetsFrom cfg r aux;
                                return (s, ws),
                             RenderWidgets = fn (cfg1, cfg2) (s, ws) =>
                                                <xml>
@@ -453,14 +453,14 @@ fun foreign [full ::: {Type}]
                             ReadWidgets = fn w =>
                                              (v, aux, err) <- old.ftname.ReadWidgets w;
                                              return (v, ([], aux), err),
-                            WidgetsFrom = fn r (_, aux) => old.ftname.WidgetsFrom r aux}}
+                            WidgetsFrom = fn cfg r (_, aux) => old.ftname.WidgetsFrom cfg r aux}}
 
-type manyToMany11 t key1 key2 = list key2 * t
-type manyToMany12 t key1 key2 = source string * source (list key2) * source bool (* dropdown changed since last button push? *) * t
-type manyToMany13 t key1 key2 = list key2 * t
-type manyToMany21 t key1 key2 = list key1 * t
-type manyToMany22 t key1 key2 = source string * source (list key1) * source bool * t
-type manyToMany23 t key1 key2 = list key1 * t
+type manyToMany11 t key1 key2 others = $(map thd3 others) * list key2 * t
+type manyToMany12 t key1 key2 others = source string * $(map snd3 others) * source (list (key2 * source ($(map fst3 others)) * source (option ($(map snd3 others))))) * source bool (* dropdown changed since last button push? *) * t
+type manyToMany13 t key1 key2 others = list (key2 * $(map fst3 others)) * t
+type manyToMany21 t key1 key2 others = $(map thd3 others) * list key1 * t
+type manyToMany22 t key1 key2 others = source string * $(map snd3 others) * source (list (key1 * source ($(map fst3 others)) * source (option ($(map snd3 others))))) * source bool * t
+type manyToMany23 t key1 key2 others = list (key1 * $(map fst3 others)) * t
 
 fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name] [colR1 :: Name]
                [cols1 ::: {Type}] [colsDone1 ::: {Type}] [cstrs1 ::: {{Unit}}]
@@ -470,12 +470,15 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                [impl21 ::: Type] [impl22 ::: Type] [impl23 ::: Type]
                [cstrs ::: {{Unit}}]
                [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
+               [others ::: {(Type * Type * Type)}]
                [[tname1] ~ [tname2]] [[tname1, tname2] ~ old] [[tname1, tname2] ~ full]
                [[col1] ~ cols1] [[col2] ~ cols2] [[col1] ~ [col2]] [[colR1] ~ [colR2]]
-               (rel : sql_table [colR1 = key1, colR2 = key2] cstrs)
+               [others ~ [colR1, colR2]]
+               (rel : sql_table ([colR1 = key1, colR2 = key2] ++ map fst3 others) cstrs)
                (lab1 : string) (lab2 : string)
                (_ : eq key1) (_ : ord key1) (_ : show key1) (_ : read key1) (_ : sql_injectable key1)
                (_ : eq key2) (_ : ord key2) (_ : show key2) (_ : read key2) (_ : sql_injectable key2)
+               (fl : folder others) (ws : $(map Widget.t' others)) (injs : $(map (fn p => sql_injectable p.1) others)) (labels : $(map (fn _ => string) others))
                (old : t ([tname1 = key1, tname2 = key2] ++ full)
                         ([tname1 = (key1, [col1 = key1] ++ cols1, colsDone1, cstrs1, impl11, impl12, impl13),
                           tname2 = (key2, [col2 = key2] ++ cols2, colsDone2, cstrs2, impl21, impl22, impl23)] ++ old)) =
@@ -485,15 +488,23 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                          ++ {Insert =
                              fn r (k2s, aux) =>
                                 old.tname1.Insert r aux;
-                                List.app (fn k2 => dml (INSERT INTO rel({colR1}, {colR2})
-                                                        VALUES ({[r.col1]}, {[k2]}))) k2s,
+                                List.app (fn (k2, others) =>
+                                             @Sql.easy_insert ({colR1 = _, colR2 = _} ++ injs)
+                                              (@Folder.cons [colR1] [_] !
+                                                (@Folder.cons [colR2] [_] !
+                                                  (@Folder.mp fl)))
+                                              rel ({colR1 = r.col1, colR2 = k2} ++ others)) k2s,
                              Update =
                              fn k r (k2s, aux) =>
                                 old.tname1.Update k r aux;
                                 dml (DELETE FROM rel
                                      WHERE t.{colR1} = {[r.col1]});
-                                List.app (fn k2 => dml (INSERT INTO rel({colR1}, {colR2})
-                                                        VALUES ({[r.col1]}, {[k2]}))) k2s,
+                                List.app (fn (k2, others) =>
+                                             @Sql.easy_insert ({colR1 = _, colR2 = _} ++ injs)
+                                              (@Folder.cons [colR1] [_] !
+                                                (@Folder.cons [colR2] [_] !
+                                                  (@Folder.mp fl)))
+                                              rel ({colR1 = r.col1, colR2 = k2} ++ others)) k2s,
                              Delete = fn k1 => dml (DELETE FROM rel WHERE t.{colR1} = {[k1]}),
                              Config =
                              let
@@ -503,15 +514,18 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                         FROM tab
                                                         ORDER BY tab.{col2})
                                                        (fn r => r.Tab.col2);
+                                 wcfg <- @Monad.mapR _ [Widget.t'] [thd3]
+                                          (fn [nm ::_] [p ::_] (w : Widget.t' p) => @Widget.configure w)
+                                          fl ws;
                                  cfg <- old.tname1.Config;
-                                 return (keys, cfg)
+                                 return (wcfg, keys, cfg)
                              end,
                              Auxiliary = fn k1 row =>
-                                 keys <- List.mapQuery (SELECT rel.{colR2}
+                                 keys <- List.mapQuery (SELECT rel.{colR2}, rel.{{map fst3 others}}
                                                         FROM rel
                                                         WHERE rel.{colR1} = {[k1]}
                                                         ORDER BY rel.{colR2})
-                                                       (fn r => r.Rel.colR2);
+                                                       (fn r => (r.Rel.colR2, r.Rel -- colR2));
                                  aux <- old.tname1.Auxiliary k1 row;
                                  return (keys, aux),
                              Render = fn entry (k2s, aux) r =>
@@ -519,26 +533,43 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                            {old.tname1.Render entry aux r}
                                            <tr>
                                              <th>{[lab1]}</th>
-                                             <td>{List.mapX (fn k2 => <xml>{entry (make [tname2] k2) (show k2)}<br/></xml>) k2s}</td>
+                                             <td>{List.mapX (fn (k2, others) => <xml>{entry (make [tname2] k2) (show k2)}
+                                               {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
+                                                 (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (v : p.1) =>
+                                                     <xml>- {[label]}: {[@Widget.asValue w v]}</xml>) fl labels ws others}
+                                               <br/></xml>) k2s}</td>
                                            </tr>
                                          </xml>,
-                             FreshWidgets =
+                             FreshWidgets = fn (cfg0, _, cfg) =>
                                 s <- source "";
+                                ws0 <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) => @Widget.create w cfg)
+                                        fl ws cfg0;
                                 sl <- source [];
                                 changed <- source False;
-                                ws <- old.tname1.FreshWidgets;
-                                return (s, sl, changed, ws),
-                             WidgetsFrom = fn r (keys, aux) =>
-                                 s <- source "";
-                                 sl <- source keys;
-                                 changed <- source False;
-                                 ws <- old.tname1.WidgetsFrom r aux;
-                                 return (s, sl, changed, ws),
-                             RenderWidgets = fn (cfg1, cfg2) (s, sl, changed, ws) =>
+                                ws <- old.tname1.FreshWidgets cfg;
+                                return (s, ws0, sl, changed, ws),
+                             WidgetsFrom = fn (cfg0, _, cfg) r (keys, aux) =>
+                                s <- source "";
+                                ws0 <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) => @Widget.create w cfg)
+                                        fl ws cfg0;
+                                keys <- List.mapM (fn (k, vs) => vs <- source vs; notEditing <- source None; return (k, vs, notEditing)) keys;
+                                sl <- source keys;
+                                changed <- source False;
+                                ws <- old.tname1.WidgetsFrom cfg r aux;
+                                return (s, ws0, sl, changed, ws),
+                             RenderWidgets = fn (cfgs, cfg1, cfg2) (s, ws0, sl, changed, wso) =>
                                                 <xml>
-                                                  {old.tname1.RenderWidgets cfg2 ws}
+                                                  {old.tname1.RenderWidgets cfg2 wso}
                                                   <div class="form-group">
                                                     <label class="control-label">{[lab1]}</label>
+                                                    <div class="input-group">
+                                                      {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
+                                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (s : p.2) =>
+                                                            <xml>{[label]}: {@Widget.asWidget w s None}</xml>)
+                                                        fl labels ws ws0}
+                                                    </div>
                                                     <div class="input-group">
                                                       <span class="input-group-btn">
                                                         <button class="btn"
@@ -550,10 +581,16 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                 set changed False;
                                                                                 sv <- return (readError sv);
                                                                                 slv <- get sl;
-                                                                                if List.mem sv slv then
+                                                                                if List.exists (fn (sv', _, _) => sv' = sv) slv then
                                                                                     return ()
                                                                                 else
-                                                                                    set sl (List.sort gt (sv :: slv))}>Select:</button>
+                                                                                    vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                           (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                               current (@Widget.value w s))
+                                                                                           fl ws ws0;
+                                                                                    vs <- source vs;
+                                                                                    notEditing <- source None;
+                                                                                    set sl (List.sort (fn x y => x.1 > y.1) ((sv, vs, notEditing) :: slv))}>Select:</button>
                                                       </span>
                                                       <cselect class="form-control" source={s} onchange={set changed True}>
                                                         <coption/>
@@ -561,151 +598,291 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                       </cselect> 
                                                     </div>
                                                     <table>
+                                                      <tr><td/>
+                                                        {@mapX [fn _ => string] [tr]
+                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) =>
+                                                              <xml><th>{[label]}</th></xml>)
+                                                          fl labels}
+                                                      <td/></tr>
                                                       <dyn signal={slv <- signal sl;
-                                                                   return (List.mapX (fn k2 => <xml><tr>
-                                                                     <td>{[k2]}</td>
-                                                                     <td><button class="btn"
-                                                                       onclick={fn _ => set sl (List.filter (fn k2' => k2' <> k2) slv)}>
-                                                                       <span class="glyphicon glyphicon-remove"/>
-                                                                     </button></td>
-                                                                   </tr></xml>) slv)}/>
+                                                                   return (List.mapX (fn (k2, vs, ws0) => <xml>
+                                                                     <dyn signal={vals <- signal vs;
+                                                                                  wids <- signal ws0;
+                                                                                  case wids of
+                                                                                      None => return <xml>
+                                                                                        <tr>
+                                                                                          <td>{[k2]}</td>
+                                                                                          {@mapX2 [Widget.t'] [fst3] [tr]
+                                                                                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                                                                                                <xml><td>{[@Widget.asValue w v]}</td></xml>)
+                                                                                            fl ws vals}
+                                                                                          <td><button class="btn"
+                                                                                                      onclick={fn _ =>
+                                                                                                                  wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                           (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                               @Widget.initialize w cfg v)
+                                                                                                                           fl ws cfgs vals;
+                                                                                                                  set ws0 (Some wids)}>
+                                                                                            <span class="glyphicon glyphicon-pencil"/>
+                                                                                          </button></td>
+                                                                                          <td><button class="btn"
+                                                                                                      onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
+                                                                                            <span class="glyphicon glyphicon-remove"/>
+                                                                                          </button></td>
+                                                                                        </tr>
+                                                                                      </xml>
+                                                                                    | Some wids => return <xml>
+                                                                                      <tr>
+                                                                                        <td>{[k2]}</td>
+                                                                                        {@mapX2 [Widget.t'] [snd3] [tr]
+                                                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
+                                                                                              <xml><td>{@Widget.asWidget w s None}</td></xml>)
+                                                                                          fl ws wids}
+                                                                                        <td><button class="btn"
+                                                                                                    onclick={fn _ =>
+                                                                                                                vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                                            current (@Widget.value w s))
+                                                                                                                        fl ws wids;
+                                                                                                                set vs vsv;
+                                                                                                                set ws0 None}>
+                                                                                          <span class="glyphicon glyphicon-check"/>
+                                                                                        </button></td>
+                                                                                        <td><button class="btn"
+                                                                                                    onclick={fn _ => set ws0 None}>
+                                                                                          <span class="glyphicon glyphicon-remove"/>
+                                                                                        </button></td>
+                                                                                      </tr>
+                                                                                    </xml>}/>
+                                                                   </xml>) slv)}/>
                                                     </table>
                                                 </div>
                                               </xml>,
-                           ReadWidgets = fn (s, sl, changed, ws) =>
+                           ReadWidgets = fn (s, _, sl, changed, ws) =>
                                             slv <- signal sl;
+                                            slv <- List.mapM (fn (k2, vs, _) => vs <- signal vs; return (k2, vs)) slv;
                                             chd <- signal changed;
                                             (wsv, aux, err) <- old.tname1.ReadWidgets ws;
-                                            return (wsv, (slv, aux), if chd then
-                                                                         let
-                                                                             val msg = "The dropdown for \"" ^ lab1 ^ "\" has changed, but the new value hasn't been selected by pushing the adjacent button."
-                                                                         in
-                                                                             case err of
-                                                                                 None => Some msg
-                                                                               | Some err => Some (err ^ "\n" ^ msg)
-                                                                         end
-                                                                     else
-                                                                         err)},
+                                            return (wsv, (slv, aux),
+                                                    if chd then
+                                                        let
+                                                            val msg = "The dropdown for \"" ^ lab1 ^ "\" has changed, but the new value hasn't been selected by pushing the adjacent button."
+                                                        in
+                                                            case err of
+                                                                None => Some msg
+                                                              | Some err => Some (err ^ "\n" ^ msg)
+                                                        end
+                                                    else
+                                                        err)},
           tname2 = old.tname2
                        -- #Insert -- #Update -- #Delete -- #Config -- #Auxiliary -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
-                       ++ {Insert = fn r (k1s, aux) =>                         old.tname2.Insert r aux;
-                           List.app (fn k1 => dml (INSERT INTO rel({colR1}, {colR2})
-                                                   VALUES ({[k1]}, {[r.col2]}))) k1s,
-                           Update = fn k r (k1s, aux) =>
-                             old.tname2.Update k r aux;
-                             dml (DELETE FROM rel
-                                  WHERE t.{colR2} = {[r.col2]});
-                             List.app (fn k1 => dml (INSERT INTO rel({colR1}, {colR2})
-                                                     VALUES ({[k1]}, {[r.col2]}))) k1s,
-                           Delete =
-                           fn k2 => dml (DELETE FROM rel WHERE t.{colR2} = {[k2]}),
-                           Config =
-                           let
-                               val tab = old.tname1.Table
-                           in
-                               keys <- List.mapQuery (SELECT DISTINCT tab.{col1}
-                                                      FROM tab
-                                                      ORDER BY tab.{col1})
-                                                     (fn r => r.Tab.col1);
-                               cfg <- old.tname2.Config;
-                               return (keys, cfg)
-                           end,
-                           Auxiliary = fn k2 row =>
-                               keys <- List.mapQuery (SELECT rel.{colR1}
-                                                      FROM rel
-                                                      WHERE rel.{colR2} = {[k2]}
-                                                      ORDER BY rel.{colR1})
-                                                     (fn r => r.Rel.colR1);
-                               aux <- old.tname2.Auxiliary k2 row;
-                               return (keys, aux),
-                           Render = fn entry (k1s, aux) r =>
-                                       <xml>
-                                         {old.tname2.Render entry aux r}
-                                         <tr>
-                                           <th>{[lab2]}</th>
-                                           <td>{List.mapX (fn k1 => <xml>{entry (make [tname1] k1) (show k1)}<br/></xml>) k1s}</td>
-                                         </tr>
-                                       </xml>,
-                           FreshWidgets =
-                              s <- source "";
-                              sl <- source [];
-                              changed <- source False;
-                              ws <- old.tname2.FreshWidgets;
-                              return (s, sl, changed, ws),
-                           WidgetsFrom = fn r (keys, aux) =>
-                                            s <- source "";
-                                            sl <- source keys;
-                                            changed <- source False;
-                                            ws <- old.tname2.WidgetsFrom r aux;
-                                            return (s, sl, changed, ws),
-                           RenderWidgets = fn (cfg1, cfg2) (s, sl, changed, ws) =>
-                                              <xml>
-                                                {old.tname2.RenderWidgets cfg2 ws}
-                                                <div class="form-group">
-                                                  <label class="control-label">{[lab2]}</label>
-                                                  <div class="input-group">
-                                                    <span class="input-group-btn">
-                                                      <button class="btn"
-                                                              onclick={fn _ =>
-                                                                          sv <- get s;
-                                                                          if sv = "" then
-                                                                              return ()
-                                                                          else
-                                                                              set changed False;
-
-                                                                              sv <- return (readError sv);
-                                                                              slv <- get sl;
-                                                                              if List.mem sv slv then
-                                                                                  return ()
-                                                                              else
-                                                                                  set sl (List.sort gt (sv :: slv))}>Select:</button>
+                       ++ {Insert =
+                             fn r (k1s, aux) =>
+                                old.tname2.Insert r aux;
+                                List.app (fn (k1, others) =>
+                                             @Sql.easy_insert ({colR1 = _, colR2 = _} ++ injs)
+                                              (@Folder.cons [colR1] [_] !
+                                                (@Folder.cons [colR2] [_] !
+                                                  (@Folder.mp fl)))
+                                              rel ({colR1 = k1, colR2 = r.col2} ++ others)) k1s,
+                             Update =
+                             fn k r (k1s, aux) =>
+                                old.tname2.Update k r aux;
+                                dml (DELETE FROM rel
+                                     WHERE t.{colR2} = {[r.col2]});
+                                List.app (fn (k1, others) =>
+                                             @Sql.easy_insert ({colR1 = _, colR2 = _} ++ injs)
+                                              (@Folder.cons [colR1] [_] !
+                                                (@Folder.cons [colR2] [_] !
+                                                  (@Folder.mp fl)))
+                                              rel ({colR1 = k1, colR2 = r.col2} ++ others)) k1s,
+                             Delete = fn k2 => dml (DELETE FROM rel WHERE t.{colR2} = {[k2]}),
+                             Config =
+                             let
+                                 val tab = old.tname1.Table
+                             in
+                                 keys <- List.mapQuery (SELECT DISTINCT tab.{col1}
+                                                        FROM tab
+                                                        ORDER BY tab.{col1})
+                                                       (fn r => r.Tab.col1);
+                                 wcfg <- @Monad.mapR _ [Widget.t'] [thd3]
+                                          (fn [nm ::_] [p ::_] (w : Widget.t' p) => @Widget.configure w)
+                                          fl ws;
+                                 cfg <- old.tname2.Config;
+                                 return (wcfg, keys, cfg)
+                             end,
+                             Auxiliary = fn k2 row =>
+                                 keys <- List.mapQuery (SELECT rel.{colR1}, rel.{{map fst3 others}}
+                                                        FROM rel
+                                                        WHERE rel.{colR2} = {[k2]}
+                                                        ORDER BY rel.{colR1})
+                                                       (fn r => (r.Rel.colR1, r.Rel -- colR1));
+                                 aux <- old.tname2.Auxiliary k2 row;
+                                 return (keys, aux),
+                             Render = fn entry (k1s, aux) r =>
+                                         <xml>
+                                           {old.tname2.Render entry aux r}
+                                           <tr>
+                                             <th>{[lab2]}</th>
+                                             <td>{List.mapX (fn (k1, others) => <xml>{entry (make [tname1] k1) (show k1)}
+                                               {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
+                                                 (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (v : p.1) =>
+                                                     <xml>- {[label]}: {[@Widget.asValue w v]}</xml>) fl labels ws others}
+                                               <br/></xml>) k1s}</td>
+                                           </tr>
+                                         </xml>,
+                             FreshWidgets = fn (cfg0, _, cfg) =>
+                                s <- source "";
+                                ws0 <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) => @Widget.create w cfg)
+                                        fl ws cfg0;
+                                sl <- source [];
+                                changed <- source False;
+                                ws <- old.tname2.FreshWidgets cfg;
+                                return (s, ws0, sl, changed, ws),
+                             WidgetsFrom = fn (cfg0, _, cfg) r (keys, aux) =>
+                                s <- source "";
+                                ws0 <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) => @Widget.create w cfg)
+                                        fl ws cfg0;
+                                keys <- List.mapM (fn (k, vs) => vs <- source vs; notEditing <- source None; return (k, vs, notEditing)) keys;
+                                sl <- source keys;
+                                changed <- source False;
+                                ws <- old.tname2.WidgetsFrom cfg r aux;
+                                return (s, ws0, sl, changed, ws),
+                             RenderWidgets = fn (cfgs, cfg1, cfg2) (s, ws0, sl, changed, wso) =>
+                                                <xml>
+                                                  {old.tname2.RenderWidgets cfg2 wso}
+                                                  <div class="form-group">
+                                                    <label class="control-label">{[lab2]}</label>
+                                                    <div class="input-group">
+                                                      {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
+                                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (s : p.2) =>
+                                                            <xml>{[label]}: {@Widget.asWidget w s None}</xml>)
+                                                        fl labels ws ws0}
+                                                    </div>
+                                                    <div class="input-group">
+                                                      <span class="input-group-btn">
+                                                        <button class="btn"
+                                                                onclick={fn _ =>
+                                                                            sv <- get s;
+                                                                            if sv = "" then
+                                                                                return ()
+                                                                            else
+                                                                                set changed False;
+                                                                                sv <- return (readError sv);
+                                                                                slv <- get sl;
+                                                                                if List.exists (fn (sv', _, _) => sv' = sv) slv then
+                                                                                    return ()
+                                                                                else
+                                                                                    vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                           (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                               current (@Widget.value w s))
+                                                                                           fl ws ws0;
+                                                                                    vs <- source vs;
+                                                                                    notEditing <- source None;
+                                                                                    set sl (List.sort (fn x y => x.1 > y.1) ((sv, vs, notEditing) :: slv))}>Select:</button>
                                                       </span>
-                                                    <cselect class="form-control" source={s} onchange={set changed True}>
-                                                      <coption/>
-                                                      {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
-                                                    </cselect> 
-                                                  </div>
-                                                  <table>
-                                                    <dyn signal={slv <- signal sl;
-                                                                 return (List.mapX (fn k1 => <xml><tr>
-                                                                   <td>{[k1]}</td>
-                                                                   <td><button class="btn"
-                                                                               onclick={fn _ => set sl (List.filter (fn k1' => k1' <> k1) slv)}>
-                                                                     <span class="glyphicon glyphicon-remove"/>
-                                                                   </button></td>
-                                                                 </tr></xml>) slv)}/>
-                                                  </table>
+                                                      <cselect class="form-control" source={s} onchange={set changed True}>
+                                                        <coption/>
+                                                        {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
+                                                      </cselect> 
+                                                    </div>
+                                                    <table>
+                                                      <tr><td/>
+                                                        {@mapX [fn _ => string] [tr]
+                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) =>
+                                                              <xml><th>{[label]}</th></xml>)
+                                                          fl labels}
+                                                      <td/></tr>
+                                                      <dyn signal={slv <- signal sl;
+                                                                   return (List.mapX (fn (k2, vs, ws0) => <xml>
+                                                                     <dyn signal={vals <- signal vs;
+                                                                                  wids <- signal ws0;
+                                                                                  case wids of
+                                                                                      None => return <xml>
+                                                                                        <tr>
+                                                                                          <td>{[k2]}</td>
+                                                                                          {@mapX2 [Widget.t'] [fst3] [tr]
+                                                                                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                                                                                                <xml><td>{[@Widget.asValue w v]}</td></xml>)
+                                                                                            fl ws vals}
+                                                                                          <td><button class="btn"
+                                                                                                      onclick={fn _ =>
+                                                                                                                  wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                           (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                               @Widget.initialize w cfg v)
+                                                                                                                           fl ws cfgs vals;
+                                                                                                                  set ws0 (Some wids)}>
+                                                                                            <span class="glyphicon glyphicon-pencil"/>
+                                                                                          </button></td>
+                                                                                          <td><button class="btn"
+                                                                                                      onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
+                                                                                            <span class="glyphicon glyphicon-remove"/>
+                                                                                          </button></td>
+                                                                                        </tr>
+                                                                                      </xml>
+                                                                                    | Some wids => return <xml>
+                                                                                      <tr>
+                                                                                        <td>{[k2]}</td>
+                                                                                        {@mapX2 [Widget.t'] [snd3] [tr]
+                                                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
+                                                                                              <xml><td>{@Widget.asWidget w s None}</td></xml>)
+                                                                                          fl ws wids}
+                                                                                        <td><button class="btn"
+                                                                                                    onclick={fn _ =>
+                                                                                                                vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                                            current (@Widget.value w s))
+                                                                                                                        fl ws wids;
+                                                                                                                set vs vsv;
+                                                                                                                set ws0 None}>
+                                                                                          <span class="glyphicon glyphicon-check"/>
+                                                                                        </button></td>
+                                                                                        <td><button class="btn"
+                                                                                                    onclick={fn _ => set ws0 None}>
+                                                                                          <span class="glyphicon glyphicon-remove"/>
+                                                                                        </button></td>
+                                                                                      </tr>
+                                                                                    </xml>}/>
+                                                                   </xml>) slv)}/>
+                                                    </table>
                                                 </div>
                                               </xml>,
-                             ReadWidgets = fn (s, sl, changed, ws) =>
-                                              slv <- signal sl;
-                                              chd <- signal changed;
-                                              (wsv, aux, err) <- old.tname2.ReadWidgets ws;
-                                              return (wsv, (slv, aux), if chd then
-                                                                           let
-                                                                               val msg = "The dropdown for \"" ^ lab2 ^ "\" has changed, but the new value hasn't been selected by pushing the adjacent button."
-                                                                           in
-                                                                               case err of
-                                                                                   None => Some msg
-                                                                                 | Some err => Some (err ^ "\n" ^ msg)
-                                                                           end
-                                                                       else
-                                                                           err)}}
+                           ReadWidgets = fn (s, _, sl, changed, ws) =>
+                                            slv <- signal sl;
+                                            slv <- List.mapM (fn (k2, vs, _) => vs <- signal vs; return (k2, vs)) slv;
+                                            chd <- signal changed;
+                                            (wsv, aux, err) <- old.tname2.ReadWidgets ws;
+                                            return (wsv, (slv, aux),
+                                                    if chd then
+                                                        let
+                                                            val msg = "The dropdown for \"" ^ lab1 ^ "\" has changed, but the new value hasn't been selected by pushing the adjacent button."
+                                                        in
+                                                            case err of
+                                                                None => Some msg
+                                                              | Some err => Some (err ^ "\n" ^ msg)
+                                                        end
+                                                    else
+                                                        err)}}
 
-fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
+fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name] [colR1 :: Name]
                       [cols1 ::: {Type}] [colsDone1 ::: {Type}] [cstrs1 ::: {{Unit}}]
                       [impl11 ::: Type] [impl12 ::: Type] [impl13 ::: Type]
-                      [tname2 :: Name] [key2 ::: Type] [col2 :: Name]
+                      [tname2 :: Name] [key2 ::: Type] [col2 :: Name] [colR2 :: Name]
                       [cols2 ::: {Type}] [colsDone2 ::: {Type}] [cstrs2 ::: {{Unit}}]
                       [impl21 ::: Type] [impl22 ::: Type] [impl23 ::: Type]
                       [cstrs ::: {{Unit}}]
                       [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
+                      [others ::: {(Type * Type * Type)}]
                       [[tname1] ~ [tname2]] [[tname1, tname2] ~ old] [[tname1, tname2] ~ full]
                       [[col1] ~ cols1] [[col2] ~ cols2] [[col1] ~ [col2]] [[col1, col2] ~ [SeqNum]]
-                      (rel : sql_table [col1 = key1, col2 = key2, SeqNum = int] cstrs)
+                      [[colR1] ~ [colR2]] [[colR1, colR2] ~ [SeqNum]] [others ~ [colR1, colR2, SeqNum]]
+                      (rel : sql_table ([colR1 = key1, colR2 = key2, SeqNum = int] ++ map fst3 others) cstrs)
                       (lab1 : string) (lab2 : string)
                       (_ : eq key1) (_ : ord key1) (_ : show key1) (_ : read key1) (_ : sql_injectable key1)
                       (_ : eq key2) (_ : ord key2) (_ : show key2) (_ : read key2) (_ : sql_injectable key2)
+                      (fl : folder others) (ws : $(map Widget.t' others)) (injs : $(map (fn p => sql_injectable p.1) others)) (labels : $(map (fn _ => string) others))
                       (old : t ([tname1 = key1, tname2 = key2] ++ full)
                                ([tname1 = (key1, [col1 = key1] ++ cols1, colsDone1, cstrs1, impl11, impl12, impl13),
                                  tname2 = (key2, [col2 = key2] ++ cols2, colsDone2, cstrs2, impl21, impl22, impl23)] ++ old)) =
@@ -715,16 +892,26 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                          ++ {Insert =
                              fn r (k2s, aux) =>
                                 old.tname1.Insert r aux;
-                                List.appi (fn i k2 => dml (INSERT INTO rel(SeqNum, {col1}, {col2})
-                                                           VALUES ({[i]}, {[r.col1]}, {[k2]}))) k2s,
+                                List.appi (fn i (k2, others) =>
+                                              @Sql.easy_insert ({colR1 = _, colR2 = _, SeqNum = _} ++ injs)
+                                               (@Folder.cons [colR1] [_] !
+                                                 (@Folder.cons [colR2] [_] !
+                                                   (@Folder.cons [#SeqNum] [_] !
+                                                     (@Folder.mp fl))))
+                                               rel ({colR1 = r.col1, colR2 = k2, SeqNum = i} ++ others)) k2s,
                              Update =
                              fn k r (k2s, aux) =>
                                 old.tname1.Update k r aux;
                                 dml (DELETE FROM rel
-                                     WHERE t.{col1} = {[r.col1]});
-                                List.appi (fn i k2 => dml (INSERT INTO rel(SeqNum, {col1}, {col2})
-                                                           VALUES ({[i]}, {[r.col1]}, {[k2]}))) k2s,
-                             Delete = fn k1 => dml (DELETE FROM rel WHERE t.{col1} = {[k1]}),
+                                     WHERE t.{colR1} = {[r.col1]});
+                                List.appi (fn i (k2, others) =>
+                                              @Sql.easy_insert ({colR1 = _, colR2 = _, SeqNum = _} ++ injs)
+                                               (@Folder.cons [colR1] [_] !
+                                                 (@Folder.cons [colR2] [_] !
+                                                   (@Folder.cons [#SeqNum] [_] !
+                                                     (@Folder.mp fl))))
+                                               rel ({colR1 = r.col1, colR2 = k2, SeqNum = i} ++ others)) k2s,
+                             Delete = fn k1 => dml (DELETE FROM rel WHERE t.{colR1} = {[k1]}),
                              Config =
                              let
                                  val tab = old.tname2.Table
@@ -733,15 +920,18 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                         FROM tab
                                                         ORDER BY tab.{col2})
                                                        (fn r => r.Tab.col2);
+                                 wcfg <- @Monad.mapR _ [Widget.t'] [thd3]
+                                          (fn [nm ::_] [p ::_] (w : Widget.t' p) => @Widget.configure w)
+                                          fl ws;
                                  cfg <- old.tname1.Config;
-                                 return (keys, cfg)
+                                 return (wcfg, keys, cfg)
                              end,
                              Auxiliary = fn k1 row =>
-                                 keys <- List.mapQuery (SELECT rel.{col2}
+                                 keys <- List.mapQuery (SELECT rel.{colR2}, rel.{{map fst3 others}}
                                                         FROM rel
-                                                        WHERE rel.{col1} = {[k1]}
-                                                        ORDER BY rel.SeqNum)
-                                                       (fn r => r.Rel.col2);
+                                                        WHERE rel.{colR1} = {[k1]}
+                                                        ORDER BY rel.{colR2})
+                                                       (fn r => (r.Rel.colR2, r.Rel -- colR2));
                                  aux <- old.tname1.Auxiliary k1 row;
                                  return (keys, aux),
                              Render = fn entry (k2s, aux) r =>
@@ -749,26 +939,43 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                            {old.tname1.Render entry aux r}
                                            <tr>
                                              <th>{[lab1]}</th>
-                                             <td>{List.mapX (fn k2 => <xml>{entry (make [tname2] k2) (show k2)}<br/></xml>) k2s}</td>
+                                             <td>{List.mapX (fn (k2, others) => <xml>{entry (make [tname2] k2) (show k2)}
+                                               {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
+                                                 (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (v : p.1) =>
+                                                     <xml>- {[label]}: {[@Widget.asValue w v]}</xml>) fl labels ws others}
+                                               <br/></xml>) k2s}</td>
                                            </tr>
                                          </xml>,
-                             FreshWidgets =
+                             FreshWidgets = fn (cfg0, _, cfg) =>
                                 s <- source "";
+                                ws0 <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) => @Widget.create w cfg)
+                                        fl ws cfg0;
                                 sl <- source [];
                                 changed <- source False;
-                                ws <- old.tname1.FreshWidgets;
-                                return (s, sl, changed, ws),
-                             WidgetsFrom = fn r (keys, aux) =>
-                                 s <- source "";
-                                 sl <- source keys;
-                                 changed <- source False;
-                                 ws <- old.tname1.WidgetsFrom r aux;
-                                 return (s, sl, changed, ws),
-                             RenderWidgets = fn (cfg1, cfg2) (s, sl, changed, ws) =>
+                                ws <- old.tname1.FreshWidgets cfg;
+                                return (s, ws0, sl, changed, ws),
+                             WidgetsFrom = fn (cfg0, _, cfg) r (keys, aux) =>
+                                s <- source "";
+                                ws0 <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) => @Widget.create w cfg)
+                                        fl ws cfg0;
+                                keys <- List.mapM (fn (k, vs) => vs <- source vs; notEditing <- source None; return (k, vs, notEditing)) keys;
+                                sl <- source keys;
+                                changed <- source False;
+                                ws <- old.tname1.WidgetsFrom cfg r aux;
+                                return (s, ws0, sl, changed, ws),
+                             RenderWidgets = fn (cfgs, cfg1, cfg2) (s, ws0, sl, changed, wso) =>
                                                 <xml>
-                                                  {old.tname1.RenderWidgets cfg2 ws}
+                                                  {old.tname1.RenderWidgets cfg2 wso}
                                                   <div class="form-group">
                                                     <label class="control-label">{[lab1]}</label>
+                                                    <div class="input-group">
+                                                      {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
+                                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (s : p.2) =>
+                                                            <xml>{[label]}: {@Widget.asWidget w s None}</xml>)
+                                                        fl labels ws ws0}
+                                                    </div>
                                                     <div class="input-group">
                                                       <span class="input-group-btn">
                                                         <button class="btn"
@@ -780,10 +987,16 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                 set changed False;
                                                                                 sv <- return (readError sv);
                                                                                 slv <- get sl;
-                                                                                if List.mem sv slv then
+                                                                                if List.exists (fn (sv', _, _) => sv' = sv) slv then
                                                                                     return ()
                                                                                 else
-                                                                                    set sl (List.append slv (sv :: []))}>Select:</button>
+                                                                                    vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                           (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                               current (@Widget.value w s))
+                                                                                           fl ws ws0;
+                                                                                    vs <- source vs;
+                                                                                    notEditing <- source None;
+                                                                                    set sl (List.sort (fn x y => x.1 > y.1) ((sv, vs, notEditing) :: slv))}>Select:</button>
                                                       </span>
                                                       <cselect class="form-control" source={s} onchange={set changed True}>
                                                         <coption/>
@@ -791,111 +1004,304 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                       </cselect> 
                                                     </div>
                                                     <table>
+                                                      <tr><td/>
+                                                        {@mapX [fn _ => string] [tr]
+                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) =>
+                                                              <xml><th>{[label]}</th></xml>)
+                                                          fl labels}
+                                                      <td/></tr>
                                                       <dyn signal={slv <- signal sl;
                                                                    len <- return (List.length slv);
-                                                                   return (List.mapXi (fn i k2 => <xml><tr>
-                                                                     <td>{[k2]}</td>
-                                                                     <td>{if i = 0 then
-                                                                              <xml></xml>
-                                                                          else
-                                                                              <xml><button class="btn"
-                                                                                           onclick={fn _ =>
-                                                                                                       let
-                                                                                                           val (before, after) = List.splitAt (i-1) slv
-                                                                                                       in
-                                                                                                           case after of
-                                                                                                             | prev :: this :: after =>
-                                                                                                               set sl (List.append before (this :: prev :: after))
-                                                                                                             | _ => error <xml>Explorer: impossible splitAt</xml>
-                                                                                                       end}>
-                                                                                     <span class="glyphicon glyphicon-arrow-up"/>
-                                                                                   </button></xml>}</td>
-                                                                     <td>{if i = len-1 then
-                                                                              <xml></xml>
-                                                                          else
-                                                                              <xml><button class="btn"
-                                                                                           onclick={fn _ =>
-                                                                                                       let
-                                                                                                           val (before, after) = List.splitAt i slv
-                                                                                                       in
-                                                                                                           case after of
-                                                                                                             | this :: next :: after =>
-                                                                                                               set sl (List.append before (next :: this :: after))
-                                                                                                             | _ => error <xml>Explorer: impossible splitAt</xml>
-                                                                                                       end}>
-                                                                                     <span class="glyphicon glyphicon-arrow-down"/>
-                                                                                   </button></xml>}</td>
-                                                                     <td><button class="btn"
-                                                                       onclick={fn _ => set sl (List.filter (fn k2' => k2' <> k2) slv)}>
-                                                                       <span class="glyphicon glyphicon-remove"/>
-                                                                     </button></td>
-                                                                   </tr></xml>) slv)}/>
+                                                                   return (List.mapXi (fn i (k2, vs, ws0) => <xml>
+                                                                     <dyn signal={vals <- signal vs;
+                                                                                  wids <- signal ws0;
+                                                                                  case wids of
+                                                                                      None => return <xml><tr>
+                                                                                        <td>{[k2]}</td>
+                                                                                        {@mapX2 [Widget.t'] [fst3] [tr]
+                                                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                                                                                              <xml><td>{[@Widget.asValue w v]}</td></xml>)
+                                                                                          fl ws vals}
+                                                                                        <td>{if i = 0 then
+                                                                                                 <xml></xml>
+                                                                                             else
+                                                                                                 <xml><button class="btn"
+                                                                                                              onclick={fn _ =>
+                                                                                                                          let
+                                                                                                                              val (before, after) = List.splitAt (i-1) slv
+                                                                                                                          in
+                                                                                                                              case after of
+                                                                                                                                  prev :: this :: after =>
+                                                                                                                                  set sl (List.append before (this :: prev :: after))
+                                                                                                                                | _ => error <xml>Explorer: impossible splitAt</xml>
+                                                                                                                          end}>
+                                                                                                   <span class="glyphicon glyphicon-arrow-up"/>
+                                                                                                 </button></xml>}</td>
+                                                                                        <td>{if i = len-1 then
+                                                                                                 <xml></xml>
+                                                                                             else
+                                                                                                 <xml><button class="btn"
+                                                                                                              onclick={fn _ =>
+                                                                                                                          let
+                                                                                                                              val (before, after) = List.splitAt i slv
+                                                                                                                          in
+                                                                                                                              case after of
+                                                                                                                                  this :: next :: after =>
+                                                                                                                                  set sl (List.append before (next :: this :: after))
+                                                                                                                                | _ => error <xml>Explorer: impossible splitAt</xml>
+                                                                                                                          end}>
+                                                                                                   <span class="glyphicon glyphicon-arrow-down"/>
+                                                                                                 </button></xml>}</td>
+                                                                                        <td><button class="btn"
+                                                                                                    onclick={fn _ =>
+                                                                                                                wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                         (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                             @Widget.initialize w cfg v)
+                                                                                                                         fl ws cfgs vals;
+                                                                                                                set ws0 (Some wids)}>
+                                                                                                      <span class="glyphicon glyphicon-pencil"/>
+                                                                                        </button></td>
+                                                                                        <td><button class="btn"
+                                                                                                    onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
+                                                                                          <span class="glyphicon glyphicon-remove"/>
+                                                                                        </button></td>
+                                                                                      </tr></xml>
+                                                                                    | Some wids => return <xml>
+                                                                                      <tr>
+                                                                                        <td>{[k2]}</td>
+                                                                                        {@mapX2 [Widget.t'] [snd3] [tr]
+                                                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
+                                                                                              <xml><td>{@Widget.asWidget w s None}</td></xml>)
+                                                                                          fl ws wids}
+                                                                                        <td><button class="btn"
+                                                                                                    onclick={fn _ =>
+                                                                                                                vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                                            current (@Widget.value w s))
+                                                                                                                        fl ws wids;
+                                                                                                                set vs vsv;
+                                                                                                                set ws0 None}>
+                                                                                          <span class="glyphicon glyphicon-check"/>
+                                                                                        </button></td>
+                                                                                        <td><button class="btn"
+                                                                                                    onclick={fn _ => set ws0 None}>
+                                                                                          <span class="glyphicon glyphicon-remove"/>
+                                                                                        </button></td>
+                                                                                      </tr>
+                                                                                    </xml>}/>
+                                                                   </xml>) slv)}/>
                                                     </table>
                                                 </div>
                                               </xml>,
-                           ReadWidgets = fn (s, sl, changed, ws) =>
+                           ReadWidgets = fn (s, _, sl, changed, ws) =>
                                             slv <- signal sl;
+                                            slv <- List.mapM (fn (k2, vs, _) => vs <- signal vs; return (k2, vs)) slv;
                                             chd <- signal changed;
                                             (wsv, aux, err) <- old.tname1.ReadWidgets ws;
-                                            return (wsv, (slv, aux), if chd then
-                                                                         let
-                                                                             val msg = "The dropdown for \"" ^ lab1 ^ "\" has changed, but the new value hasn't been selected by pushing the adjacent button."
-                                                                         in
-                                                                             case err of
-                                                                                 None => Some msg
-                                                                               | Some err => Some (err ^ "\n" ^ msg)
-                                                                         end
-                                                                     else
-                                                                         err)},
+                                            return (wsv, (slv, aux),
+                                                    if chd then
+                                                        let
+                                                            val msg = "The dropdown for \"" ^ lab1 ^ "\" has changed, but the new value hasn't been selected by pushing the adjacent button."
+                                                        in
+                                                            case err of
+                                                                None => Some msg
+                                                              | Some err => Some (err ^ "\n" ^ msg)
+                                                        end
+                                                    else
+                                                        err)},
           tname2 = old.tname2
                        -- #Insert -- #Update -- #Delete -- #Config -- #Auxiliary -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
-                       ++ {Insert = fn r (k1s, aux) => old.tname2.Insert r aux,
-                           Update = fn k r (k1s, aux) => old.tname2.Update k r aux,
-                           Delete = fn k2 => dml (DELETE FROM rel WHERE t.{col2} = {[k2]}),
-                           Config =
-                           let
-                               val tab = old.tname1.Table
-                           in
-                               keys <- List.mapQuery (SELECT DISTINCT tab.{col1}
-                                                      FROM tab
-                                                      ORDER BY tab.{col1})
-                                                     (fn r => r.Tab.col1);
-                               cfg <- old.tname2.Config;
-                               return (keys, cfg)
-                           end,
-                           Auxiliary = fn k2 row =>
-                               keys <- List.mapQuery (SELECT rel.{col1}
-                                                      FROM rel
-                                                      WHERE rel.{col2} = {[k2]}
-                                                      ORDER BY rel.{col1})
-                                                     (fn r => r.Rel.col1);
-                               aux <- old.tname2.Auxiliary k2 row;
-                               return (keys, aux),
-                           Render = fn entry (k1s, aux) r =>
-                                       <xml>
-                                         {old.tname2.Render entry aux r}
-                                         <tr>
-                                           <th>{[lab2]}</th>
-                                           <td>{List.mapX (fn k1 => <xml>{entry (make [tname1] k1) (show k1)}<br/></xml>) k1s}</td>
-                                         </tr>
-                                       </xml>,
-                           FreshWidgets =
-                              s <- source "";
-                              sl <- source [];
-                              changed <- source False;
-                              ws <- old.tname2.FreshWidgets;
-                              return (s, sl, changed, ws),
-                           WidgetsFrom = fn r (keys, aux) =>
-                                            s <- source "";
-                                            sl <- source keys;
-                                            changed <- source False;
-                                            ws <- old.tname2.WidgetsFrom r aux;
-                                            return (s, sl, changed, ws),
-                           RenderWidgets = fn (cfg1, cfg2) (s, sl, changed, ws) => old.tname2.RenderWidgets cfg2 ws,
-                           ReadWidgets = fn (s, sl, changed, ws) =>
+                       ++ {Insert =
+                             fn r (k1s, aux) =>
+                                old.tname2.Insert r aux;
+                                List.appi (fn i (k1, others) =>
+                                              @Sql.easy_insert ({colR1 = _, colR2 = _, SeqNum = _} ++ injs)
+                                               (@Folder.cons [colR1] [_] !
+                                                 (@Folder.cons [colR2] [_] !
+                                                   (@Folder.cons [#SeqNum] [_] !
+                                                     (@Folder.mp fl))))
+                                               rel ({colR1 = k1, colR2 = r.col2, SeqNum = i} ++ others)) k1s,
+                             Update =
+                             fn k r (k1s, aux) =>
+                                old.tname2.Update k r aux;
+                                dml (DELETE FROM rel
+                                     WHERE t.{colR2} = {[r.col2]});
+                                List.appi (fn i (k1, others) =>
+                                              @Sql.easy_insert ({colR1 = _, colR2 = _, SeqNum = _} ++ injs)
+                                               (@Folder.cons [colR1] [_] !
+                                                 (@Folder.cons [colR2] [_] !
+                                                   (@Folder.cons [#SeqNum] [_] !
+                                                     (@Folder.mp fl))))
+                                               rel ({colR1 = k1, colR2 = r.col2, SeqNum = i} ++ others)) k1s,
+                             Delete = fn k2 => dml (DELETE FROM rel WHERE t.{colR2} = {[k2]}),
+                             Config =
+                             let
+                                 val tab = old.tname1.Table
+                             in
+                                 keys <- List.mapQuery (SELECT DISTINCT tab.{col1}
+                                                        FROM tab
+                                                        ORDER BY tab.{col1})
+                                                       (fn r => r.Tab.col1);
+                                 wcfg <- @Monad.mapR _ [Widget.t'] [thd3]
+                                          (fn [nm ::_] [p ::_] (w : Widget.t' p) => @Widget.configure w)
+                                          fl ws;
+                                 cfg <- old.tname2.Config;
+                                 return (wcfg, keys, cfg)
+                             end,
+                             Auxiliary = fn k2 row =>
+                                 keys <- List.mapQuery (SELECT rel.{colR1}, rel.{{map fst3 others}}
+                                                        FROM rel
+                                                        WHERE rel.{colR2} = {[k2]}
+                                                        ORDER BY rel.SeqNum)
+                                                       (fn r => (r.Rel.colR1, r.Rel -- colR1));
+                                 aux <- old.tname2.Auxiliary k2 row;
+                                 return (keys, aux),
+                             Render = fn entry (k1s, aux) r =>
+                                         <xml>
+                                           {old.tname2.Render entry aux r}
+                                           <tr>
+                                             <th>{[lab2]}</th>
+                                             <td>{List.mapX (fn (k1, others) => <xml>{entry (make [tname1] k1) (show k1)}
+                                               {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
+                                                 (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (v : p.1) =>
+                                                     <xml>- {[label]}: {[@Widget.asValue w v]}</xml>) fl labels ws others}
+                                               <br/></xml>) k1s}</td>
+                                           </tr>
+                                         </xml>,
+                             FreshWidgets = fn (cfg0, _, cfg) =>
+                                s <- source "";
+                                ws0 <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) => @Widget.create w cfg)
+                                        fl ws cfg0;
+                                sl <- source [];
+                                changed <- source False;
+                                ws <- old.tname2.FreshWidgets cfg;
+                                return (s, ws0, sl, changed, ws),
+                             WidgetsFrom = fn (cfg0, _, cfg) r (keys, aux) =>
+                                s <- source "";
+                                ws0 <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) => @Widget.create w cfg)
+                                        fl ws cfg0;
+                                keys <- List.mapM (fn (k, vs) => vs <- source vs; notEditing <- source None; return (k, vs, notEditing)) keys;
+                                sl <- source keys;
+                                changed <- source False;
+                                ws <- old.tname2.WidgetsFrom cfg r aux;
+                                return (s, ws0, sl, changed, ws),
+                             RenderWidgets = fn (cfgs, cfg1, cfg2) (s, ws0, sl, changed, wso) =>
+                                                <xml>
+                                                  {old.tname2.RenderWidgets cfg2 wso}
+                                                  <div class="form-group">
+                                                    <label class="control-label">{[lab2]}</label>
+                                                    <div class="input-group">
+                                                      {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
+                                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (s : p.2) =>
+                                                            <xml>{[label]}: {@Widget.asWidget w s None}</xml>)
+                                                        fl labels ws ws0}
+                                                    </div>
+                                                    <div class="input-group">
+                                                      <span class="input-group-btn">
+                                                        <button class="btn"
+                                                                onclick={fn _ =>
+                                                                            sv <- get s;
+                                                                            if sv = "" then
+                                                                                return ()
+                                                                            else
+                                                                                set changed False;
+                                                                                sv <- return (readError sv);
+                                                                                slv <- get sl;
+                                                                                if List.exists (fn (sv', _, _) => sv' = sv) slv then
+                                                                                    return ()
+                                                                                else
+                                                                                    vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                           (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                               current (@Widget.value w s))
+                                                                                           fl ws ws0;
+                                                                                    vs <- source vs;
+                                                                                    notEditing <- source None;
+                                                                                    set sl (List.sort (fn x y => x.1 > y.1) ((sv, vs, notEditing) :: slv))}>Select:</button>
+                                                      </span>
+                                                      <cselect class="form-control" source={s} onchange={set changed True}>
+                                                        <coption/>
+                                                        {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
+                                                      </cselect> 
+                                                    </div>
+                                                    <table>
+                                                      <tr><td/>
+                                                        {@mapX [fn _ => string] [tr]
+                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) =>
+                                                              <xml><th>{[label]}</th></xml>)
+                                                          fl labels}
+                                                      <td/></tr>
+                                                      <dyn signal={slv <- signal sl;
+                                                                   return (List.mapX (fn (k2, vs, ws0) => <xml>
+                                                                     <dyn signal={vals <- signal vs;
+                                                                                  wids <- signal ws0;
+                                                                                  case wids of
+                                                                                      None => return <xml>
+                                                                                        <tr>
+                                                                                          <td>{[k2]}</td>
+                                                                                          {@mapX2 [Widget.t'] [fst3] [tr]
+                                                                                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                                                                                                <xml><td>{[@Widget.asValue w v]}</td></xml>)
+                                                                                            fl ws vals}
+                                                                                          <td><button class="btn"
+                                                                                                      onclick={fn _ =>
+                                                                                                                  wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                           (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                               @Widget.initialize w cfg v)
+                                                                                                                           fl ws cfgs vals;
+                                                                                                                  set ws0 (Some wids)}>
+                                                                                            <span class="glyphicon glyphicon-pencil"/>
+                                                                                          </button></td>
+                                                                                          <td><button class="btn"
+                                                                                                      onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
+                                                                                            <span class="glyphicon glyphicon-remove"/>
+                                                                                          </button></td>
+                                                                                        </tr>
+                                                                                      </xml>
+                                                                                    | Some wids => return <xml>
+                                                                                      <tr>
+                                                                                        <td>{[k2]}</td>
+                                                                                        {@mapX2 [Widget.t'] [snd3] [tr]
+                                                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
+                                                                                              <xml><td>{@Widget.asWidget w s None}</td></xml>)
+                                                                                          fl ws wids}
+                                                                                        <td><button class="btn"
+                                                                                                    onclick={fn _ =>
+                                                                                                                vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                                            current (@Widget.value w s))
+                                                                                                                        fl ws wids;
+                                                                                                                set vs vsv;
+                                                                                                                set ws0 None}>
+                                                                                          <span class="glyphicon glyphicon-check"/>
+                                                                                        </button></td>
+                                                                                        <td><button class="btn"
+                                                                                                    onclick={fn _ => set ws0 None}>
+                                                                                          <span class="glyphicon glyphicon-remove"/>
+                                                                                        </button></td>
+                                                                                      </tr>
+                                                                                    </xml>}/>
+                                                                   </xml>) slv)}/>
+                                                    </table>
+                                                </div>
+                                              </xml>,
+                           ReadWidgets = fn (s, _, sl, changed, ws) =>
                                             slv <- signal sl;
+                                            slv <- List.mapM (fn (k2, vs, _) => vs <- signal vs; return (k2, vs)) slv;
+                                            chd <- signal changed;
                                             (wsv, aux, err) <- old.tname2.ReadWidgets ws;
-                                            return (wsv, (slv, aux), err)}}
+                                            return (wsv, (slv, aux),
+                                                    if chd then
+                                                        let
+                                                            val msg = "The dropdown for \"" ^ lab1 ^ "\" has changed, but the new value hasn't been selected by pushing the adjacent button."
+                                                        in
+                                                            case err of
+                                                                None => Some msg
+                                                              | Some err => Some (err ^ "\n" ^ msg)
+                                                        end
+                                                    else
+                                                        err)}}
 
 type custom1 stash t = t
 type custom2 stash t = source string * t
@@ -929,13 +1335,13 @@ fun custom [full ::: {Type}]
                                    None => <xml></xml>
                                  | Some aux1 => render aux1}
                             </xml>,
-                            FreshWidgets =
+                            FreshWidgets = fn cfg =>
                                s <- source "";
-                               ws <- old.tname.FreshWidgets;
+                               ws <- old.tname.FreshWidgets cfg;
                                return (s, ws),
-                            WidgetsFrom = fn r (_, aux2) =>
+                            WidgetsFrom = fn cfg r (_, aux2) =>
                                s <- source (show r.col);
-                               ws <- old.tname.WidgetsFrom r aux2;
+                               ws <- old.tname.WidgetsFrom cfg r aux2;
                                return (s, ws),
                             RenderWidgets = fn cfg (s, ws) =>
                                                <xml>
@@ -1071,7 +1477,7 @@ functor Make(M : sig
         bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
           (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) () r =>
               cfg <- r.Config;
-              ws <- r.FreshWidgets;
+              ws <- r.FreshWidgets cfg;
               return <xml>
                 <h1>Create {[r.Title]}</h1>
 
@@ -1127,7 +1533,7 @@ functor Make(M : sig
                                            {if mayUpdate then
                                                 <xml>
                                                   <button class="btn btn-primary"
-                                                          onclick={fn _ => ws <- r.WidgetsFrom row aux; set est (Editing (row, ws))}>Edit</button>
+                                                          onclick={fn _ => ws <- r.WidgetsFrom cfg row aux; set est (Editing (row, ws))}>Edit</button>
                                                 </xml>
                                             else
                                                 <xml/>}

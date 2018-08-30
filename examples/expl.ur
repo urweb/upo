@@ -20,7 +20,8 @@ table hasPower : { Frog : string,
   CONSTRAINT Power FOREIGN KEY Power REFERENCES superPower(Power)
 
 table protector : { SwampName : string,
-                    Nickname : string}
+                    Nickname : string,
+                    Protectiness : int}
   PRIMARY KEY (SwampName, Nickname),
   CONSTRAINT SwampName FOREIGN KEY SwampName REFERENCES swamp(SwampName),
   CONSTRAINT Nickname FOREIGN KEY Nickname REFERENCES frog(Nickname)
@@ -57,8 +58,8 @@ open Make(struct
                       |> text [#Swamp] [#SwampName] "Name"
                       |> text [#Swamp] [#SmellinessLevel] "Smelliness Level"
                       |> foreign [#Frog] [#Swamp] [#Swamp] [#SwampName] "Swamp" "Frogs"
-                      |> manyToMany [#Frog] [#Nickname] [#Nickname] [#Swamp] [#SwampName] [#SwampName] protector "Protecting" "Protectors"
-                      |> manyToManyOrdered [#Swamp] [#SwampName] [#RestaurantChain] [#Chain] favoriteFoodOptions "Favorite Food Options" "Swamps"
+                      |> manyToMany [#Frog] [#Nickname] [#Nickname] [#Swamp] [#SwampName] [#SwampName] protector "Protecting" "Protectors" {Protectiness = "Protectiness"}
+                      |> manyToManyOrdered [#Swamp] [#SwampName] [#SwampName] [#RestaurantChain] [#Chain] [#Chain] favoriteFoodOptions "Favorite Food Options" "Swamps" {}
 
                       |> text [#SuperPower] [#Power] "Power"
                       |> text [#SuperPower] [#Description] "Description"
