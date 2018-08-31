@@ -616,19 +616,23 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                             (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
                                                                                                 <xml><td>{[@Widget.asValue w v]}</td></xml>)
                                                                                             fl ws vals}
-                                                                                          <td><button class="btn"
-                                                                                                      onclick={fn _ =>
-                                                                                                                  wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
-                                                                                                                           (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
-                                                                                                                               @Widget.initialize w cfg v)
-                                                                                                                           fl ws cfgs vals;
-                                                                                                                  set ws0 (Some wids)}>
-                                                                                            <span class="glyphicon glyphicon-pencil"/>
-                                                                                          </button></td>
-                                                                                          <td><button class="btn"
-                                                                                                      onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
-                                                                                            <span class="glyphicon glyphicon-remove"/>
-                                                                                          </button></td>
+                                                                                          {if @Row.isEmpty fl then
+                                                                                               <xml></xml>
+                                                                                           else <xml>
+                                                                                             <td><button class="btn"
+                                                                                                         onclick={fn _ =>
+                                                                                                                     wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                              (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                                  @Widget.initialize w cfg v)
+                                                                                                                              fl ws cfgs vals;
+                                                                                                                     set ws0 (Some wids)}>
+                                                                                               <span class="glyphicon glyphicon-pencil"/>
+                                                                                             </button></td>
+                                                                                             <td><button class="btn"
+                                                                                                         onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
+                                                                                               <span class="glyphicon glyphicon-remove"/>
+                                                                                             </button></td>
+                                                                                           </xml>}
                                                                                         </tr>
                                                                                       </xml>
                                                                                     | Some wids => return <xml>
@@ -807,19 +811,23 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                             (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
                                                                                                 <xml><td>{[@Widget.asValue w v]}</td></xml>)
                                                                                             fl ws vals}
-                                                                                          <td><button class="btn"
-                                                                                                      onclick={fn _ =>
-                                                                                                                  wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
-                                                                                                                           (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
-                                                                                                                               @Widget.initialize w cfg v)
-                                                                                                                           fl ws cfgs vals;
-                                                                                                                  set ws0 (Some wids)}>
-                                                                                            <span class="glyphicon glyphicon-pencil"/>
-                                                                                          </button></td>
-                                                                                          <td><button class="btn"
-                                                                                                      onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
-                                                                                            <span class="glyphicon glyphicon-remove"/>
-                                                                                          </button></td>
+                                                                                          {if @Row.isEmpty fl then
+                                                                                               <xml></xml>
+                                                                                           else <xml>
+                                                                                             <td><button class="btn"
+                                                                                                         onclick={fn _ =>
+                                                                                                                     wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                              (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                                  @Widget.initialize w cfg v)
+                                                                                                                              fl ws cfgs vals;
+                                                                                                                     set ws0 (Some wids)}>
+                                                                                               <span class="glyphicon glyphicon-pencil"/>
+                                                                                             </button></td>
+                                                                                             <td><button class="btn"
+                                                                                                         onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
+                                                                                               <span class="glyphicon glyphicon-remove"/>
+                                                                                             </button></td>
+                                                                                           </xml>}
                                                                                         </tr>
                                                                                       </xml>
                                                                                     | Some wids => return <xml>
@@ -1051,20 +1059,24 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                                                                 | _ => error <xml>Explorer: impossible splitAt</xml>
                                                                                                                           end}>
                                                                                                    <span class="glyphicon glyphicon-arrow-down"/>
-                                                                                                 </button></xml>}</td>
-                                                                                        <td><button class="btn"
-                                                                                                    onclick={fn _ =>
-                                                                                                                wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
-                                                                                                                         (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
-                                                                                                                             @Widget.initialize w cfg v)
-                                                                                                                         fl ws cfgs vals;
-                                                                                                                set ws0 (Some wids)}>
-                                                                                                      <span class="glyphicon glyphicon-pencil"/>
-                                                                                        </button></td>
-                                                                                        <td><button class="btn"
-                                                                                                    onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
-                                                                                          <span class="glyphicon glyphicon-remove"/>
-                                                                                        </button></td>
+                                                                                        </button></xml>}</td>
+                                                                                        {if @Row.isEmpty fl then
+                                                                                             <xml></xml>
+                                                                                         else <xml>
+                                                                                           <td><button class="btn"
+                                                                                                       onclick={fn _ =>
+                                                                                                                   wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                                @Widget.initialize w cfg v)
+                                                                                                                            fl ws cfgs vals;
+                                                                                                                   set ws0 (Some wids)}>
+                                                                                                         <span class="glyphicon glyphicon-pencil"/>
+                                                                                           </button></td>
+                                                                                           <td><button class="btn"
+                                                                                                       onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
+                                                                                             <span class="glyphicon glyphicon-remove"/>
+                                                                                           </button></td>
+                                                                                         </xml>}
                                                                                       </tr></xml>
                                                                                     | Some wids => return <xml>
                                                                                       <tr>
@@ -1266,20 +1278,24 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                           (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
                                                                                               <xml><td>{@Widget.asWidget w s None}</td></xml>)
                                                                                           fl ws wids}
-                                                                                        <td><button class="btn"
-                                                                                                    onclick={fn _ =>
-                                                                                                                vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
-                                                                                                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
-                                                                                                                            current (@Widget.value w s))
-                                                                                                                        fl ws wids;
-                                                                                                                set vs vsv;
-                                                                                                                set ws0 None}>
-                                                                                          <span class="glyphicon glyphicon-check"/>
-                                                                                        </button></td>
-                                                                                        <td><button class="btn"
-                                                                                                    onclick={fn _ => set ws0 None}>
-                                                                                          <span class="glyphicon glyphicon-remove"/>
-                                                                                        </button></td>
+                                                                                        {if @Row.isEmpty fl then
+                                                                                             <xml></xml>
+                                                                                         else <xml>
+                                                                                           <td><button class="btn"
+                                                                                                       onclick={fn _ =>
+                                                                                                                   vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                                           (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                                               current (@Widget.value w s))
+                                                                                                                           fl ws wids;
+                                                                                                                   set vs vsv;
+                                                                                                                   set ws0 None}>
+                                                                                             <span class="glyphicon glyphicon-check"/>
+                                                                                           </button></td>
+                                                                                           <td><button class="btn"
+                                                                                                       onclick={fn _ => set ws0 None}>
+                                                                                             <span class="glyphicon glyphicon-remove"/>
+                                                                                           </button></td>
+                                                                                         </xml>}
                                                                                       </tr>
                                                                                     </xml>}/>
                                                                    </xml>) slv)}/>

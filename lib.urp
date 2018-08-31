@@ -13,6 +13,7 @@ $/string
 $/monad
 $/option
 $/datetime
+row
 record
 variant
 sql
