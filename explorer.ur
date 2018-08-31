@@ -536,7 +536,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                              <td>{List.mapX (fn (k2, others) => <xml>{entry (make [tname2] k2) (show k2)}
                                                {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
                                                  (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (v : p.1) =>
-                                                     <xml>- {[label]}: {[@Widget.asValue w v]}</xml>) fl labels ws others}
+                                                     <xml> - {[label]}: {[@Widget.asValue w v]}</xml>) fl labels ws others}
                                                <br/></xml>) k2s}</td>
                                            </tr>
                                          </xml>,
