@@ -13,6 +13,22 @@ val parse : fs ::: {Type}
             -> string
             -> list $fs
 
+(* Let's expose all that as a UI. *)
+
+functor Import1(M : sig
+                    con fs :: {Type}
+                    con cs :: {{Unit}}
+                    val tab : sql_table fs cs
+
+                    val injs : $(map sql_injectable fs)
+                    val reads : $(map read fs)
+                    val fl : folder fs
+                    val labels : $(map (fn _ => string) fs)
+
+                    val skipHeaderLines : int
+                    val mayAccess : transaction bool
+                end) : Ui.S0
+
 (* And we can also generate CSV data: *)
 functor Generate1(M : sig
                       con fs :: {Type}

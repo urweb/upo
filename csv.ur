@@ -55,6 +55,63 @@ fun importTable [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $(map read 
 
 open Bootstrap4
 
+functor Import1(M : sig
+                    con fs :: {Type}
+                    con cs :: {{Unit}}
+                    val tab : sql_table fs cs
+
+                    val injs : $(map sql_injectable fs)
+                    val reads : $(map read fs)
+                    val fl : folder fs
+                    val labels : $(map (fn _ => string) fs)
+
+                    val skipHeaderLines : int
+                    val mayAccess : transaction bool
+                end) = struct
+
+    open M
+
+    type a = source string
+
+    val create = source ""
+
+    fun onload _ = return ()
+
+    fun import s =
+        ma <- mayAccess;
+        if not ma then
+            error <xml>Access denied</xml>
+        else
+           @importTable injs reads fl tab skipHeaderLines s
+                 
+    fun render _ s = <xml>
+      <p>Please copy and paste the CSV data here, with each line in the format:
+        {case @foldR [fn _ => string] [fn _ => option xbody]
+               (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (label : string) (ob : option xbody) =>
+                   Some (case ob of
+                             None => <xml><i>{[label]}</i></xml>
+                           | Some ob => <xml><i>{[label]}</i>, {ob}</xml>))
+               None fl labels of
+             None => <xml></xml>
+           | Some ob => ob}</p>
+
+
+        <ctextarea source={s} cols={20} class="form-control"/>
+        
+        <button value="Import"
+                class="btn btn-primary"
+                onclick={fn _ =>
+                            csv <- get s;
+                            rpc (import csv);
+                            set s ""}/>
+    </xml>
+
+    val ui = {Create = create,
+              Onload = onload,
+              Render = render}
+
+end
+     
 functor Generate1(M : sig
                       con fs :: {Type}
                       con tab :: Name
