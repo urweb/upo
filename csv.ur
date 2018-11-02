@@ -3,16 +3,49 @@ fun csvFold [fs] [acc] (f : $fs -> acc -> acc)
     let
         fun doLine line acc =
             let
-                fun fields (line, acc) =
-                    case String.split line #"," of
+                fun readStringLiteral line acc =
+                    case String.split line #"\"" of
+                        None => error <xml>Quoted CSV field value is missing a closing double quote.</xml>
+                      | Some (chars, line') =>
+                        if String.length line' > 0 && String.sub line' 0 = #"\"" then
+                            readStringLiteral (String.suffix line' 1) (acc ^ "\"")
+                        else
+                            (acc ^ chars, line')
+                
+                fun fields line justReadQuoted acc =
+                    case String.msplit {Haystack = line, Needle = ",\""} of
                         None =>
                         if line = "" then
                             acc
                         else
                             line :: acc
-                      | Some (field, line') => fields (line', field :: acc)
+                      | Some (field, #",", line') =>
+                        let
+                            val acc =
+                                if justReadQuoted then
+                                    if String.all Char.isSpace field then
+                                        acc
+                                    else
+                                        error <xml>There are extra characters after a quoted CSV field value.</xml>
+                                else
+                                    field :: acc
+                        in
+                            fields line' False acc
+                        end
+                      | Some (betterBeWhitespace, #"\"", line') =>
+                        if not (String.all Char.isSpace betterBeWhitespace) then
+                            error <xml>CSV file contains other nonspace characters before first double quote of a field value.</xml>
+                        else
+                            let
+                                val (lit, line') = readStringLiteral line' ""
+                            in
+                                fields line' True (lit :: acc)
+                            end
+                      | Some _ => error <xml>CSV: impossible return from <tt>String.msplit</tt>!</xml>
 
-                val (fields, acc') =
+                val fields = fields line False []
+
+                val (fields', acc') =
                     @foldR [read] [fn r => list string * $r]
                      (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : read t)
                                   (fields, r) =>
@@ -20,10 +53,10 @@ fun csvFold [fs] [acc] (f : $fs -> acc -> acc)
                              [] => error <xml>Not enough fields in CSV line</xml>
                            | token :: fields' =>
                              (fields', {nm = readError (String.trim token)} ++ r))
-                     (fields (line, []), {}) fl reads
+                     (fields, {}) fl reads
             in
-                if List.length fields <> 0 then
-                    error <xml>Too many commas in CSV input ({[List.length fields]} unmatched)</xml>
+                if List.length fields' <> 0 then
+                    error <xml>Too many commas in CSV input ({[List.length fields']} unmatched) ({[fields]})</xml>
                 else
                     f acc' acc
             end
