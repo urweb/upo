@@ -57,6 +57,8 @@ open Make(struct
                                                            val lab1 = "Protecting"
                                                            val lab2 = "Protectors"
                                                            val labels = {Protectiness = "Protectiness"}
+
+                                                           fun authorize _ _ = return True
                                                        end)
                           
               val t = none

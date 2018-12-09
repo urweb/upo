@@ -252,6 +252,8 @@ functor ManyToManyWithFile(M : sig
                                val ws : $(map Widget.t' others)
                                val injs : $(map sql_injectable (map fst3 others))
                                val labels : $(map (fn _ => string) others)
+
+                               val authorize : key1 -> key2 -> transaction bool
                            end) : sig
     type manyToManyWithFile11
     type manyToManyWithFile12

@@ -926,6 +926,8 @@ functor ManyToManyWithFile(M : sig
                                val ws : $(map Widget.t' others)
                                val injs : $(map sql_injectable (map fst3 others))
                                val labels : $(map (fn _ => string) others)
+
+                               val authorize : key1 -> key2 -> transaction bool
                            end) = struct
     open M
 
@@ -937,13 +939,17 @@ functor ManyToManyWithFile(M : sig
     type manyToManyWithFile23 = list (key1 * $(map fst3 others) * option AjaxUpload.handle) * impl23
 
     fun download k1 k2 =
-        r <- oneRow1 (SELECT rel.FileName, rel.FileType, rel.FileData
-                      FROM rel
-                      WHERE rel.{colR1} = {[k1]}
-                        AND rel.{colR2} = {[k2]});
-        setHeader (blessResponseHeader "Content-Disposition")
-                  ("attachment; filename=" ^ r.FileName);
-        returnBlob r.FileData (blessMime r.FileType)
+        ok <- authorize k1 k2;
+        if not ok then
+            error <xml>Access denied</xml>
+        else
+            r <- oneRow1 (SELECT rel.FileName, rel.FileType, rel.FileData
+                          FROM rel
+                          WHERE rel.{colR1} = {[k1]}
+                            AND rel.{colR2} = {[k2]});
+            setHeader (blessResponseHeader "Content-Disposition")
+                      ("attachment; filename=" ^ r.FileName);
+            returnBlob r.FileData (blessMime r.FileType)
                                 
     val make (old : t ([tname1 = key1, tname2 = key2] ++ full)
                       ([tname1 = (key1, [col1 = key1] ++ cols1, colsDone1, cstrs1, impl11, impl12, impl13),
