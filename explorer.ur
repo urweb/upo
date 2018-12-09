@@ -15,7 +15,7 @@ type t1 (full :: {Type}) (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type 
       Render : (variant full -> string -> xbody) -> p.7 -> $p.2 -> xtable,
       FreshWidgets : p.5 -> transaction p.6,
       WidgetsFrom : p.5 -> $p.2 -> p.7 -> transaction p.6,
-      RenderWidgets : p.5 -> p.6 -> xbody,
+      RenderWidgets : option p.1 -> p.5 -> p.6 -> xbody,
       ReadWidgets : p.6 -> signal ($p.3 * p.7 * option string (* Error message, if something is amiss *)),
       KeyOf : $p.2 -> p.1,
       ForIndex : transaction (list (p.1 * xbody))}
@@ -59,7 +59,7 @@ fun one [full ::: {Type}]
               Render = fn _ _ _ => <xml></xml>,
               FreshWidgets = fn () => return (),
               WidgetsFrom = fn () _ _ => return (),
-              RenderWidgets = fn () () => <xml></xml>,
+              RenderWidgets = fn _ () () => <xml></xml>,
               ReadWidgets = fn () => return ((), (), None),
               KeyOf = fn r => r.key,
               ForIndex = case isty of
@@ -98,7 +98,7 @@ fun two [full ::: {Type}]
               Render = fn _ _ _ => <xml></xml>,
               FreshWidgets = fn () => return (),
               WidgetsFrom = fn () _ _ => return (),
-              RenderWidgets = fn () () => <xml></xml>,
+              RenderWidgets = fn _ () () => <xml></xml>,
               ReadWidgets = fn () => return ((), (), None),
               KeyOf = fn r => (r.key1, r.key2),
               ForIndex = case isty of
@@ -141,9 +141,9 @@ fun text [full ::: {Type}]
                                s <- source (show r.col);
                                ws <- old.tname.WidgetsFrom cfg r aux;
                                return (s, ws),
-                            RenderWidgets = fn cfg (s, ws) =>
+                            RenderWidgets = fn k cfg (s, ws) =>
                                                <xml>
-                                                 {old.tname.RenderWidgets cfg ws}
+                                                 {old.tname.RenderWidgets k cfg ws}
                                                  <div class="form-group">
                                                    <label class="control-label">{[lab]}</label>
                                                    <ctextbox class="form-control" source={s}/>
@@ -182,9 +182,9 @@ fun hyperref [full ::: {Type}]
                                s <- source (show r.col);
                                ws <- old.tname.WidgetsFrom cfg r aux;
                                return (s, ws),
-                            RenderWidgets = fn cfg (s, ws) =>
+                            RenderWidgets = fn k cfg (s, ws) =>
                                                <xml>
-                                                 {old.tname.RenderWidgets cfg ws}
+                                                 {old.tname.RenderWidgets k cfg ws}
                                                  <div class="form-group">
                                                    <label class="control-label">{[lab]}</label>
                                                    <ctextbox class="form-control" source={s}/>
@@ -223,9 +223,9 @@ fun image [full ::: {Type}]
                                s <- source (show r.col);
                                ws <- old.tname.WidgetsFrom cfg r aux;
                                return (s, ws),
-                            RenderWidgets = fn cfg (s, ws) =>
+                            RenderWidgets = fn k cfg (s, ws) =>
                                                <xml>
-                                                 {old.tname.RenderWidgets cfg ws}
+                                                 {old.tname.RenderWidgets k cfg ws}
                                                  <div class="form-group">
                                                    <label class="control-label">{[lab]}</label>
                                                    <ctextbox class="form-control" source={s}/>
@@ -262,9 +262,9 @@ fun textOpt [full ::: {Type}]
                                s <- source (show r.col);
                                ws <- old.tname.WidgetsFrom cfg r aux;
                                return (s, ws),
-                            RenderWidgets = fn cfg (s, ws) =>
+                            RenderWidgets = fn k cfg (s, ws) =>
                                                <xml>
-                                                 {old.tname.RenderWidgets cfg ws}
+                                                 {old.tname.RenderWidgets k cfg ws}
                                                  <div class="form-group">
                                                    <label class="control-label">{[lab]}</label>
                                                    <ctextbox class="form-control" source={s}/>
@@ -307,9 +307,9 @@ fun checkbox [full ::: {Type}]
                                s <- source r.col;
                                ws <- old.tname.WidgetsFrom cfg r aux;
                                return (s, ws),
-                            RenderWidgets = fn cfg (s, ws) =>
+                            RenderWidgets = fn k cfg (s, ws) =>
                                                <xml>
-                                                 {old.tname.RenderWidgets cfg ws}
+                                                 {old.tname.RenderWidgets k cfg ws}
                                                  <div class="form-group">
                                                    <label class="control-label">{[lab]}</label>
                                                    <ccheckbox class="form-control" source={s}/>
@@ -350,9 +350,9 @@ fun htmlbox [full ::: {Type}]
                                   s <- @Widget.initialize Widget.htmlbox () r.col;
                                   ws <- old.tname.WidgetsFrom cfg r aux;
                                   return (s, ws),
-                               RenderWidgets = fn cfg (s, ws) =>
+                               RenderWidgets = fn k cfg (s, ws) =>
                                                   <xml>
-                                                    {old.tname.RenderWidgets cfg ws}
+                                                    {old.tname.RenderWidgets k cfg ws}
                                                     <div class="form-group">
                                                       <label class="control-label">{[lab]}</label>
                                                       {@Widget.asWidget Widget.htmlbox s None}
@@ -412,9 +412,9 @@ fun foreign [full ::: {Type}]
                                s <- source (show r.col);
                                ws <- old.tname.WidgetsFrom cfg r aux;
                                return (s, ws),
-                            RenderWidgets = fn (cfg1, cfg2) (s, ws) =>
+                            RenderWidgets = fn k (cfg1, cfg2) (s, ws) =>
                                                <xml>
-                                                 {old.tname.RenderWidgets cfg2 ws}
+                                                 {old.tname.RenderWidgets k cfg2 ws}
                                                  <div class="form-group">
                                                    <label class="control-label">{[lab]}</label>
                                                    <cselect class="form-control" source={s}>
@@ -559,9 +559,9 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                 changed <- source False;
                                 ws <- old.tname1.WidgetsFrom cfg r aux;
                                 return (s, ws0, sl, changed, ws),
-                             RenderWidgets = fn (cfgs, cfg1, cfg2) (s, ws0, sl, changed, wso) =>
+                             RenderWidgets = fn k (cfgs, cfg1, cfg2) (s, ws0, sl, changed, wso) =>
                                                 <xml>
-                                                  {old.tname1.RenderWidgets cfg2 wso}
+                                                  {old.tname1.RenderWidgets k cfg2 wso}
                                                   <div class="form-group">
                                                     <label class="control-label">{[lab1]}</label>
                                                     <div class="input-group">
@@ -754,9 +754,9 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                 changed <- source False;
                                 ws <- old.tname2.WidgetsFrom cfg r aux;
                                 return (s, ws0, sl, changed, ws),
-                             RenderWidgets = fn (cfgs, cfg1, cfg2) (s, ws0, sl, changed, wso) =>
+                             RenderWidgets = fn k (cfgs, cfg1, cfg2) (s, ws0, sl, changed, wso) =>
                                                 <xml>
-                                                  {old.tname2.RenderWidgets cfg2 wso}
+                                                  {old.tname2.RenderWidgets k cfg2 wso}
                                                   <div class="form-group">
                                                     <label class="control-label">{[lab2]}</label>
                                                     <div class="input-group">
@@ -935,7 +935,16 @@ functor ManyToManyWithFile(M : sig
     type manyToManyWithFile21 = $(map thd3 others) * list key1 * impl21
     type manyToManyWithFile22 = source string * $(map snd3 others) * source (option AjaxUpload.handle) * source (list (key1 * source ($(map fst3 others) * option AjaxUpload.handle) * source (option ($(map snd3 others) * source (option AjaxUpload.handle))))) * source bool * impl22
     type manyToManyWithFile23 = list (key1 * $(map fst3 others) * option AjaxUpload.handle) * impl23
-    
+
+    fun download k1 k2 =
+        r <- oneRow1 (SELECT rel.FileName, rel.FileType, rel.FileData
+                      FROM rel
+                      WHERE rel.{colR1} = {[k1]}
+                        AND rel.{colR2} = {[k2]});
+        setHeader (blessResponseHeader "Content-Disposition")
+                  ("attachment; filename=" ^ r.FileName);
+        returnBlob r.FileData (blessMime r.FileType)
+                                
     val make (old : t ([tname1 = key1, tname2 = key2] ++ full)
                       ([tname1 = (key1, [col1 = key1] ++ cols1, colsDone1, cstrs1, impl11, impl12, impl13),
                         tname2 = (key2, [col2 = key2] ++ cols2, colsDone2, cstrs2, impl21, impl22, impl23)] ++ old)) =
@@ -1039,6 +1048,7 @@ functor ManyToManyWithFile(M : sig
                                                      {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
                                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (v : p.1) =>
                                                            <xml> - {[label]}: {[@Widget.asValue w v]}</xml>) fl labels ws others}
+                                                     - <a link={download r.col1 k2}>Download</a>
                                                      <br/></xml>) k2s}
                                                  </td>
                                                </tr>
@@ -1064,9 +1074,9 @@ functor ManyToManyWithFile(M : sig
                                     changed <- source False;
                                     ws <- old.tname1.WidgetsFrom cfg r aux;
                                     return (s, ws0, upl, sl, changed, ws),
-                                 RenderWidgets = fn (cfgs, cfg1, cfg2) (s, ws0, upl, sl, changed, wso) =>
+                                 RenderWidgets = fn k1 (cfgs, cfg1, cfg2) (s, ws0, upl, sl, changed, wso) =>
                                                     <xml>
-                                                      {old.tname1.RenderWidgets cfg2 wso}
+                                                      {old.tname1.RenderWidgets k1 cfg2 wso}
                                                       <div class="form-group">
                                                         <label class="control-label">{[lab1]}</label>
                                                         <div class="input-group">
@@ -1131,7 +1141,9 @@ functor ManyToManyWithFile(M : sig
                                                                                                 (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
                                                                                                     <xml><td>{[@Widget.asValue w v]}</td></xml>)
                                                                                                 fl ws vals}
-                                                                                              <td>File</td>
+                                                                                              <td>{case k1 of
+                                                                                                       None => <xml></xml>
+                                                                                                     | Some k1 => <xml><a link={download k1 k2}>File</a></xml>}</td>
                                                                                               {if @Row.isEmpty fl then
                                                                                                    <xml></xml>
                                                                                                else <xml>
@@ -1301,6 +1313,7 @@ functor ManyToManyWithFile(M : sig
                                                      {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
                                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (v : p.1) =>
                                                            <xml> - {[label]}: {[@Widget.asValue w v]}</xml>) fl labels ws others}
+                                                     - <a link={download k1 r.col2}>Download</a>
                                                      <br/></xml>) k1s}
                                                  </td>
                                                </tr>
@@ -1326,9 +1339,9 @@ functor ManyToManyWithFile(M : sig
                                     changed <- source False;
                                     ws <- old.tname2.WidgetsFrom cfg r aux;
                                     return (s, ws0, upl, sl, changed, ws),
-                                 RenderWidgets = fn (cfgs, cfg1, cfg2) (s, ws0, upl, sl, changed, wso) =>
+                                 RenderWidgets = fn k2 (cfgs, cfg1, cfg2) (s, ws0, upl, sl, changed, wso) =>
                                                     <xml>
-                                                      {old.tname2.RenderWidgets cfg2 wso}
+                                                      {old.tname2.RenderWidgets k2 cfg2 wso}
                                                       <div class="form-group">
                                                         <label class="control-label">{[lab2]}</label>
                                                         <div class="input-group">
@@ -1393,7 +1406,9 @@ functor ManyToManyWithFile(M : sig
                                                                                                 (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
                                                                                                     <xml><td>{[@Widget.asValue w v]}</td></xml>)
                                                                                                 fl ws vals}
-                                                                                              <td>File</td>
+                                                                                              <td>{case k2 of
+                                                                                                       None => <xml></xml>
+                                                                                                     | Some k2 => <xml><a link={download k1 k2}>File</a></xml>}</td>
                                                                                               {if @Row.isEmpty fl then
                                                                                                    <xml></xml>
                                                                                                else <xml>
@@ -1565,9 +1580,9 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                 changed <- source False;
                                 ws <- old.tname1.WidgetsFrom cfg r aux;
                                 return (s, ws0, sl, changed, ws),
-                             RenderWidgets = fn (cfgs, cfg1, cfg2) (s, ws0, sl, changed, wso) =>
+                             RenderWidgets = fn k (cfgs, cfg1, cfg2) (s, ws0, sl, changed, wso) =>
                                                 <xml>
-                                                  {old.tname1.RenderWidgets cfg2 wso}
+                                                  {old.tname1.RenderWidgets k cfg2 wso}
                                                   <div class="form-group">
                                                     <label class="control-label">{[lab1]}</label>
                                                     <div class="input-group">
@@ -1791,9 +1806,9 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                 changed <- source False;
                                 ws <- old.tname2.WidgetsFrom cfg r aux;
                                 return (s, ws0, sl, changed, ws),
-                             RenderWidgets = fn (cfgs, cfg1, cfg2) (s, ws0, sl, changed, wso) =>
+                             RenderWidgets = fn k (cfgs, cfg1, cfg2) (s, ws0, sl, changed, wso) =>
                                                 <xml>
-                                                  {old.tname2.RenderWidgets cfg2 wso}
+                                                  {old.tname2.RenderWidgets k cfg2 wso}
                                                   <div class="form-group">
                                                     <label class="control-label">{[lab2]}</label>
                                                     <div class="input-group">
@@ -1951,9 +1966,9 @@ fun custom [full ::: {Type}]
                                s <- source (show r.col);
                                ws <- old.tname.WidgetsFrom cfg r aux2;
                                return (s, ws),
-                            RenderWidgets = fn cfg (s, ws) =>
+                            RenderWidgets = fn k cfg (s, ws) =>
                                                <xml>
-                                                 {old.tname.RenderWidgets cfg ws}
+                                                 {old.tname.RenderWidgets k cfg ws}
                                                  <div class="form-group">
                                                    <label class="control-label">{[lab]}</label>
                                                    <ctextbox class="form-control" source={s}/>
@@ -2089,7 +2104,7 @@ functor Make(M : sig
               return <xml>
                 <h1>Create {[r.Title]}</h1>
 
-                {r.RenderWidgets cfg ws}
+                {r.RenderWidgets None cfg ws}
 
                 <button value="Create" class="btn btn-primary"
                         onclick={fn _ =>
@@ -2176,7 +2191,7 @@ functor Make(M : sig
                                                onclick={fn _ => set est (NotEditing (row, aux))}>Cancel</button>
                                      </p>
 
-                                     {r.RenderWidgets cfg ws}
+                                     {r.RenderWidgets (Some k) cfg ws}
                                    </xml>}/>
                   </xml>
               end)
