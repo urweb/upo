@@ -2,5 +2,6 @@ database dbname=upotest
 sql upo.sql
 library ../default
 rewrite url Expl/*
+allow mime *
 
 expl

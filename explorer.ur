@@ -874,6 +874,598 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                     else
                                                         err)}}
 
+functor ManyToManyWithFile(M : sig
+                               con full :: {Type}
+                               con tname1 :: Name
+                               con key1 :: Type
+                               con col1 :: Name
+                               con colR1 :: Name
+                               con cols1 :: {Type}
+                               con colsDone1 :: {Type}
+                               con cstrs1 :: {{Unit}}
+                               con impl11 :: Type
+                               con impl12 :: Type
+                               con impl13 :: Type
+                               con tname2 :: Name
+                               con key2 :: Type
+                               con col2 :: Name
+                               con colR2 :: Name
+                               con cols2 :: {Type}
+                               con colsDone2 :: {Type}
+                               con cstrs2 :: {{Unit}}
+                               con impl21 :: Type
+                               con impl22 :: Type
+                               con impl23 :: Type
+                               con cstrs :: {{Unit}}
+                               con old :: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}
+                               con others :: {(Type * Type * Type)}
+                               constraint [tname1] ~ [tname2]
+                               constraint [tname1, tname2] ~ old
+                               constraint [tname1, tname2] ~ full
+                               constraint [col1] ~ cols1
+                               constraint [col2] ~ cols2
+                               constraint [col1] ~ [col2]
+                               constraint [colR1] ~ [colR2]
+                               constraint others ~ [colR1, colR2]
+                               constraint [FileName, FileType, FileData] ~ [colR1, colR2]
+                               constraint [FileName, FileType, FileData] ~ others
+                               val rel : sql_table ([colR1 = key1, colR2 = key2, FileName = string, FileType = string, FileData = blob] ++ map fst3 others) cstrs
+                               val lab1 : string
+                               val lab2 : string
+                               val eq_key1 : eq key1
+                               val ord_key1 : ord key1
+                               val show_key1 : show key1
+                               val read_key1 : read key1
+                               val inj_key1 : sql_injectable key1
+                               val eq_key2 : eq key2
+                               val ord_key2 : ord key2
+                               val show_key2 : show key2
+                               val read_key2 : read key2
+                               val inj_key2 : sql_injectable key2
+                               val fl : folder others
+                               val ws : $(map Widget.t' others)
+                               val injs : $(map sql_injectable (map fst3 others))
+                               val labels : $(map (fn _ => string) others)
+                           end) = struct
+    open M
+
+    type manyToManyWithFile11 = $(map thd3 others) * list key2 * impl11
+    type manyToManyWithFile12 = source string * $(map snd3 others) * source (option AjaxUpload.handle) * source (list (key2 * source ($(map fst3 others) * option AjaxUpload.handle) * source (option ($(map snd3 others) * source (option AjaxUpload.handle))))) * source bool * impl12
+    type manyToManyWithFile13 = list (key2 * $(map fst3 others) * option AjaxUpload.handle) * impl13
+    type manyToManyWithFile21 = $(map thd3 others) * list key1 * impl21
+    type manyToManyWithFile22 = source string * $(map snd3 others) * source (option AjaxUpload.handle) * source (list (key1 * source ($(map fst3 others) * option AjaxUpload.handle) * source (option ($(map snd3 others) * source (option AjaxUpload.handle))))) * source bool * impl22
+    type manyToManyWithFile23 = list (key1 * $(map fst3 others) * option AjaxUpload.handle) * impl23
+    
+    val make (old : t ([tname1 = key1, tname2 = key2] ++ full)
+                      ([tname1 = (key1, [col1 = key1] ++ cols1, colsDone1, cstrs1, impl11, impl12, impl13),
+                        tname2 = (key2, [col2 = key2] ++ cols2, colsDone2, cstrs2, impl21, impl22, impl23)] ++ old)) =
+        old -- tname1 -- tname2
+            ++ {tname1 = old.tname1
+                             -- #Insert -- #Update -- #Delete -- #Config -- #Auxiliary -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
+                             ++ {Insert =
+                                 fn r (k2s, aux) =>
+                                    old.tname1.Insert r aux;
+                                    List.app (fn (k2, others, uploadO) =>
+                                                 case uploadO of
+                                                     None => error <xml>Can't complete creation process: no file was associated with a connection between {[lab1]} and {[lab2]}.</xml>
+                                                   | Some upload =>
+                                                     res <- AjaxUpload.claim upload;
+                                                     case res of
+                                                         AjaxUpload.NotFound => error <xml>Timeout: it has been too long since you uploaded that file.</xml>
+                                                       | AjaxUpload.Found fr =>
+                                                         case fr.Filename of
+                                                             None => error <xml>No filename associated with upload</xml>
+                                                           | Some fname =>
+                                                             @Sql.easy_insert ({colR1 = _, colR2 = _, FileName = _, FileType = _, FileData = _} ++ injs)
+                                                              (@Folder.cons [colR1] [_] !
+                                                                (@Folder.cons [colR2] [_] !
+                                                                  (@Folder.cons [#FileName] [_] !
+                                                                    (@Folder.cons [#FileType] [_] !
+                                                                      (@Folder.cons [#FileData] [_] !
+                                                                        (@Folder.mp fl))))))
+                                                              rel ({colR1 = r.col1, colR2 = k2, FileName = fname, FileType = fr.MimeType, FileData = fr.Content} ++ others)) k2s,
+                                 Update =
+                                 fn k r (k2s, aux) =>
+                                    old.tname1.Update k r aux;
+                                    whichSurvive <- return (List.foldl (fn (k2, _, _) acc => (WHERE {acc} AND t.{colR2} <> {[k2]})) (WHERE TRUE) k2s);
+                                    dml (DELETE FROM rel
+                                         WHERE t.{colR1} = {[r.col1]}
+                                           AND {whichSurvive});
+                                    List.app (fn (k2, others, uploadO) =>
+                                                 case uploadO of
+                                                     None =>
+                                                     @@Sql.easy_update''
+                                                       [[colR1 = _, colR2 = _]]
+                                                       [map fst3 others]
+                                                       [_]
+                                                       [[FileName = _, FileType = _, FileData = _]]
+                                                       ! !
+                                                       {colR1 = _, colR2 = _}
+                                                       injs
+                                                       (@Folder.cons [colR1] [_] !
+                                                         (@Folder.cons [colR2] [_] !
+                                                           Folder.nil))
+                                                       (@Folder.mp fl)
+                                                       rel {colR1 = r.col1, colR2 = k2} others
+                                                   | Some upload =>
+                                                     dml (DELETE FROM rel
+                                                                 WHERE t.{colR1} = {[r.col1]}
+                                                                   AND t.{colR2} = {[k2]});
+                                                     res <- AjaxUpload.claim upload;
+                                                     case res of
+                                                         AjaxUpload.NotFound => error <xml>Timeout: it has been too long since you uploaded that file.</xml>
+                                                       | AjaxUpload.Found fr =>
+                                                         case fr.Filename of
+                                                             None => error <xml>No filename associated with upload</xml>
+                                                           | Some fname =>
+                                                             @Sql.easy_insert ({colR1 = _, colR2 = _, FileName = _, FileType = _, FileData = _} ++ injs)
+                                                              (@Folder.cons [colR1] [_] !
+                                                                (@Folder.cons [colR2] [_] !
+                                                                  (@Folder.cons [#FileName] [_] !
+                                                                    (@Folder.cons [#FileType] [_] !
+                                                                      (@Folder.cons [#FileData] [_] !
+                                                                        (@Folder.mp fl))))))
+                                                              rel ({colR1 = r.col1, colR2 = k2, FileName = fname, FileType = fr.MimeType, FileData = fr.Content} ++ others)) k2s,
+                                 Delete = fn k1 => dml (DELETE FROM rel WHERE t.{colR1} = {[k1]}),
+                                 Config =
+                                 let
+                                     val tab = old.tname2.Table
+                                 in
+                                     keys <- List.mapQuery (SELECT DISTINCT tab.{col2}
+                                                            FROM tab
+                                                            ORDER BY tab.{col2})
+                                                           (fn r => r.Tab.col2);
+                                     wcfg <- @Monad.mapR _ [Widget.t'] [thd3]
+                                              (fn [nm ::_] [p ::_] (w : Widget.t' p) => @Widget.configure w)
+                                              fl ws;
+                                     cfg <- old.tname1.Config;
+                                     return (wcfg, keys, cfg)
+                                 end,
+                                 Auxiliary = fn k1 row =>
+                                     keys <- List.mapQuery (SELECT rel.{colR2}, rel.{{map fst3 others}}
+                                                            FROM rel
+                                                            WHERE rel.{colR1} = {[k1]}
+                                                            ORDER BY rel.{colR2})
+                                                           (fn r => (r.Rel.colR2, r.Rel -- colR2, None));
+                                     aux <- old.tname1.Auxiliary k1 row;
+                                     return (keys, aux),
+                                 Render = fn entry (k2s, aux) r =>
+                                             <xml>
+                                               {old.tname1.Render entry aux r}
+                                               <tr>
+                                                 <th>{[lab1]}</th>
+                                                 <td>
+                                                   {List.mapX (fn (k2, others, uploadO) => <xml>{entry (make [tname2] k2) (show k2)}
+                                                     {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
+                                                       (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (v : p.1) =>
+                                                           <xml> - {[label]}: {[@Widget.asValue w v]}</xml>) fl labels ws others}
+                                                     <br/></xml>) k2s}
+                                                 </td>
+                                               </tr>
+                                             </xml>,
+                                 FreshWidgets = fn (cfg0, _, cfg) =>
+                                    s <- source "";
+                                    ws0 <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) => @Widget.create w cfg)
+                                            fl ws cfg0;
+                                    upl <- source None;
+                                    sl <- source [];
+                                    changed <- source False;
+                                    ws <- old.tname1.FreshWidgets cfg;
+                                    return (s, ws0, upl, sl, changed, ws),
+                                 WidgetsFrom = fn (cfg0, _, cfg) r (keys, aux) =>
+                                    s <- source "";
+                                    ws0 <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) => @Widget.create w cfg)
+                                            fl ws cfg0;
+                                    upl <- source None;
+                                    keys <- List.mapM (fn (k, vs, _) => vs <- source (vs, None); notEditing <- source None; return (k, vs, notEditing)) keys;
+                                    sl <- source keys;
+                                    changed <- source False;
+                                    ws <- old.tname1.WidgetsFrom cfg r aux;
+                                    return (s, ws0, upl, sl, changed, ws),
+                                 RenderWidgets = fn (cfgs, cfg1, cfg2) (s, ws0, upl, sl, changed, wso) =>
+                                                    <xml>
+                                                      {old.tname1.RenderWidgets cfg2 wso}
+                                                      <div class="form-group">
+                                                        <label class="control-label">{[lab1]}</label>
+                                                        <div class="input-group">
+                                                          {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
+                                                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (s : p.2) =>
+                                                                <xml>{[label]}: {@Widget.asWidget w s None}</xml>)
+                                                            fl labels ws ws0}
+                                                          File: <active code={AjaxUpload.render {SubmitLabel = None,
+                                                                                                 OnBegin = return (),
+                                                                                                 OnSuccess = fn upload => set upl (Some upload),
+                                                                                                 OnError = error <xml>Error uploading file.  Maybe it has an unsupported type?</xml>}}/>
+                                                        </div>
+                                                        <div class="input-group">
+                                                          <span class="input-group-btn">
+                                                            <button class="btn"
+                                                                    onclick={fn _ =>
+                                                                                sv <- get s;
+                                                                                if sv = "" then
+                                                                                    return ()
+                                                                                else
+                                                                                    set changed False;
+                                                                                    sv <- return (readError sv);
+                                                                                    slv <- get sl;
+                                                                                    if List.exists (fn (sv', _, _) => sv' = sv) slv then
+                                                                                        return ()
+                                                                                    else
+                                                                                        uploadO <- get upl;
+                                                                                        case uploadO of
+                                                                                            None => error <xml>You must upload a file first.</xml>
+                                                                                          | Some upload =>
+                                                                                            set upl None;
+                                                                                            vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                   (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                       current (@Widget.value w s))
+                                                                                                   fl ws ws0;
+                                                                                            vs <- source (vs, Some upload);
+                                                                                            notEditing <- source None;
+                                                                                            set sl (List.sort (fn x y => x.1 > y.1) ((sv, vs, notEditing) :: slv))}>Select:</button>
+                                                          </span>
+                                                          <cselect class="form-control" source={s} onchange={set changed True}>
+                                                            <coption/>
+                                                            {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
+                                                          </cselect> 
+                                                        </div>
+                                                        <table>
+                                                          <tr><td/>
+                                                            {@mapX [fn _ => string] [tr]
+                                                              (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) =>
+                                                                  <xml><th>{[label]}</th></xml>)
+                                                              fl labels}
+                                                            <th>File</th>
+                                                          <td/></tr>
+                                                          <dyn signal={slv <- signal sl;
+                                                                       return (List.mapX (fn (k2, vs, ws0) => <xml>
+                                                                         <dyn signal={(vals, _) <- signal vs;
+                                                                                      wids <- signal ws0;
+                                                                                      case wids of
+                                                                                          None => return <xml>
+                                                                                            <tr>
+                                                                                              <td>{[k2]}</td>
+                                                                                              {@mapX2 [Widget.t'] [fst3] [tr]
+                                                                                                (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                                                                                                    <xml><td>{[@Widget.asValue w v]}</td></xml>)
+                                                                                                fl ws vals}
+                                                                                              <td>File</td>
+                                                                                              {if @Row.isEmpty fl then
+                                                                                                   <xml></xml>
+                                                                                               else <xml>
+                                                                                                 <td><button class="btn"
+                                                                                                             onclick={fn _ =>
+                                                                                                                         wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                                  (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                                      @Widget.initialize w cfg v)
+                                                                                                                                  fl ws cfgs vals;
+                                                                                                                         upl <- source None;
+                                                                                                                         set ws0 (Some (wids, upl))}>
+                                                                                                   <span class="glyphicon glyphicon-pencil"/>
+                                                                                                 </button></td>
+                                                                                                 <td><button class="btn"
+                                                                                                             onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
+                                                                                                   <span class="glyphicon glyphicon-remove"/>
+                                                                                                 </button></td>
+                                                                                               </xml>}
+                                                                                            </tr>
+                                                                                          </xml>
+                                                                                        | Some (wids, upl) => return <xml>
+                                                                                          <tr>
+                                                                                            <td>{[k2]}</td>
+                                                                                            {@mapX2 [Widget.t'] [snd3] [tr]
+                                                                                              (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
+                                                                                                  <xml><td>{@Widget.asWidget w s None}</td></xml>)
+                                                                                              fl ws wids}
+                                                                                            <td>
+                                                                                              <active code={AjaxUpload.render {SubmitLabel = None,
+                                                                                                                               OnBegin = return (),
+                                                                                                                               OnSuccess = fn upload => set upl (Some upload),
+                                                                                                                               OnError = error <xml>Error uploading file.  Maybe it has an unsupported type?</xml>}}/>
+                                                                                                                                                                                                                                                                                      </td>
+                                                                                            <td><button class="btn"
+                                                                                                        onclick={fn _ =>
+                                                                                                                    vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                                                current (@Widget.value w s))
+                                                                                                                            fl ws wids;
+                                                                                                                    uploadO <- get upl;
+                                                                                                                    set vs (vsv, uploadO);
+                                                                                                                    set ws0 None}>
+                                                                                              <span class="glyphicon glyphicon-check"/>
+                                                                                            </button></td>
+                                                                                            <td><button class="btn"
+                                                                                                        onclick={fn _ => set ws0 None}>
+                                                                                              <span class="glyphicon glyphicon-remove"/>
+                                                                                            </button></td>
+                                                                                          </tr>
+                                                                                        </xml>}/>
+                                                                       </xml>) slv)}/>
+                                                        </table>
+                                                    </div>
+                                                  </xml>,
+                               ReadWidgets = fn (s, _, _, sl, changed, ws) =>
+                                                slv <- signal sl;
+                                                slv <- List.mapM (fn (k2, vs, _) => (vs, uploadO) <- signal vs; return (k2, vs, uploadO)) slv;
+                                                chd <- signal changed;
+                                                (wsv, aux, err) <- old.tname1.ReadWidgets ws;
+                                                return (wsv, (slv, aux),
+                                                        if chd then
+                                                            let
+                                                                val msg = "The dropdown for \"" ^ lab1 ^ "\" has changed, but the new value hasn't been selected by pushing the adjacent button."
+                                                            in
+                                                                case err of
+                                                                    None => Some msg
+                                                                  | Some err => Some (err ^ "\n" ^ msg)
+                                                            end
+                                                        else
+                                                            err)},
+              tname2 = old.tname2
+                           -- #Insert -- #Update -- #Delete -- #Config -- #Auxiliary -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
+                           ++ {Insert =
+                                 fn r (k1s, aux) =>
+                                    old.tname2.Insert r aux;
+                                    List.app (fn (k1, others, uploadO) =>
+                                                 case uploadO of
+                                                     None => error <xml>Can't complete creation process: no file was associated with a connection between {[lab1]} and {[lab2]}.</xml>
+                                                   | Some upload =>
+                                                     res <- AjaxUpload.claim upload;
+                                                     case res of
+                                                         AjaxUpload.NotFound => error <xml>Timeout: it has been too long since you uploaded that file.</xml>
+                                                       | AjaxUpload.Found fr =>
+                                                         case fr.Filename of
+                                                             None => error <xml>No filename associated with upload</xml>
+                                                           | Some fname =>
+                                                             @Sql.easy_insert ({colR1 = _, colR2 = _, FileName = _, FileType = _, FileData = _} ++ injs)
+                                                              (@Folder.cons [colR1] [_] !
+                                                                (@Folder.cons [colR2] [_] !
+                                                                  (@Folder.cons [#FileName] [_] !
+                                                                    (@Folder.cons [#FileType] [_] !
+                                                                      (@Folder.cons [#FileData] [_] !
+                                                                        (@Folder.mp fl))))))
+                                                              rel ({colR1 = k1, colR2 = r.col2, FileName = fname, FileType = fr.MimeType, FileData = fr.Content} ++ others)) k1s,
+                                 Update =
+                                 fn k r (k1s, aux) =>
+                                    old.tname2.Update k r aux;
+                                    whichSurvive <- return (List.foldl (fn (k1, _, _) acc => (WHERE {acc} AND t.{colR1} <> {[k1]})) (WHERE TRUE) k1s);
+                                    dml (DELETE FROM rel
+                                         WHERE t.{colR2} = {[r.col2]}
+                                           AND {whichSurvive});
+                                    List.app (fn (k1, others, uploadO) =>
+                                                 case uploadO of
+                                                     None =>
+                                                     @@Sql.easy_update''
+                                                       [[colR1 = _, colR2 = _]]
+                                                       [map fst3 others]
+                                                       [_]
+                                                       [[FileName = _, FileType = _, FileData = _]]
+                                                       ! !
+                                                       {colR1 = _, colR2 = _}
+                                                       injs
+                                                       (@Folder.cons [colR1] [_] !
+                                                         (@Folder.cons [colR2] [_] !
+                                                           Folder.nil))
+                                                       (@Folder.mp fl)
+                                                       rel {colR1 = k1, colR2 = r.col2} others
+                                                   | Some upload =>
+                                                     dml (DELETE FROM rel
+                                                                 WHERE t.{colR2} = {[r.col2]}
+                                                                   AND t.{colR1} = {[k1]});
+                                                     res <- AjaxUpload.claim upload;
+                                                     case res of
+                                                         AjaxUpload.NotFound => error <xml>Timeout: it has been too long since you uploaded that file.</xml>
+                                                       | AjaxUpload.Found fr =>
+                                                         case fr.Filename of
+                                                             None => error <xml>No filename associated with upload</xml>
+                                                           | Some fname =>
+                                                             @Sql.easy_insert ({colR1 = _, colR2 = _, FileName = _, FileType = _, FileData = _} ++ injs)
+                                                              (@Folder.cons [colR1] [_] !
+                                                                (@Folder.cons [colR2] [_] !
+                                                                  (@Folder.cons [#FileName] [_] !
+                                                                    (@Folder.cons [#FileType] [_] !
+                                                                      (@Folder.cons [#FileData] [_] !
+                                                                        (@Folder.mp fl))))))
+                                                              rel ({colR1 = k1, colR2 = r.col2, FileName = fname, FileType = fr.MimeType, FileData = fr.Content} ++ others)) k1s,
+                                 Delete = fn k2 => dml (DELETE FROM rel WHERE t.{colR2} = {[k2]}),
+                                 Config =
+                                 let
+                                     val tab = old.tname1.Table
+                                 in
+                                     keys <- List.mapQuery (SELECT DISTINCT tab.{col1}
+                                                            FROM tab
+                                                            ORDER BY tab.{col1})
+                                                           (fn r => r.Tab.col1);
+                                     wcfg <- @Monad.mapR _ [Widget.t'] [thd3]
+                                              (fn [nm ::_] [p ::_] (w : Widget.t' p) => @Widget.configure w)
+                                              fl ws;
+                                     cfg <- old.tname2.Config;
+                                     return (wcfg, keys, cfg)
+                                 end,
+                                 Auxiliary = fn k2 row =>
+                                     keys <- List.mapQuery (SELECT rel.{colR1}, rel.{{map fst3 others}}
+                                                            FROM rel
+                                                            WHERE rel.{colR2} = {[k2]}
+                                                            ORDER BY rel.{colR1})
+                                                           (fn r => (r.Rel.colR1, r.Rel -- colR1, None));
+                                     aux <- old.tname2.Auxiliary k2 row;
+                                     return (keys, aux),
+                                 Render = fn entry (k1s, aux) r =>
+                                             <xml>
+                                               {old.tname2.Render entry aux r}
+                                               <tr>
+                                                 <th>{[lab2]}</th>
+                                                 <td>
+                                                   {List.mapX (fn (k1, others, uploadO) => <xml>{entry (make [tname1] k1) (show k1)}
+                                                     {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
+                                                       (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (v : p.1) =>
+                                                           <xml> - {[label]}: {[@Widget.asValue w v]}</xml>) fl labels ws others}
+                                                     <br/></xml>) k1s}
+                                                 </td>
+                                               </tr>
+                                             </xml>,
+                                 FreshWidgets = fn (cfg0, _, cfg) =>
+                                    s <- source "";
+                                    ws0 <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) => @Widget.create w cfg)
+                                            fl ws cfg0;
+                                    upl <- source None;
+                                    sl <- source [];
+                                    changed <- source False;
+                                    ws <- old.tname2.FreshWidgets cfg;
+                                    return (s, ws0, upl, sl, changed, ws),
+                                 WidgetsFrom = fn (cfg0, _, cfg) r (keys, aux) =>
+                                    s <- source "";
+                                    ws0 <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) => @Widget.create w cfg)
+                                            fl ws cfg0;
+                                    upl <- source None;
+                                    keys <- List.mapM (fn (k, vs, _) => vs <- source (vs, None); notEditing <- source None; return (k, vs, notEditing)) keys;
+                                    sl <- source keys;
+                                    changed <- source False;
+                                    ws <- old.tname2.WidgetsFrom cfg r aux;
+                                    return (s, ws0, upl, sl, changed, ws),
+                                 RenderWidgets = fn (cfgs, cfg1, cfg2) (s, ws0, upl, sl, changed, wso) =>
+                                                    <xml>
+                                                      {old.tname2.RenderWidgets cfg2 wso}
+                                                      <div class="form-group">
+                                                        <label class="control-label">{[lab2]}</label>
+                                                        <div class="input-group">
+                                                          {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
+                                                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (s : p.2) =>
+                                                                <xml>{[label]}: {@Widget.asWidget w s None}</xml>)
+                                                            fl labels ws ws0}
+                                                          File: <active code={AjaxUpload.render {SubmitLabel = None,
+                                                                                                 OnBegin = return (),
+                                                                                                 OnSuccess = fn upload => set upl (Some upload),
+                                                                                                 OnError = error <xml>Error uploading file.  Maybe it has an unsupported type?</xml>}}/>
+                                                        </div>
+                                                        <div class="input-group">
+                                                          <span class="input-group-btn">
+                                                            <button class="btn"
+                                                                    onclick={fn _ =>
+                                                                                sv <- get s;
+                                                                                if sv = "" then
+                                                                                    return ()
+                                                                                else
+                                                                                    set changed False;
+                                                                                    sv <- return (readError sv);
+                                                                                    slv <- get sl;
+                                                                                    if List.exists (fn (sv', _, _) => sv' = sv) slv then
+                                                                                        return ()
+                                                                                    else
+                                                                                        uploadO <- get upl;
+                                                                                        case uploadO of
+                                                                                            None => error <xml>You must upload a file first.</xml>
+                                                                                          | Some upload =>
+                                                                                            set upl None;
+                                                                                            vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                   (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                       current (@Widget.value w s))
+                                                                                                   fl ws ws0;
+                                                                                            vs <- source (vs, Some upload);
+                                                                                            notEditing <- source None;
+                                                                                            set sl (List.sort (fn x y => x.1 > y.1) ((sv, vs, notEditing) :: slv))}>Select:</button>
+                                                          </span>
+                                                          <cselect class="form-control" source={s} onchange={set changed True}>
+                                                            <coption/>
+                                                            {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
+                                                          </cselect> 
+                                                        </div>
+                                                        <table>
+                                                          <tr><td/>
+                                                            {@mapX [fn _ => string] [tr]
+                                                              (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) =>
+                                                                  <xml><th>{[label]}</th></xml>)
+                                                              fl labels}
+                                                            <th>File</th>
+                                                          <td/></tr>
+                                                          <dyn signal={slv <- signal sl;
+                                                                       return (List.mapX (fn (k1, vs, ws0) => <xml>
+                                                                         <dyn signal={(vals, _) <- signal vs;
+                                                                                      wids <- signal ws0;
+                                                                                      case wids of
+                                                                                          None => return <xml>
+                                                                                            <tr>
+                                                                                              <td>{[k1]}</td>
+                                                                                              {@mapX2 [Widget.t'] [fst3] [tr]
+                                                                                                (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                                                                                                    <xml><td>{[@Widget.asValue w v]}</td></xml>)
+                                                                                                fl ws vals}
+                                                                                              <td>File</td>
+                                                                                              {if @Row.isEmpty fl then
+                                                                                                   <xml></xml>
+                                                                                               else <xml>
+                                                                                                 <td><button class="btn"
+                                                                                                             onclick={fn _ =>
+                                                                                                                         wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                                  (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                                      @Widget.initialize w cfg v)
+                                                                                                                                  fl ws cfgs vals;
+                                                                                                                         upl <- source None;
+                                                                                                                         set ws0 (Some (wids, upl))}>
+                                                                                                   <span class="glyphicon glyphicon-pencil"/>
+                                                                                                 </button></td>
+                                                                                                 <td><button class="btn"
+                                                                                                             onclick={fn _ => set sl (List.filter (fn (k1', _, _) => k1' <> k1) slv)}>
+                                                                                                   <span class="glyphicon glyphicon-remove"/>
+                                                                                                 </button></td>
+                                                                                               </xml>}
+                                                                                            </tr>
+                                                                                          </xml>
+                                                                                        | Some (wids, upl) => return <xml>
+                                                                                          <tr>
+                                                                                            <td>{[k1]}</td>
+                                                                                            {@mapX2 [Widget.t'] [snd3] [tr]
+                                                                                              (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
+                                                                                                  <xml><td>{@Widget.asWidget w s None}</td></xml>)
+                                                                                              fl ws wids}
+                                                                                            <td>
+                                                                                              <active code={AjaxUpload.render {SubmitLabel = None,
+                                                                                                                               OnBegin = return (),
+                                                                                                                               OnSuccess = fn upload => set upl (Some upload),
+                                                                                                                               OnError = error <xml>Error uploading file.  Maybe it has an unsupported type?</xml>}}/>
+                                                                                                                                                                                                                                                                                      </td>
+                                                                                            <td><button class="btn"
+                                                                                                        onclick={fn _ =>
+                                                                                                                    vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                                                current (@Widget.value w s))
+                                                                                                                            fl ws wids;
+                                                                                                                    uploadO <- get upl;
+                                                                                                                    set vs (vsv, uploadO);
+                                                                                                                    set ws0 None}>
+                                                                                              <span class="glyphicon glyphicon-check"/>
+                                                                                            </button></td>
+                                                                                            <td><button class="btn"
+                                                                                                        onclick={fn _ => set ws0 None}>
+                                                                                              <span class="glyphicon glyphicon-remove"/>
+                                                                                            </button></td>
+                                                                                          </tr>
+                                                                                        </xml>}/>
+                                                                       </xml>) slv)}/>
+                                                        </table>
+                                                    </div>
+                                                  </xml>,
+                               ReadWidgets = fn (s, _, _, sl, changed, ws) =>
+                                                slv <- signal sl;
+                                                slv <- List.mapM (fn (k1, vs, _) => (vs, uploadO) <- signal vs; return (k1, vs, uploadO)) slv;
+                                                chd <- signal changed;
+                                                (wsv, aux, err) <- old.tname2.ReadWidgets ws;
+                                                return (wsv, (slv, aux),
+                                                        if chd then
+                                                            let
+                                                                val msg = "The dropdown for \"" ^ lab2 ^ "\" has changed, but the new value hasn't been selected by pushing the adjacent button."
+                                                            in
+                                                                case err of
+                                                                    None => Some msg
+                                                                  | Some err => Some (err ^ "\n" ^ msg)
+                                                            end
+                                                        else
+                                                            err)}}
+end
+    
 fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name] [colR1 :: Name]
                       [cols1 ::: {Type}] [colsDone1 ::: {Type}] [cstrs1 ::: {{Unit}}]
                       [impl11 ::: Type] [impl12 ::: Type] [impl13 ::: Type]
@@ -1310,7 +1902,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                             return (wsv, (slv, aux),
                                                     if chd then
                                                         let
-                                                            val msg = "The dropdown for \"" ^ lab1 ^ "\" has changed, but the new value hasn't been selected by pushing the adjacent button."
+                                                            val msg = "The dropdown for \"" ^ lab2 ^ "\" has changed, but the new value hasn't been selected by pushing the adjacent button."
                                                         in
                                                             case err of
                                                                 None => Some msg

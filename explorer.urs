@@ -199,6 +199,75 @@ val manyToMany : full ::: {Type}
                       ([tname1 = (key1, [col1 = key1] ++ cols1, colsDone1, cstrs1, manyToMany11 impl11 key1 key2 others, manyToMany12 impl12 key1 key2 others, manyToMany13 impl13 key1 key2 others),
                         tname2 = (key2, [col2 = key2] ++ cols2, colsDone2, cstrs2, manyToMany21 impl21 key1 key2 others, manyToMany22 impl22 key1 key2 others, manyToMany23 impl23 key1 key2 others)] ++ old)
 
+(* Now let's support one file attached to each row of the connecting table. *)
+functor ManyToManyWithFile(M : sig
+                               con full :: {Type}
+                               con tname1 :: Name
+                               con key1 :: Type
+                               con col1 :: Name
+                               con colR1 :: Name
+                               con cols1 :: {Type}
+                               con colsDone1 :: {Type}
+                               con cstrs1 :: {{Unit}}
+                               con impl11 :: Type
+                               con impl12 :: Type
+                               con impl13 :: Type
+                               con tname2 :: Name
+                               con key2 :: Type
+                               con col2 :: Name
+                               con colR2 :: Name
+                               con cols2 :: {Type}
+                               con colsDone2 :: {Type}
+                               con cstrs2 :: {{Unit}}
+                               con impl21 :: Type
+                               con impl22 :: Type
+                               con impl23 :: Type
+                               con cstrs :: {{Unit}}
+                               con old :: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}
+                               con others :: {(Type * Type * Type)}
+                               constraint [tname1] ~ [tname2]
+                               constraint [tname1, tname2] ~ old
+                               constraint [tname1, tname2] ~ full
+                               constraint [col1] ~ cols1
+                               constraint [col2] ~ cols2
+                               constraint [col1] ~ [col2]
+                               constraint [colR1] ~ [colR2]
+                               constraint others ~ [colR1, colR2]
+                               constraint [FileName, FileType, FileData] ~ [colR1, colR2]
+                               constraint [FileName, FileType, FileData] ~ others
+                               val rel : sql_table ([colR1 = key1, colR2 = key2, FileName = string, FileType = string, FileData = blob] ++ map fst3 others) cstrs
+                               val lab1 : string
+                               val lab2 : string
+                               val eq_key1 : eq key1
+                               val ord_key1 : ord key1
+                               val show_key1 : show key1
+                               val read_key1 : read key1
+                               val inj_key1 : sql_injectable key1
+                               val eq_key2 : eq key2
+                               val ord_key2 : ord key2
+                               val show_key2 : show key2
+                               val read_key2 : read key2
+                               val inj_key2 : sql_injectable key2
+                               val fl : folder others
+                               val ws : $(map Widget.t' others)
+                               val injs : $(map sql_injectable (map fst3 others))
+                               val labels : $(map (fn _ => string) others)
+                           end) : sig
+    type manyToManyWithFile11
+    type manyToManyWithFile12
+    type manyToManyWithFile13
+    type manyToManyWithFile21
+    type manyToManyWithFile22
+    type manyToManyWithFile23
+    
+    val make : t ([M.tname1 = M.key1, M.tname2 = M.key2] ++ M.full)
+                 ([M.tname1 = (M.key1, [M.col1 = M.key1] ++ M.cols1, M.colsDone1, M.cstrs1, M.impl11, M.impl12, M.impl13),
+                   M.tname2 = (M.key2, [M.col2 = M.key2] ++ M.cols2, M.colsDone2, M.cstrs2, M.impl21, M.impl22, M.impl23)] ++ M.old)
+               -> t ([M.tname1 = M.key1, M.tname2 = M.key2] ++ M.full)
+                    ([M.tname1 = (M.key1, [M.col1 = M.key1] ++ M.cols1, M.colsDone1, M.cstrs1, manyToManyWithFile11, manyToManyWithFile12, manyToManyWithFile13),
+                      M.tname2 = (M.key2, [M.col2 = M.key2] ++ M.cols2, M.colsDone2, M.cstrs2, manyToManyWithFile21, manyToManyWithFile22, manyToManyWithFile23)] ++ M.old)
+end
+
 (* For this version, the ordering applies in listing all [tname2] entries for [tname1]. *)
 val manyToManyOrdered : full ::: {Type}
                         -> tname1 :: Name -> key1 ::: Type -> col1 :: Name -> colR1 :: Name

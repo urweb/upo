@@ -21,7 +21,10 @@ table hasPower : { Frog : string,
 
 table protector : { SwampName : string,
                     Nickname : string,
-                    Protectiness : int}
+                    Protectiness : int,
+                    FileName : string,
+                    FileType : string,
+                    FileData : blob }
   PRIMARY KEY (SwampName, Nickname),
   CONSTRAINT SwampName FOREIGN KEY SwampName REFERENCES swamp(SwampName),
   CONSTRAINT Nickname FOREIGN KEY Nickname REFERENCES frog(Nickname)
@@ -42,6 +45,20 @@ open Make(struct
               structure Theme = Default
 
               val title = "Froggyland"
+
+              structure Protector = ManyToManyWithFile(struct
+                                                           con tname1 = #Frog
+                                                           con col1 = #Nickname
+                                                           con colR1 = #Nickname
+                                                           con tname2 = #Swamp
+                                                           con col2 = #SwampName
+                                                           con colR2 = #SwampName
+                                                           val rel = protector
+                                                           val lab1 = "Protecting"
+                                                           val lab2 = "Protectors"
+                                                           val labels = {Protectiness = "Protectiness"}
+                                                       end)
+                          
               val t = none
                       |> one [#Frog] [#Nickname] frog "Frogs" (return <xml></xml>) (Default (WHERE TRUE))
                       |> one [#Swamp] [#SwampName] swamp "Swamps" (return <xml></xml>) (Default (WHERE TRUE))
@@ -58,7 +75,7 @@ open Make(struct
                       |> text [#Swamp] [#SwampName] "Name"
                       |> text [#Swamp] [#SmellinessLevel] "Smelliness Level"
                       |> foreign [#Frog] [#Swamp] [#Swamp] [#SwampName] "Swamp" "Frogs"
-                      |> manyToMany [#Frog] [#Nickname] [#Nickname] [#Swamp] [#SwampName] [#SwampName] protector "Protecting" "Protectors" {Protectiness = "Protectiness"}
+                      |> Protector.make
                       |> manyToManyOrdered [#Swamp] [#SwampName] [#SwampName] [#RestaurantChain] [#Chain] [#Chain] favoriteFoodOptions "Favorite Food Options" "Swamps" {}
 
                       |> text [#SuperPower] [#Power] "Power"
