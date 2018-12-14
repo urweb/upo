@@ -10,6 +10,8 @@ type t1 (full :: {Type}) (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type 
       List : sql_exp [Tab = p.2] [] [] bool -> transaction (list p.1),
       KeyIs : nm :: Name -> p.1 -> sql_exp [nm = p.2] [] [] bool,
       Show : show p.1,
+      Eq : eq p.1,
+      Ord : ord p.1,
       Config : transaction p.5,
       Auxiliary : p.1 -> $p.2 -> transaction p.7,
       Render : (variant full -> string -> xbody) -> p.7 -> $p.2 -> xtable,
@@ -39,7 +41,7 @@ fun one [full ::: {Type}]
         [[key] ~ rest] [[tname] ~ old]
         (tab : sql_table ([key = keyT] ++ rest) cstrs) (title : string) (extra : transaction xbody)
         (isty : index_style (sql_exp [Tab = [key = keyT] ++ rest] [] [] bool) (keyT * xbody))
-        (sh : show keyT) (inj : sql_injectable keyT) (injs : $(map sql_injectable rest))
+        (sh : show keyT) (eq : eq keyT) (ord : ord keyT) (inj : sql_injectable keyT) (injs : $(map sql_injectable rest))
         (fl : folder rest) (ofl : folder old) (old : t full old) =
     {tname = {Title = title,
               Extra = extra,
@@ -54,6 +56,8 @@ fun one [full ::: {Type}]
                                               (fn {Tab = r} => r.key),
               KeyIs = fn [nm ::_] v => (WHERE {{nm}}.{key} = {[v]}),
               Show = sh,
+              Eq = eq,
+              Ord = ord,
               Config = return (),
               Auxiliary = fn _ _ => return (),
               Render = fn _ _ _ => <xml></xml>,
@@ -76,7 +80,7 @@ fun two [full ::: {Type}]
         [[key1] ~ [key2]] [[key1, key2] ~ rest] [[tname] ~ old]
         (tab: sql_table ([key1 = keyT1, key2 = keyT2] ++ rest) cstrs) (title : string) (extra : transaction xbody)
         (isty : index_style (sql_exp [Tab = [key1 = keyT1, key2 = keyT2] ++ rest] [] [] bool) (keyT1 * keyT2 * xbody))
-        (sh : show (keyT1 * keyT2)) (inj1 : sql_injectable keyT1) (inj2 : sql_injectable keyT2)
+        (sh : show (keyT1 * keyT2)) (eq : eq (keyT1 * keyT2)) (ord : ord (keyT1 * keyT2)) (inj1 : sql_injectable keyT1) (inj2 : sql_injectable keyT2)
         (injs : $(map sql_injectable rest)) (fl : folder rest) (ofl : folder old)
         (old : t full old) =
     {tname = {Title = title,
@@ -93,6 +97,8 @@ fun two [full ::: {Type}]
               KeyIs = fn [nm ::_] (v1, v2) => (WHERE {{nm}}.{key1} = {[v1]}
                                                  AND {{nm}}.{key2} = {[v2]}),
               Show = sh,
+              Eq = eq,
+              Ord = ord,
               Config = return (),
               Auxiliary = fn _ _ => return (),
               Render = fn _ _ _ => <xml></xml>,
@@ -2072,6 +2078,9 @@ functor Make(M : sig
 
     val weakener = @Variant.weaken ! (@Folder.mp fl)
 
+    type anyKey = variant (map (fn p => p.1) tables)
+    table indexListeners : { Table : serialized tag, Channel : channel anyKey }
+                   
     fun page (which : tagPlus) =
         @match which
         (@@Variant.mp [map (fn _ => ()) tables] [_] (@Folder.mp fl) (fn v () => index v)
@@ -2081,16 +2090,40 @@ functor Make(M : sig
 
     and index (which : tag) =
         auth (Read which);
+
+        ch <- channel;
+        dml (INSERT INTO indexListeners(Table, Channel)
+             VALUES ({[serialize which]}, {[ch]}));
+        
         mayAdd <- authorize (Create which);
         bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
-          (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) () r =>
+          (fn [p ::_]
+              (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables))
+              (dester : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> variant (map tf tables) -> option (tf p))
+              () r =>
               extra <- r.Extra;
               rows <- r.ForIndex;
+              rows <- source rows;
               return <xml>
+                <active code={let
+                                  fun loop () =
+                                      newKey <- recv ch;
+                                      case dester [fn p => p.1] newKey of
+                                          None => error <xml>Wrong type of key arrived at index listener.</xml>
+                                        | Some newKey =>
+                                          rs <- get rows;
+                                          set rows (@List.assocAddSorted r.Eq r.Ord newKey (@txt r.Show newKey) rs);
+                                          loop ()
+                              in
+                                  spawn (loop ());
+                                  return <xml></xml>
+                               end}/>
+
                 {extra}
 
                 <table class="bs-table table-striped">
-                  {List.mapX (fn (k, bod) => <xml><tr><td><a link={entry (maker [fn p => p.1] k)}>{bod}</a></td></tr></xml>) rows}
+                  <dyn signal={rows <- signal rows;
+                               return (List.mapX (fn (k, bod) => <xml><tr><td><a link={entry (maker [fn p => p.1] k)}>{bod}</a></td></tr></xml>) rows)}/>
                 </table>
 
                 {if mayAdd then
@@ -2104,7 +2137,7 @@ functor Make(M : sig
     and create (which : tag) =
         auth (Create which);
         bod <- @@Variant.destrR' [fn _ => unit] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
-          (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) () r =>
+          (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) _ () r =>
               cfg <- r.Config;
               ws <- r.FreshWidgets cfg;
               return <xml>
@@ -2129,10 +2162,15 @@ functor Make(M : sig
 
     and doCreate (which : variant (map (fn p => $p.2 * p.7) dup)) =
         auth (Create (@Variant.erase (@Folder.mp fl) which));
-        @@Variant.destrR [fn p => $p.2 * p.7] [t1 tables'] [transaction unit]
-          (fn [p ::_] (vs : $p.2, aux : p.7) r =>
-              r.Insert vs aux)
-          [dup] (@Folder.mp fl) which t
+        @@Variant.destrR' [fn p => $p.2 * p.7] [t1 tables'] [transaction unit] [dup]
+          (fn [p ::_] (maker : tf :: ((Type * {Type} * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf dup))
+                      _ (vs : $p.2, aux : p.7) r =>
+              r.Insert vs aux;
+              queryI1 (SELECT indexListeners.Channel
+                       FROM indexListeners
+                       WHERE indexListeners.Table = {[serialize (maker [fn p => unit] ())]})
+              (fn {Channel = ch} => send ch (maker [fn p => p.1] (r.KeyOf vs))))
+          (@Folder.mp fl) which t
 
     and entry (which : variant (map (fn p => p.1) tables)) =
         auth (Read (@Variant.erase (@Folder.mp fl) which));
@@ -2140,7 +2178,7 @@ functor Make(M : sig
         mayDelete <- authorize (Delete which);
         (ctx : source (option Ui.context)) <- source None;
         bod <- @@Variant.destrR' [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
-          (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) (k : p.1) (r : t1 tables' (dupF p)) =>
+          (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) _ (k : p.1) (r : t1 tables' (dupF p)) =>
               let
                   val tab = r.Table
               in
@@ -2210,7 +2248,7 @@ functor Make(M : sig
 
     and save (which : variant (map (fn p => p.1 * $p.2 * p.6) tables)) =
         @@Variant.destrR' [fn p => p.1 * $p.2 * p.6] [fn p => t1 tables' (dupF p)] [transaction unit] [tables]
-          (fn [p ::_] (mk : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) (k : p.1, vs : $p.2, aux : p.6) r =>
+          (fn [p ::_] (mk : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) _ (k : p.1, vs : $p.2, aux : p.6) r =>
               auth (Update (mk [fn p => p.1] k));
               r.Update k vs aux)
           fl which t

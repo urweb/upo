@@ -3,5 +3,8 @@ sql upo.sql
 library ../default
 rewrite url Expl/*
 allow mime *
+safeGet index
+safeGet page
+safeGet main
 
 expl

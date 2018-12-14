@@ -34,7 +34,7 @@ val one : full ::: {Type}
           -> transaction xbody (* Extra content to include at top of index page *)
           -> index_style (sql_exp [Tab = [key = keyT] ++ rest] [] [] bool (* Filter condition for inclusion on index page *))
              (keyT * xbody)
-          -> show keyT -> sql_injectable keyT -> $(map sql_injectable rest)
+          -> show keyT -> eq keyT -> ord keyT -> sql_injectable keyT -> $(map sql_injectable rest)
           -> folder rest -> folder old
           -> t full old
           -> t full ([tname = (keyT, [key = keyT] ++ rest, [], cstrs, base1, base2, base3)] ++ old)
@@ -47,7 +47,8 @@ val two : full ::: {Type}
           -> transaction xbody (* Extra content to include at top of index page *)
           -> index_style (sql_exp [Tab = [key1 = keyT1, key2 = keyT2] ++ rest] [] [] bool)
              (keyT1 * keyT2 * xbody)
-          -> show (keyT1 * keyT2) -> sql_injectable keyT1 -> sql_injectable keyT2
+          -> show (keyT1 * keyT2) -> eq (keyT1 * keyT2) -> ord (keyT1 * keyT2)
+          -> sql_injectable keyT1 -> sql_injectable keyT2
           -> $(map sql_injectable rest)
           -> folder rest -> folder old
           -> t full old
