@@ -2080,7 +2080,10 @@ functor Make(M : sig
 
     type anyKey = variant (map (fn p => p.1) tables)
     table indexListeners : { Table : serialized tag, Channel : channel anyKey }
-                   
+
+    type anyRow = variant (map (fn p => $p.2 * p.6) tables)
+    table entryListeners : { Key : serialized anyKey, Channel : channel anyRow }
+                           
     fun page (which : tagPlus) =
         @match which
         (@@Variant.mp [map (fn _ => ()) tables] [_] (@Folder.mp fl) (fn v () => index v)
@@ -2172,16 +2175,24 @@ functor Make(M : sig
               (fn {Channel = ch} => send ch (maker [fn p => p.1] (r.KeyOf vs))))
           (@Folder.mp fl) which t
 
-    and entry (which : variant (map (fn p => p.1) tables)) =
+    and entry (which : anyKey) =
         auth (Read (@Variant.erase (@Folder.mp fl) which));
+
+        ch <- channel;
+        dml (INSERT INTO entryListeners(Key, Channel)
+             VALUES ({[serialize which]}, {[ch]}));
+        
         mayUpdate <- authorize (Update which);
         mayDelete <- authorize (Delete which);
         (ctx : source (option Ui.context)) <- source None;
         bod <- @@Variant.destrR' [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction xbody] [tables]
-          (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) _ (k : p.1) (r : t1 tables' (dupF p)) =>
+               (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables))
+                           (dester : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> variant (map tf tables) -> option (tf p))
+                           (k : p.1) (r : t1 tables' (dupF p)) =>
               let
                   val tab = r.Table
               in
+                  curKey <- source k;
                   cfg <- r.Config;
                   row <- oneRow1 (SELECT *
                                   FROM tab
@@ -2189,6 +2200,20 @@ functor Make(M : sig
                   aux <- r.Auxiliary k row;
                   est <- source (NotEditing (row, aux));
                   return <xml>
+                    <active code={let
+                                      fun loop () =
+                                          upd <- recv ch;
+                                          case dester [fn p => $p.2 * p.6] upd of
+                                              None => error <xml>Entry update is for the wrong table.</xml>
+                                            | Some (row, aux) =>
+                                              set curKey (r.KeyOf row);
+                                              set est (NotEditing (row, aux));
+                                              loop ()
+                                  in
+                                      spawn (loop ());
+                                      return <xml></xml>
+                                  end}/>
+
                     <dyn signal={esta <- signal est;
                                  case esta of
                                      NotEditing (row, aux) =>
@@ -2206,7 +2231,9 @@ functor Make(M : sig
                                                 <xml/>}
                                            {if mayDelete then
                                                 Ui.modalButton ctx (CLASS "btn") <xml>Delete</xml>
-                                                               (return (Ui.modal (rpc (delete which); redirect (url (index (maker [fn _ => unit] ()))))
+                                                               (return (Ui.modal (ck <- get curKey;
+                                                                                  rpc (delete (maker [fn p => p.1] ck));
+                                                                                  redirect (url (index (maker [fn _ => unit] ()))))
                                                                                  <xml>Are you sure you want to delete this entry?</xml>
                                                                                  <xml></xml>
                                                                                  <xml>Yes, delete it.</xml>))
@@ -2227,7 +2254,8 @@ functor Make(M : sig
                                                                            None => return True
                                                                          | Some msg => confirm ("Are you sure you want to proceed with saving that entry?  The following issues were noted:\n\n" ^ msg));
                                                            if proceed then
-                                                               rpc (save (maker [fn p => p.1 * $p.2 * p.6] (k, row1, row2)));
+                                                               ck <- get curKey;
+                                                               rpc (save (maker [fn p => p.1 * $p.2 * p.6] (ck, row1, row2)));
                                                                set est (NotEditing (row1, row2))
                                                            else
                                                                return ()}>Save</button>
@@ -2250,10 +2278,21 @@ functor Make(M : sig
         @@Variant.destrR' [fn p => p.1 * $p.2 * p.6] [fn p => t1 tables' (dupF p)] [transaction unit] [tables]
           (fn [p ::_] (mk : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) _ (k : p.1, vs : $p.2, aux : p.6) r =>
               auth (Update (mk [fn p => p.1] k));
-              r.Update k vs aux)
+              queryI1 (SELECT entryListeners.Channel
+                       FROM entryListeners
+                       WHERE entryListeners.Key = {[serialize (mk [fn p => p.1] k)]})
+              (fn {Channel = ch} => send ch (mk [fn p => $p.2 * p.6] (vs, aux)));
+              r.Update k vs aux;
+
+              if @eq r.Eq k (r.KeyOf vs) then
+                  return ()
+              else
+                  dml (UPDATE entryListeners
+                       SET Key = {[serialize (mk [fn p => p.1] (r.KeyOf vs))]}
+                       WHERE Key = {[serialize (mk [fn p => p.1] k)]}))
           fl which t
 
-    and delete (which : variant (map (fn p => p.1) tables)) =
+    and delete (which : anyKey) =
         auth (Delete which);
         @@Variant.destrR [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction unit]
           (fn [p ::_] (k : p.1) (r : t1 tables' (dupF p)) =>
