@@ -2078,8 +2078,12 @@ functor Make(M : sig
 
     val weakener = @Variant.weaken ! (@Folder.mp fl)
 
+    datatype indexDelta t =
+             IndexAdd of t
+           | IndexRename of t * t
     type anyKey = variant (map (fn p => p.1) tables)
-    table indexListeners : { Table : serialized tag, Channel : channel anyKey }
+    type indexDeltaV = variant (map (fn p => indexDelta p.1) tables)
+    table indexListeners : { Table : serialized tag, Channel : channel indexDeltaV }
 
     type anyRow = variant (map (fn p => $p.2 * p.6) tables)
     table entryListeners : { Key : serialized anyKey, Channel : channel anyRow }
@@ -2107,14 +2111,20 @@ functor Make(M : sig
               extra <- r.Extra;
               rows <- r.ForIndex;
               rows <- source rows;
+              dester <- return (dester [fn p => indexDelta p.1]);
               return <xml>
                 <active code={let
                                   fun loop () =
-                                      newKey <- recv ch;
-                                      case dester [fn p => p.1] newKey of
+                                      msg <- recv ch;
+                                      case dester msg of
                                           None => error <xml>Wrong type of key arrived at index listener.</xml>
-                                        | Some newKey =>
+                                        | Some (IndexAdd newKey) =>
                                           rs <- get rows;
+                                          set rows (@List.assocAddSorted r.Eq r.Ord newKey (@txt r.Show newKey) rs);
+                                          loop ()
+                                        | Some (IndexRename (oldKey, newKey)) =>
+                                          rs <- get rows;
+                                          rs <- return (List.filter (fn (k, _) => not (@eq r.Eq k oldKey)) rs);
                                           set rows (@List.assocAddSorted r.Eq r.Ord newKey (@txt r.Show newKey) rs);
                                           loop ()
                               in
@@ -2172,7 +2182,7 @@ functor Make(M : sig
               queryI1 (SELECT indexListeners.Channel
                        FROM indexListeners
                        WHERE indexListeners.Table = {[serialize (maker [fn p => unit] ())]})
-              (fn {Channel = ch} => send ch (maker [fn p => p.1] (r.KeyOf vs))))
+              (fn {Channel = ch} => send ch (maker [fn p => indexDelta p.1] (IndexAdd (r.KeyOf vs)))))
           (@Folder.mp fl) which t
 
     and entry (which : anyKey) =
@@ -2287,6 +2297,11 @@ functor Make(M : sig
               if @eq r.Eq k (r.KeyOf vs) then
                   return ()
               else
+                  queryI1 (SELECT indexListeners.Channel
+                           FROM indexListeners
+                           WHERE indexListeners.Table = {[serialize (mk [fn _ => unit] ())]})
+                          (fn {Channel = ch} => send ch (mk [fn p => indexDelta p.1] (IndexRename (k, r.KeyOf vs))));
+                  
                   dml (UPDATE entryListeners
                        SET Key = {[serialize (mk [fn p => p.1] (r.KeyOf vs))]}
                        WHERE Key = {[serialize (mk [fn p => p.1] k)]}))
