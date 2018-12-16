@@ -2068,6 +2068,7 @@ functor Make(M : sig
     datatype editingState row widgets aux =
              NotEditing of row * aux
            | Editing of row * widgets
+           | Deleted
 
     fun auth act =
         b <- authorize act;
@@ -2078,15 +2079,21 @@ functor Make(M : sig
 
     val weakener = @Variant.weaken ! (@Folder.mp fl)
 
+    type anyKey = variant (map (fn p => p.1) tables)
+    type anyRow = variant (map (fn p => $p.2 * p.6) tables)
+
     datatype indexDelta t =
              IndexAdd of t
            | IndexRename of t * t
-    type anyKey = variant (map (fn p => p.1) tables)
+           | IndexDelete of t
     type indexDeltaV = variant (map (fn p => indexDelta p.1) tables)
     table indexListeners : { Table : serialized tag, Channel : channel indexDeltaV }
 
-    type anyRow = variant (map (fn p => $p.2 * p.6) tables)
-    table entryListeners : { Key : serialized anyKey, Channel : channel anyRow }
+    datatype entryDelta t =
+             EntryUpdate of t
+           | EntryDelete
+    type entryDeltaV = variant (map (fn p => entryDelta ($p.2 * p.6)) tables)
+    table entryListeners : { Key : serialized anyKey, Channel : channel entryDeltaV }
                            
     fun page (which : tagPlus) =
         @match which
@@ -2125,6 +2132,10 @@ functor Make(M : sig
                                           rs <- get rows;
                                           rs <- return (List.filter (fn (k, _) => not (@eq r.Eq k oldKey)) rs);
                                           set rows (@List.assocAddSorted r.Eq r.Ord newKey (@txt r.Show newKey) rs);
+                                          loop ()
+                                        | Some (IndexDelete key) =>
+                                          rs <- get rows;
+                                          set rows (List.filter (fn (k, _) => not (@eq r.Eq k key)) rs);
                                           loop ()
                               in
                                   spawn (loop ());
@@ -2212,12 +2223,14 @@ functor Make(M : sig
                     <active code={let
                                       fun loop () =
                                           upd <- recv ch;
-                                          case dester [fn p => $p.2 * p.6] upd of
+                                          case dester [fn p => entryDelta ($p.2 * p.6)] upd of
                                               None => error <xml>Entry update is for the wrong table.</xml>
-                                            | Some (row, aux) =>
+                                            | Some (EntryUpdate (row, aux)) =>
                                               set curKey (r.KeyOf row);
                                               set est (NotEditing (row, aux));
                                               loop ()
+                                            | Some EntryDelete =>
+                                              set est Deleted
                                   in
                                       spawn (loop ());
                                       return <xml></xml>
@@ -2273,7 +2286,12 @@ functor Make(M : sig
                                      </p>
 
                                      {r.RenderWidgets (Some k) cfg ws}
-                                   </xml>}/>
+                                   </xml>
+                                   | Deleted => return <xml>
+                                     That entry has been deleted.
+                                     Perhaps you would like to return to <a link={index (maker [fn _ => unit] ())}>the {[r.Title]} index</a>?
+                                   </xml>
+                                }/>
                   </xml>
               end)
           fl which t;
@@ -2290,7 +2308,7 @@ functor Make(M : sig
               queryI1 (SELECT entryListeners.Channel
                        FROM entryListeners
                        WHERE entryListeners.Key = {[serialize (mk [fn p => p.1] k)]})
-              (fn {Channel = ch} => send ch (mk [fn p => $p.2 * p.6] (vs, aux)));
+              (fn {Channel = ch} => send ch (mk [fn p => entryDelta ($p.2 * p.6)] (EntryUpdate (vs, aux))));
               r.Update k vs aux;
 
               if @eq r.Eq k (r.KeyOf vs) then
@@ -2308,16 +2326,31 @@ functor Make(M : sig
 
     and delete (which : anyKey) =
         auth (Delete which);
-        @@Variant.destrR [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction unit]
-          (fn [p ::_] (k : p.1) (r : t1 tables' (dupF p)) =>
+        @@Variant.destrR' [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction unit] [tables]
+          (fn [p ::_] (mk : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables))
+                      _ (k : p.1) (r : t1 tables' (dupF p)) =>
               let
                   val tab = r.Table
               in
                   r.Delete k;
+
+                  queryI1 (SELECT indexListeners.Channel
+                           FROM indexListeners
+                           WHERE indexListeners.Table = {[serialize (mk [fn _ => unit] ())]})
+                          (fn {Channel = ch} => send ch (mk [fn p => indexDelta p.1] (IndexDelete k)));
+
+                  queryI1 (SELECT entryListeners.Channel
+                           FROM entryListeners
+                           WHERE entryListeners.Key = {[serialize which]})
+                          (fn {Channel = ch} => send ch (mk [fn p => entryDelta ($p.2 * p.6)] EntryDelete));
+
+                  dml (DELETE FROM entryListeners
+                       WHERE Key = {[serialize which]});
+                  
                   dml (DELETE FROM tab
                        WHERE {r.KeyIs [#T] k})
               end)
-          [tables] fl which t
+          fl which t
 
     val tableNames = @mp [fn p => t1 tables' (dupF p)] [fn _ => string]
                       (fn [p :::_] (t : t1 tables' (dupF p)) => t.Title)
