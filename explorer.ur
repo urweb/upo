@@ -2111,12 +2111,11 @@ functor Make(M : sig
               extra <- r.Extra;
               rows <- r.ForIndex;
               rows <- source rows;
-              dester <- return (dester [fn p => indexDelta p.1]);
               return <xml>
                 <active code={let
                                   fun loop () =
                                       msg <- recv ch;
-                                      case dester msg of
+                                      case dester [fn p => indexDelta p.1] msg of
                                           None => error <xml>Wrong type of key arrived at index listener.</xml>
                                         | Some (IndexAdd newKey) =>
                                           rs <- get rows;
