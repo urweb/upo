@@ -2302,13 +2302,28 @@ functor Make(M : sig
                                             else
                                                 <xml/>}
                                            {if mayDelete then
-                                                Ui.modalButton ctx (CLASS "btn") <xml>Delete</xml>
-                                                               (return (Ui.modal (ck <- get curKey;
-                                                                                  rpc (delete (maker [fn p => p.1] ck));
-                                                                                  redirect (url (index (maker [fn _ => unit] ()))))
-                                                                                 <xml>Are you sure you want to delete this entry?</xml>
-                                                                                 <xml></xml>
-                                                                                 <xml>Yes, delete it.</xml>))
+                                                <xml>
+                                                  <dyn signal={n <- signal locks;
+                                                               return (Ui.modalButton ctx (if n = 0 then CLASS "btn" else CLASS "btn btn-danger")
+                                                                                      <xml>Delete</xml>
+                                                                                      (return (Ui.modal (ck <- get curKey;
+                                                                                                         worked <- rpc (delete (maker [fn p => p.1] ck) False);
+                                                                                                         worked <- (if worked then
+                                                                                                                        return True
+                                                                                                                    else
+                                                                                                                        proceed <- confirm "Warning: that entry is open for editing elsewhere!  Do you want to delete it anyway?";
+                                                                                                                        if proceed then
+                                                                                                                            rpc (delete (maker [fn p => p.1] ck) True)
+                                                                                                                        else
+                                                                                                                            return False);
+                                                                                                         if worked then
+                                                                                                             redirect (url (index (maker [fn _ => unit] ())))
+                                                                                                         else
+                                                                                                             return ())
+                                                                                                        <xml>Are you sure you want to delete this entry?</xml>
+                                                                                                        <xml></xml>
+                                                                                                        <xml>Yes, delete it.</xml>)))}/>
+                                                </xml>
                                             else
                                                 <xml/>}
                                            </p>
@@ -2431,33 +2446,43 @@ functor Make(M : sig
                        WHERE Key = {[serialize (mk [fn p => p.1] k)]}))
           fl which t
 
-    and delete (which : anyKey) =
+    and delete (which : anyKey) (override : bool) =
         auth (Delete which);
-        @@Variant.destrR' [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction unit] [tables]
-          (fn [p ::_] (mk : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables))
-                      _ (k : p.1) (r : t1 tables' (dupF p)) =>
-              let
-                  val tab = r.Table
-              in
-                  r.Delete k;
+        conflict <- (if override then
+                         return False
+                     else
+                         oneRowE1 (SELECT COUNT( * ) > 0
+                                   FROM entryLocks
+                                   WHERE entryLocks.Key = {[serialize which]}));
+        if conflict then
+            return False
+        else
+            @@Variant.destrR' [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction unit] [tables]
+              (fn [p ::_] (mk : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables))
+                          _ (k : p.1) (r : t1 tables' (dupF p)) =>
+                  let
+                      val tab = r.Table
+                  in
+                      r.Delete k;
 
-                  queryI1 (SELECT indexListeners.Channel
-                           FROM indexListeners
-                           WHERE indexListeners.Table = {[serialize (mk [fn _ => unit] ())]})
-                          (fn {Channel = ch} => send ch (mk [fn p => indexDelta p.1] (IndexDelete k)));
+                      queryI1 (SELECT indexListeners.Channel
+                               FROM indexListeners
+                               WHERE indexListeners.Table = {[serialize (mk [fn _ => unit] ())]})
+                              (fn {Channel = ch} => send ch (mk [fn p => indexDelta p.1] (IndexDelete k)));
 
-                  queryI1 (SELECT entryListeners.Channel
-                           FROM entryListeners
-                           WHERE entryListeners.Key = {[serialize which]})
-                          (fn {Channel = ch} => send ch (mk [fn p => entryDelta ($p.2 * p.6)] EntryDelete));
+                      queryI1 (SELECT entryListeners.Channel
+                               FROM entryListeners
+                               WHERE entryListeners.Key = {[serialize which]})
+                              (fn {Channel = ch} => send ch (mk [fn p => entryDelta ($p.2 * p.6)] EntryDelete));
 
-                  dml (DELETE FROM entryListeners
-                       WHERE Key = {[serialize which]});
-                  
-                  dml (DELETE FROM tab
-                       WHERE {r.KeyIs [#T] k})
-              end)
-          fl which t
+                      dml (DELETE FROM entryListeners
+                           WHERE Key = {[serialize which]});
+
+                      dml (DELETE FROM tab
+                           WHERE {r.KeyIs [#T] k})
+                  end)
+              fl which t;
+            return True
 
     val tableNames = @mp [fn p => t1 tables' (dupF p)] [fn _ => string]
                       (fn [p :::_] (t : t1 tables' (dupF p)) => t.Title)
