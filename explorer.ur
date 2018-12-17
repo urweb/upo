@@ -2092,9 +2092,24 @@ functor Make(M : sig
     datatype entryDelta t =
              EntryUpdate of t
            | EntryDelete
+           | EntryLock
+           | EntryUnlock
     type entryDeltaV = variant (map (fn p => entryDelta ($p.2 * p.6)) tables)
     table entryListeners : { Key : serialized anyKey, Channel : channel entryDeltaV }
-                           
+    table entryLocks : { Key : serialized anyKey, Owner : client }
+
+    task clientLeaves = fn cl =>
+                           queryI1 (SELECT entryListeners.*
+                                    FROM entryListeners
+                                      JOIN entryLocks ON entryLocks.Key = entryListeners.Key
+                                    WHERE entryLocks.Owner = {[cl]})
+                           (fn {Key = k, Channel = ch : channel entryDeltaV} =>
+                               @@Variant.destrR' [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction unit] [tables]
+                               (fn [p ::_] (maker : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables))
+                                           _ (k : p.1) (r : t1 tables' (dupF p)) =>
+                                   send ch (maker [fn p => entryDelta ($p.2 * p.6)] EntryUnlock))
+                               fl (deserialize k) t)
+                       
     fun page (which : tagPlus) =
         @match which
         (@@Variant.mp [map (fn _ => ()) tables] [_] (@Folder.mp fl) (fn v () => index v)
@@ -2218,6 +2233,12 @@ functor Make(M : sig
                                   FROM tab
                                   WHERE {r.KeyIs [#Tab] k});
                   aux <- r.Auxiliary k row;
+
+                  locks <- oneRowE1 (SELECT COUNT( * )
+                                     FROM entryLocks
+                                     WHERE entryLocks.Key = {[serialize (maker [fn p => p.1] k)]});
+                  locks <- source locks;
+
                   est <- source (NotEditing (row, aux));
                   return <xml>
                     <active code={let
@@ -2228,9 +2249,19 @@ functor Make(M : sig
                                             | Some (EntryUpdate (row, aux)) =>
                                               set curKey (r.KeyOf row);
                                               set est (NotEditing (row, aux));
+                                              n <- get locks;
+                                              set locks (n - 1);
                                               loop ()
                                             | Some EntryDelete =>
                                               set est Deleted
+                                            | Some EntryLock =>
+                                              n <- get locks;
+                                              set locks (n + 1);
+                                              loop ()
+                                            | Some EntryUnlock =>
+                                              n <- get locks;
+                                              set locks (n - 1);
+                                              loop ()
                                   in
                                       spawn (loop ());
                                       return <xml></xml>
@@ -2246,8 +2277,27 @@ functor Make(M : sig
                                          <p>
                                            {if mayUpdate then
                                                 <xml>
-                                                  <button class="btn btn-primary"
-                                                          onclick={fn _ => ws <- r.WidgetsFrom cfg row aux; set est (Editing (row, ws))}>Edit</button>
+                                                  <button dynClass={n <- signal locks;
+                                                                    return (if n = 0 then
+                                                                                CLASS "btn btn-primary"
+                                                                            else
+                                                                                CLASS "btn btn-danger")}
+                                                          onclick={fn _ =>
+                                                                      approved <- rpc (edit (maker [fn p => p.1] (r.KeyOf row)) False);
+                                                                      if approved then
+                                                                          ws <- r.WidgetsFrom cfg row aux;
+                                                                          set est (Editing (row, ws))
+                                                                      else
+                                                                          proceed <- confirm "Warning: that entry is already open for editing elsewhere!  Do you want to edit it anyway?";
+                                                                          if not proceed then
+                                                                              return ()
+                                                                          else
+                                                                              approved <- rpc (edit (maker [fn p => p.1] (r.KeyOf row)) True);
+                                                                              if not approved then
+                                                                                  error <xml>Override was rejected!</xml>
+                                                                              else
+                                                                                  ws <- r.WidgetsFrom cfg row aux;
+                                                                                  set est (Editing (row, ws))}>Edit</button>
                                                 </xml>
                                             else
                                                 <xml/>}
@@ -2282,7 +2332,8 @@ functor Make(M : sig
                                                            else
                                                                return ()}>Save</button>
                                        <button class="btn"
-                                               onclick={fn _ => set est (NotEditing (row, aux))}>Cancel</button>
+                                               onclick={fn _ => rpc (unedit (maker [fn p => p.1] (r.KeyOf row)));
+                                                           set est (NotEditing (row, aux))}>Cancel</button>
                                      </p>
 
                                      {r.RenderWidgets (Some k) cfg ws}
@@ -2301,14 +2352,70 @@ functor Make(M : sig
           {bod}
         </xml>)
 
+    and edit (which : anyKey) (override : bool) =
+        auth (Update which);
+        conflict <- (if override then
+                         return False
+                     else
+                         oneRowE1 (SELECT COUNT( * ) > 0
+                                   FROM entryLocks
+                                   WHERE entryLocks.Key = {[serialize which]}));
+        if conflict then
+            return False
+        else
+            cl <- self;
+
+            alreadyLocked <- oneRowE1 (SELECT COUNT( * ) > 0
+                                       FROM entryLocks
+                                       WHERE entryLocks.Key = {[serialize which]}
+                                         AND entryLocks.Owner = {[cl]});
+            if alreadyLocked then
+                return False
+            else
+                dml (INSERT INTO entryLocks(Key, Owner)
+                     VALUES ({[serialize which]}, {[cl]}));
+                @@Variant.destrR' [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction unit] [tables]
+                  (fn [p ::_] (mk : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) _ (k : p.1) r =>
+                      queryI1 (SELECT entryListeners.Channel
+                               FROM entryListeners
+                               WHERE entryListeners.Key = {[serialize which]})
+                              (fn {Channel = ch} => send ch (mk [fn p => entryDelta ($p.2 * p.6)] EntryLock)))
+                  fl which t;
+                return True
+
+    and unedit (which : anyKey) =
+        auth (Update which);
+        cl <- self;
+        conflict <- oneRowE1 (SELECT COUNT( * ) > 0
+                              FROM entryLocks
+                              WHERE entryLocks.Key = {[serialize which]}
+                                AND entryLocks.Owner = {[cl]});
+        if not conflict then
+            return ()
+        else
+            dml (DELETE FROM entryLocks
+                 WHERE Owner = {[cl]});
+            @@Variant.destrR' [fn p => p.1] [fn p => t1 tables' (dupF p)] [transaction unit] [tables]
+            (fn [p ::_] (mk : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) _ (k : p.1) r =>
+                queryI1 (SELECT entryListeners.Channel
+                         FROM entryListeners
+                         WHERE entryListeners.Key = {[serialize which]})
+                        (fn {Channel = ch} => send ch (mk [fn p => entryDelta ($p.2 * p.6)] EntryUnlock)))
+            fl which t
+
     and save (which : variant (map (fn p => p.1 * $p.2 * p.6) tables)) =
         @@Variant.destrR' [fn p => p.1 * $p.2 * p.6] [fn p => t1 tables' (dupF p)] [transaction unit] [tables]
           (fn [p ::_] (mk : tf :: ((Type * {Type} * {{Unit}} * Type * Type * Type) -> Type) -> tf p -> variant (map tf tables)) _ (k : p.1, vs : $p.2, aux : p.6) r =>
               auth (Update (mk [fn p => p.1] k));
+
               queryI1 (SELECT entryListeners.Channel
                        FROM entryListeners
                        WHERE entryListeners.Key = {[serialize (mk [fn p => p.1] k)]})
               (fn {Channel = ch} => send ch (mk [fn p => entryDelta ($p.2 * p.6)] (EntryUpdate (vs, aux))));
+              
+              dml (DELETE FROM entryLocks
+                   WHERE Key = {[serialize (mk [fn p => p.1] k)]});
+              
               r.Update k vs aux;
 
               if @eq r.Eq k (r.KeyOf vs) then
