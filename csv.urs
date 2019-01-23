@@ -37,6 +37,21 @@ functor Import1(M : sig
                     val mayAccess : transaction bool
                 end) : Ui.S0
 
+functor ImportWithHeader1(M : sig
+                              con fs :: {Type}
+                              con cs :: {{Unit}}
+                              val tab : sql_table fs cs
+
+                              val injs : $(map sql_injectable fs)
+                              val reads : $(map read fs)
+                              val fl : folder fs
+                              val headers : $(map (fn _ => string) fs)
+                              (* This record says which CSV-file header corresponds to each field.
+                               * Note that there may be fields of the CSV file that are not used to import data. *)
+
+                              val mayAccess : transaction bool
+                          end) : Ui.S0
+
 (* And we can also generate CSV data: *)
 functor Generate1(M : sig
                       con fs :: {Type}

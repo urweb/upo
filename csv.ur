@@ -138,6 +138,7 @@ fun importTableWithHeader [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $
                        case hso of
                            None => error <xml>Somehow started parsing CSV data rows before parsing header.</xml>
                          | Some hs =>
+                           (fs : list string) <- return (List.rev fs);
                            @Sql.easy_insert injs fl tab (@map2 [read] [fn _ => int] [ident]
                                                           (fn [t] (_ : read t) (posn : int) =>
                                                               case List.nth fs posn of
@@ -223,6 +224,96 @@ functor Import1(M : sig
                              None => <xml><i>{[label]}</i></xml>
                            | Some ob => <xml><i>{[label]}</i>, {ob}</xml>))
                None fl labels of
+             None => <xml></xml>
+           | Some ob => ob}</p>
+
+        <ctextarea source={a.PasteHere} cols={20} class="form-control"/>
+        
+        <button value="Import"
+                class="btn btn-primary"
+                onclick={fn _ =>
+                            csv <- get a.PasteHere;
+                            rpc (import csv);
+                            set a.PasteHere ""}/>
+    </xml>
+
+    val ui = {Create = create,
+              Onload = onload,
+              Render = render}
+
+end
+
+functor ImportWithHeader1(M : sig
+                              con fs :: {Type}
+                              con cs :: {{Unit}}
+                              val tab : sql_table fs cs
+
+                              val injs : $(map sql_injectable fs)
+                              val reads : $(map read fs)
+                              val fl : folder fs
+                              val headers : $(map (fn _ => string) fs)
+
+                              val mayAccess : transaction bool
+                          end) = struct
+
+    open M
+
+    datatype uploadStatus =
+             AtRest
+           | Uploading
+           | UploadFailed
+           | Uploaded
+         
+    type a = {UploadStatus : source uploadStatus,
+              PasteHere : source string}
+
+    val create =
+        us <- source AtRest;
+        ph <- source "";
+        return {UploadStatus = us,
+                PasteHere = ph}
+
+    fun onload _ = return ()
+
+    fun import s =
+        ma <- mayAccess;
+        if not ma then
+            error <xml>Access denied</xml>
+        else
+           @importTableWithHeader injs reads fl headers tab s
+
+    fun claimUpload h =
+        res <- AjaxUpload.claim h;
+        case res of
+            AjaxUpload.NotFound => error <xml>Upload not found.</xml>
+          | AjaxUpload.Found r =>
+            case textOfBlob r.Content of
+                None => error <xml>Uploaded file is not text.</xml>
+              | Some s => import s
+                   
+    fun render _ a = <xml>
+      Upload CSV file:
+      <active code={AjaxUpload.render {SubmitLabel = Some "Submit",
+                                       OnBegin = set a.UploadStatus Uploading,
+                                       OnSuccess = fn h =>
+                                                      rpc (claimUpload h);
+                                                      set a.UploadStatus Uploaded,
+                                       OnError = set a.UploadStatus UploadFailed}}/><br/>
+      <dyn signal={us <- signal a.UploadStatus;
+                   return (case us of
+                               AtRest => <xml></xml>
+                             | Uploading => <xml>Uploading...</xml>
+                             | Uploaded => <xml>Import complete.</xml>
+                             | UploadFailed => <xml>Import failed!</xml>)}/>
+      <hr/>
+                                
+      <p><i>Or</i> copy and paste the CSV data here, with a header line that includes at least the following field names:
+        {case @foldR [fn _ => string] [fn _ => option xbody]
+               (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (label : string) (ob : option xbody) =>
+                   Some (case ob of
+                             None => <xml><i>{[label]}</i></xml>
+                           | Some ob => <xml><i>{[label]}</i>, {ob}</xml>))
+               None fl headers of
              None => <xml></xml>
            | Some ob => ob}</p>
 
