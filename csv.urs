@@ -13,6 +13,14 @@ val parse : fs ::: {Type}
             -> string
             -> list $fs
 
+val importTableWithHeader : fs ::: {Type} -> cs ::: {{Unit}}
+                            -> $(map sql_injectable fs) -> $(map read fs) -> folder fs
+                            -> $(map (fn _ => string) fs)
+                               (* for each column, the name of its header in the CSV file *)
+                            -> sql_table fs cs
+                            -> string
+                            -> transaction unit
+
 (* Let's expose all that as a UI. *)
 
 functor Import1(M : sig
