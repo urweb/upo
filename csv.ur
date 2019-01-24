@@ -34,7 +34,7 @@ fun csvFold [m] (_ : monad m) [acc] (processHeaderLine : string -> acc -> m acc)
                         end
                       | Some (betterBeWhitespace, #"\"", line') =>
                         if not (String.all Char.isSpace betterBeWhitespace) then
-                            error <xml>CSV file contains other nonspace characters before first double quote of a field value.</xml>
+                            error <xml>CSV file contains other nonspace characters ("{[betterBeWhitespace]}") before first double quote of a field value.</xml>
                         else
                             let
                                 val (lit, line') = readStringLiteral line' ""
