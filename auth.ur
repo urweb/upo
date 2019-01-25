@@ -58,7 +58,7 @@ functor Make(M : sig
 
                  val underlying : transaction (option $([name = string] ++ key))
                  val defaults : option $(mapU bool groups ++ others)
-                 val allowMasquerade : option (variant (mapU unit groups))
+                 val allowMasquerade : option (list (variant (mapU unit groups)))
                  val requireSsl : bool
 
                  val fls : folder key
@@ -102,17 +102,17 @@ functor Make(M : sig
                 Some mq =>
                 (case allowMasquerade of
                      None => error <xml>Masquerade not allowed</xml>
-                   | Some g =>
-                     b <- oneOrNoRowsE1 (SELECT ({variantToExp g})
-                                         FROM users
-                                         WHERE users.{name} = {[data.name]});
-                     case b of
-                         None => error <xml>User not found</xml>
-                       | Some b =>
-                         if b then
-                             return (Some mq)
-                         else
-                             error <xml>Access denied</xml>)
+                   | Some [] => error <xml>allowMasquerade is empty.</xml>
+                   | Some gs =>
+                     b <- List.existsM (fn g =>
+                                           bo <- oneOrNoRowsE1 (SELECT ({variantToExp g})
+                                                                FROM users
+                                                                WHERE users.{name} = {[data.name]});
+                                           return (bo = Some True)) gs;
+                     if b then
+                         return (Some mq)
+                     else
+                         error <xml>Access denied</xml>)
               | None =>
                 if anyToSet then
                     inDb <- oneOrNoRows1 (SELECT users.{{key}}
@@ -292,8 +292,9 @@ functor Make(M : sig
     fun masqueradeAs u =
         case allowMasquerade of
             None => error <xml>Masquerading is not enabled.</xml>
-          | Some g =>
-            b <- inGroup g;
+          | Some [] => error <xml>allowMasquerade is empty.</xml>
+          | Some gs =>
+            b <- List.existsM inGroup gs;
             if b then
                 setCookie masquerade {Value = u,
                                       Expires = None,
