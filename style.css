@@ -209,3 +209,29 @@ table.MeetingGrid_table_fixedheader>tbody>tr>td {
         width: 20%;
         float: left;
 }
+
+/* Tooltip container */
+.MeetingGrid_tooltip {
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted black;
+}
+
+/* Tooltip text */
+.MeetingGrid_tooltip .MeetingGrid_tooltiptext {
+  visibility: hidden;
+  width: 300px;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  padding: 5px 0;
+  border-radius: 6px;
+ 
+  position: absolute;
+  z-index: 1;
+}
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.MeetingGrid_tooltip:hover .MeetingGrid_tooltiptext {
+  visibility: visible;
+}

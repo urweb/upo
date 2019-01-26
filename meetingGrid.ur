@@ -7,6 +7,9 @@ style meeting_movable
 
 open Bootstrap4
 
+style tooltip
+style tooltiptext
+
 functor Make(M : sig
                  con homeKey1 :: Name
                  type homeKeyT
@@ -664,7 +667,7 @@ functor Make(M : sig
                                                                                           if mf.Us = us
                                                                                              && mf.Them = th
                                                                                              && mf.Time = tm then
-                                                                                              meeting_selected
+                                                                                              classes meeting_selected tooltip
                                                                                           else
                                                                                               default)}
                                                                 onclick={fn _ =>
@@ -680,6 +683,17 @@ functor Make(M : sig
                                                                                         (Some {Us = us,
                                                                                                Them = th,
                                                                                                Time = tm})}>
+                                                             {case List.find (fn (th', _) => th' = th) t.Thems of
+                                                                  None => <xml></xml>
+                                                                | Some (_, unavails) =>
+                                                                  if not avail then
+                                                                      <xml><span class="tooltip glyphicon glyphicon-question-circle"><span class="tooltiptext"><i>Conflict:</i> {[us]} marked this time as <b>unavailable.</b></span></span></xml>
+                                                                  else if List.mem tm unavails then
+                                                                      <xml><span class="tooltip glyphicon glyphicon-question-circle"><span class="tooltiptext"><i>Conflict:</i> {[th]} marked this time as <b>unavailable.</b></span></span></xml>
+                                                                  else
+                                                                      case thsv of
+                                                                          _ :: _ :: _ => <xml><span class="tooltip glyphicon glyphicon-question-circle"><span class="tooltiptext"><i>Conflict:</i> there are <b>multiple</b> meetings in this cell, indicating a double booking.</span></span></xml>
+                                                                        | _ => if tt > 1 then <xml><span class="tooltip glyphicon glyphicon-question-circle"><span class="tooltiptext"><i>Conflict:</i> {[th]} has <b>another meeting</b> scheduled at this time.</span></span></xml> else <xml></xml>}
                                                              {[th]}
                                                              {if t.ReadOnly then
                                                                   <xml></xml>
