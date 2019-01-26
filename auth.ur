@@ -60,6 +60,7 @@ functor Make(M : sig
                  val defaults : option $(mapU bool groups ++ others)
                  val allowMasquerade : option (list (variant (mapU unit groups)))
                  val requireSsl : bool
+                 val accessDeniedErrorMessage : xbody
 
                  val fls : folder key
                  val flg : folder groups
@@ -112,7 +113,7 @@ functor Make(M : sig
                      if b then
                          return (Some mq)
                      else
-                         error <xml>Access denied</xml>)
+                         error accessDeniedErrorMessage)
               | None =>
                 if anyToSet then
                     inDb <- oneOrNoRows1 (SELECT users.{{key}}
@@ -167,19 +168,19 @@ functor Make(M : sig
     val getUser =
         o <- whoami;
         case o of
-            None => error <xml>Access denied (must be logged in)</xml>
+            None => error <xml>{accessDeniedErrorMessage} (not logged in)</xml>
           | Some s => return s
 
     val getUserWithMasquerade =
         o <- whoamiWithMasquerade;
         case o of
-            None => error <xml>Access denied (must be logged in)</xml>
+            None => error <xml>{accessDeniedErrorMessage} (not logged in)</xml>
           | Some s => return s
 
     val requireUser =
         o <- whoami;
         case o of
-            None => error <xml>Access denied (must be logged in)</xml>
+            None => error <xml>{accessDeniedErrorMessage} (not logged in)</xml>
           | Some _ => return ()
 
     fun inGroup g =
@@ -211,31 +212,31 @@ functor Make(M : sig
         if b then
             return ()
         else
-            error <xml>Access denied</xml>
+            error accessDeniedErrorMessage
 
     fun getGroup g =
         u <- whoami;
         case u of
-            None => error <xml>Access denied</xml>
+            None => error accessDeniedErrorMessage
           | Some u =>
             bo <- oneOrNoRowsE1 (SELECT ({variantToExp g})
                                  FROM users
                                  WHERE users.{name} = {[u]});
             case bo of
                 Some True => return u
-              | _ => error <xml>Access denied</xml>
+              | _ => error accessDeniedErrorMessage
 
     fun getGroupWithMasquerade g =
         u <- whoamiWithMasquerade;
         case u of
-            None => error <xml>Access denied</xml>
+            None => error accessDeniedErrorMessage
           | Some u =>
             bo <- oneOrNoRowsE1 (SELECT ({variantToExp g})
                                 FROM users
                                 WHERE users.{name} = {[u]});
             case bo of
                 Some True => return u
-              | _ => error <xml>Access denied</xml>
+              | _ => error accessDeniedErrorMessage
 
     fun inGroups [dummy] (fl : folder dummy) (gs : $(mapU _ dummy)) =
         u <- whoami;
@@ -255,12 +256,12 @@ functor Make(M : sig
         if b then
             return ()
         else
-            error <xml>Access denied</xml>
+            error accessDeniedErrorMessage
 
     fun getGroups [dummy] (fl : folder dummy) (gs : $(mapU _ dummy)) =
         u <- whoami;
         case u of
-            None => error <xml>Access denied</xml>
+            None => error accessDeniedErrorMessage
           | Some u =>
             bo <- oneOrNoRowsE1 (SELECT ({@foldUR [variant (mapU unit groups)] [fn _ => sql_exp schema schema [] bool]
                                      (fn [nm ::_] [r ::_] [[nm] ~ r] g e =>
@@ -270,12 +271,12 @@ functor Make(M : sig
                                       WHERE users.{name} = {[u]});
             case bo of
                 Some True => return u
-              | _ => error <xml>Access denied</xml>
+              | _ => error accessDeniedErrorMessage
 
     fun getGroupsWithMasquerade [dummy] (fl : folder dummy) (gs : $(mapU _ dummy)) =
         u <- whoamiWithMasquerade;
         case u of
-            None => error <xml>Access denied</xml>
+            None => error accessDeniedErrorMessage
           | Some u =>
             bo <- oneOrNoRowsE1 (SELECT ({@foldUR [variant (mapU unit groups)] [fn _ => sql_exp schema schema [] bool]
                                      (fn [nm ::_] [r ::_] [[nm] ~ r] g e =>
@@ -285,7 +286,7 @@ functor Make(M : sig
                                       WHERE users.{name} = {[u]});
             case bo of
                 Some True => return u
-              | _ => error <xml>Access denied</xml>
+              | _ => error accessDeniedErrorMessage
 
     val unmasquerade = clearCookie masquerade
 
@@ -300,7 +301,7 @@ functor Make(M : sig
                                       Expires = None,
                                       Secure = requireSsl}
             else
-                error <xml>Access denied</xml>
+                error accessDeniedErrorMessage
 
     functor Masquerade(N : sig
                            con fs :: {Type}

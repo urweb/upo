@@ -84,6 +84,8 @@ functor Make(M : sig
 
                  val requireSsl : bool
 
+                 val accessDeniedErrorMessage : xbody
+
                  val fls : folder key
                  val flg : folder groups
                  val flo : folder others
