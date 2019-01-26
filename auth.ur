@@ -336,7 +336,7 @@ functor Make(M : sig
                          return (if b then
                                      CLASS "alert-fixed"
                                  else
-                                     CLASS "hidden")}>
+                                     CLASS "d-none")}>
             <h3>Masquerading!</h3>
 
             <h4>Before resuming any further admin activities (beside more masquerades), please <b>reload</b> this page.</h4>

@@ -1015,10 +1015,16 @@ functor Make(M : sig
 
         structure WhoAskedFor = struct
             type input = $usKey
-            type a = list $themKey
+            type a = list {Preference : $themKey, AlreadyScheduled : option bool}
 
             fun create us =
-                queryL1 (SELECT preference.{{themKey}}
+                queryL (SELECT preference.{{themKey}},
+                          (SELECT COUNT( * ) > 0
+                           FROM meeting
+                           WHERE {@@Sql.easy_where [#Meeting] [usKey] [_] [_] [_] [_]
+                             ! ! usInj' usFl us}
+                             AND {@@Sql.easy_join [#Meeting] [#Preference] [themKey] [_] [_] [_] [_] [_]
+                             ! ! ! ! themFl}) AS AlreadyScheduled
                          FROM preference
                          WHERE {@@Sql.easy_where [#Preference] [usKey] [_] [_] [_] [_]
                            ! ! usInj' usFl us}
@@ -1029,9 +1035,14 @@ functor Make(M : sig
 
             fun render (t : a) = <xml>
               <table class="bs-table table-striped">
+                <tr><th/> <th>Already scheduled?</th></tr>
                 {List.mapX (fn them => <xml>
                   <tr>
-                    <td>{[them]}</td>
+                    <td>{[them.Preference]}</td>
+                    <td>{if them.AlreadyScheduled = Some True then
+                             <xml><span class="glyphicon glyphicon-check"/></xml>
+                         else
+                             <xml></xml>}</td>
                   </tr>
                 </xml>) t}
               </table>
