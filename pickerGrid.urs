@@ -20,6 +20,9 @@ functor Make(M : sig
                  val injd : $(map (fn p => sql_injectable p.1) dynamic)
 
                  val amAuthorized : transaction bool (* Is this user allowed to use this interface? *)
+
+                 val extraTableHeaderContent : xtr
+                 val extraInitialColumns : $static -> xtr
              end) : Ui.S where type input = sql_exp [T = M.hidden ++ M.static ++ map fst3 M.dynamic] [] [] bool
 
 (* Warning: [static] should really serve as a key for the table, or hijinks will ensue! *)

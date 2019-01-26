@@ -19,6 +19,9 @@ functor Make(M : sig
                  val injd : $(map (fn p => sql_injectable p.1) dynamic)
 
                  val amAuthorized : transaction bool (* Is this user allowed to use this interface? *)
+
+                 val extraTableHeaderContent : xtr
+                 val extraInitialColumns : $static -> xtr
              end) = struct
 
     open M
@@ -91,6 +94,7 @@ functor Make(M : sig
     fun render _ a = <xml>
       <table class="bs-table table-striped">
         <tr>
+          {extraTableHeaderContent}
           {@mapX [fn _ => string] [tr]
             (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (s : string) => <xml><th>{[s]}</th></xml>)
             fls (labels --- (map (fn _ => string) dynamic))}
@@ -103,6 +107,7 @@ functor Make(M : sig
           <dyn signal={r <- signal rs;
                        return <xml>
                          <tr>
+                           {extraInitialColumns (r --- (map snd3 dynamic))}
                            {@mapX2 [show] [ident] [tr]
                             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) =>
                                 <xml><td>{[x]}</td></xml>)
