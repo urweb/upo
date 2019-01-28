@@ -1,15 +1,16 @@
 open Bootstrap4
 
 functor Make(M : sig
+                 con when :: Name
                  con reviewer :: Name
                  con reviewed :: {Type}
                  con other :: {(Type * Type * Type)}
                  constraint reviewed ~ other
-                 constraint [reviewer] ~ [When]
-                 constraint [reviewer, When] ~ reviewed
-                 constraint [reviewer, When] ~ other
+                 constraint [reviewer] ~ [when]
+                 constraint [reviewer, when] ~ reviewed
+                 constraint [reviewer, when] ~ other
                  constraint [Channel] ~ reviewed
-                 table tab : ([When = time, reviewer = string] ++ reviewed ++ map fst3 other)
+                 table tab : ([when = time, reviewer = string] ++ reviewed ++ map fst3 other)
 
                  val widgets : $(map Widget.t' other)
                  val reviewedFl : folder reviewed
@@ -24,12 +25,6 @@ functor Make(M : sig
 
                  val adjust : $reviewed -> $(map fst3 other) -> transaction $(map fst3 other)
              end) = struct
-
-    style summary
-    style full
-    style fullHeader
-    style editing
-    style editingHeader
 
     open M
 
@@ -91,20 +86,20 @@ functor Make(M : sig
             cfg <- @Monad.mapR _ [Widget.t'] [thd3]
                     (fn [nm ::_] [p ::_] (x : Widget.t' p) => @Widget.configure x)
                     otherFl widgets;
-            rs <- List.mapQueryM (SELECT tab.{reviewer}, tab.When, tab.{{map fst3 other}}
+            rs <- List.mapQueryM (SELECT tab.{reviewer}, tab.{when}, tab.{{map fst3 other}}
                                   FROM tab
                                   WHERE {@Sql.easy_where [#Tab] ! ! reviewedInj reviewedFl key}
-                                  ORDER BY tab.When)
+                                  ORDER BY tab.{when})
                                  (fn {Tab = r} =>
                                      other <- @Monad.mapR _ [fst3] [fn p => id * p.1]
                                                (fn [nm ::_] [p ::_] (x : p.1) =>
                                                    id <- fresh;
                                                    return (id, x))
-                                               otherFl (r -- reviewer -- #When);
+                                               otherFl (r -- reviewer -- when);
                                      rs <- source (Summary other);
                                      waiting <- source False;
                                      return {Reviewer = r.reviewer,
-                                             When = r.When,
+                                             When = r.when,
                                              State = rs,
                                              WaitingForRpc = waiting});
             rs <- source rs;
@@ -170,13 +165,13 @@ functor Make(M : sig
                 tm <- now;
                 other <- adjust key other;
                 @@Sql.easy_update' [[reviewer = _] ++ reviewed]
-                  [[When = _] ++ map fst3 other] [_] !
+                  [[when = _] ++ map fst3 other] [_] !
                   ({reviewer = _} ++ reviewedInj)
-                  ({When = _} ++ otherInj)
+                  ({when = _} ++ otherInj)
                   (@Folder.cons [reviewer] [_] ! reviewedFl)
-                  (@Folder.cons [#When] [_] ! (@Folder.mp otherFl))
+                  (@Folder.cons [when] [_] ! (@Folder.mp otherFl))
                   tab ({reviewer = u} ++ key)
-                  ({When = tm, reviewer = u} ++ key ++ other)
+                  ({when = tm, reviewer = u} ++ key ++ other)
                   (WHERE TRUE);
                 queryI1 (SELECT specificListeners.Channel
                          FROM specificListeners
@@ -193,11 +188,11 @@ functor Make(M : sig
               | Some u =>
                 tm <- now;
                 other <- adjust key other;
-                @@Sql.easy_insert [[When = _, reviewer = _] ++ reviewed ++ map fst3 other] [_]
-                  ({When = _, reviewer = _} ++ reviewedInj ++ otherInj)
-                  (@Folder.cons [#When] [_] ! (@Folder.cons [reviewer] [_] !
+                @@Sql.easy_insert [[when = _, reviewer = _] ++ reviewed ++ map fst3 other] [_]
+                  ({when = _, reviewer = _} ++ reviewedInj ++ otherInj)
+                  (@Folder.cons [when] [_] ! (@Folder.cons [reviewer] [_] !
                     (@Folder.concat ! reviewedFl (@Folder.mp otherFl))))
-                  tab ({When = tm, reviewer = u} ++ key ++ other);
+                  tab ({when = tm, reviewer = u} ++ key ++ other);
                 queryI1 (SELECT specificListeners.Channel
                          FROM specificListeners
                          WHERE {@Sql.easy_where [#SpecificListeners] ! ! reviewedInj reviewedFl key})
@@ -212,76 +207,84 @@ functor Make(M : sig
                          <dyn signal={st <- signal r.State;
                                       return (case st of
                                                   Summary o => <xml>
-                                                    <div class={summary}
+                                                    <div class="card"
                                                          onclick={fn _ => set r.State (Full o)}>
-                                                      {[r.Reviewer]}
-                                                      ({[r.When]})
-                                                      {[summarize (@mp [fn p => id * p.1] [fst3]
-                                                                    (fn [p] (_, x) => x)
-                                                                    otherFl o)]}
+                                                      <div class="card-header"><button class="btn btn-link collapsed">
+                                                        {[r.Reviewer]}
+                                                        ({[r.When]})
+                                                        {[summarize (@mp [fn p => id * p.1] [fst3]
+                                                                      (fn [p] (_, x) => x)
+                                                                      otherFl o)]}
+                                                      </button></div>
                                                     </div>
                                                   </xml>
                                                 | Full o => <xml>
-                                                    <div class={full}>
-                                                      <div class={fullHeader}
+                                                    <div class="card">
+                                                      <div class="card-header"
                                                            onclick={fn _ => set r.State (Summary o)}>
-                                                        {[r.Reviewer]}
-                                                        ({[r.When]})
+                                                           <button class="btn btn-link">
+                                                             {[r.Reviewer]}
+                                                             ({[r.When]})
+                                                           </button>
                                                       </div>
 
-                                                      {if r.Reviewer <> a.Whoami then
-                                                         <xml/>
-                                                       else <xml>
-                                                         <dyn signal={b <- signal r.WaitingForRpc;
-                                                                      return (if b then
-                                                                                <xml/>
-                                                                              else <xml>
-                                                                                <button class="btn btn-primary"
-                                                                                        value="Edit Review"
-                                                                                        onclick={fn _ =>
-                                                                                                    ws <- widgetsFrom a.Config o;
-                                                                                                    set r.State (Editing (o, ws))}/>
-                                                                              </xml>)}/>
-                                                       </xml>}
-
-                                                      {@mapX3 [fn _ => string] [Widget.t'] [fn p => id * p.1] [body]
-                                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, v : p.1) => <xml>
-                                                          <div class="form-group">
-                                                            <label class="control-label" for={id}>{[lab]}</label>
-                                                            <div id={id}>
-                                                              {@Widget.asValue w v}
+                                                      <div class="card-body">
+                                                        {@mapX3 [fn _ => string] [Widget.t'] [fn p => id * p.1] [body]
+                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, v : p.1) => <xml>
+                                                            <div class="form-group">
+                                                              <label class="control-label" for={id}><h5>{[lab]}</h5></label>
+                                                              <div id={id}>
+                                                                {@Widget.asValue w v}
+                                                              </div>
                                                             </div>
-                                                          </div>
-                                                        </xml>)
-                                                        otherFl labels widgets o}
+                                                          </xml>)
+                                                          otherFl labels widgets o}
+
+                                                        {if r.Reviewer <> a.Whoami then
+                                                           <xml/>
+                                                         else <xml>
+                                                           <dyn signal={b <- signal r.WaitingForRpc;
+                                                                        return (if b then
+                                                                                  <xml/>
+                                                                                else <xml>
+                                                                                  <button class="card-link"
+                                                                                          value="Edit Review"
+                                                                                          onclick={fn _ =>
+                                                                                                      ws <- widgetsFrom a.Config o;
+                                                                                                      set r.State (Editing (o, ws))}/>
+                                                                                </xml>)}/>
+                                                         </xml>}
+                                                      </div>
                                                     </div>
                                                   </xml>
                                                 | Editing (o, ws) => <xml>
-                                                    <div class={editing}>
-                                                      <div class={editingHeader}>
+                                                    <div class="card">
+                                                      <div class="card-header">
                                                         {[r.Reviewer]}
                                                         ({[r.When]})
                                                       </div>
 
-                                                      <button class="btn btn-primary"
-                                                              value="Save Review"
-                                                              onclick={fn _ =>
-                                                                          vs <- readWidgets ws;
-                                                                          set r.State (Full o);
-                                                                          set r.WaitingForRpc True;
-                                                                          rpc (edit a.Reviewed vs)}/>
-                                                      <button class="btn"
-                                                              value="Cancel Editing"
-                                                              onclick={fn _ => set r.State (Full o)}/>
+                                                      <div class="card-body">
+                                                        {@mapX3 [fn _ => string] [Widget.t'] [fn p => id * p.2] [body]
+                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, v : p.2) => <xml>
+                                                            <div class="form-group">
+                                                              <label class="control-label" for={id}><h5>{[lab]}</h5></label>
+                                                              {@Widget.asWidget w v (Some id)}
+                                                            </div>
+                                                          </xml>)
+                                                          otherFl labels widgets ws}
 
-                                                      {@mapX3 [fn _ => string] [Widget.t'] [fn p => id * p.2] [body]
-                                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, v : p.2) => <xml>
-                                                          <div class="form-group">
-                                                            <label class="control-label" for={id}>{[lab]}</label>
-                                                            {@Widget.asWidget w v (Some id)}
-                                                          </div>
-                                                        </xml>)
-                                                        otherFl labels widgets ws}
+                                                        <button class="card-link"
+                                                                value="Save Review"
+                                                                onclick={fn _ =>
+                                                                            vs <- readWidgets ws;
+                                                                            set r.State (Full o);
+                                                                            set r.WaitingForRpc True;
+                                                                            rpc (edit a.Reviewed vs)}/>
+                                                        <button class="card-link"
+                                                                value="Cancel Editing"
+                                                                onclick={fn _ => set r.State (Full o)}/>
+                                                      </div>
                                                     </div>
                                                   </xml>)}/>
                        </xml>) rs)}/>
@@ -297,7 +300,7 @@ functor Make(M : sig
                                  {@mapX3 [fn _ => string] [Widget.t'] [fn p => id * p.2] [body]
                                    (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (id, x : p.2) => <xml>
                                      <div class="form-group">
-                                       <label class="control-label" for={id}>{[lab]}</label>
+                                       <label class="control-label" for={id}><h5>{[lab]}</h5></label>
                                        {@Widget.asWidget w x (Some id)}
                                      </div>
                                    </xml>)
@@ -327,29 +330,31 @@ functor Make(M : sig
             queryL1 (SELECT *
                      FROM tab AS T
                      WHERE {e}
-                     ORDER BY T.When DESC)
+                     ORDER BY T.{when} DESC)
 
         fun onload _ = return ()
 
         fun render _ rs = <xml>
           {List.mapX (fn r => <xml>
-            <div class={full}>
-              <div class={fullHeader}>
-                {[r -- #When -- reviewer --- (map fst3 other)]}
+            <div class="card">
+              <div class="card-header">
+                {[r -- when -- reviewer --- (map fst3 other)]}
                 -- {[r.reviewer]}
-                ({[r.When]})
+                ({[r.when]})
               </div>
 
-              {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
-                (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (v : p.1) => <xml>
-                  <div class="form-group">
-                    <label class="control-label">{[lab]}</label>
-                    <div>
-                      {@Widget.asValue w v}
+              <div class="card-body">
+                {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
+                  (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (lab : string) (w : Widget.t' p) (v : p.1) => <xml>
+                    <div class="form-group">
+                      <label class="control-label"><h5>{[lab]}</h5></label>
+                      <div>
+                        {@Widget.asValue w v}
+                      </div>
                     </div>
-                  </div>
-                </xml>)
-                otherFl labels widgets (r -- #When -- reviewer --- reviewed)}
+                  </xml>)
+                  otherFl labels widgets (r -- when -- reviewer --- reviewed)}
+              </div>
             </div>
           </xml>) rs}
         </xml>
