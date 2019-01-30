@@ -21,6 +21,12 @@ val importTableWithHeader : fs ::: {Type} -> cs ::: {{Unit}}
                             -> string
                             -> transaction unit
 
+val splitLine : string -> list string
+(* A handy exported helper: split a single line into fields at commas (taking quoting into account). *)
+
+val nextLine : string -> option (string * string)
+(* Split at first line of a CSV text, if there is a first line. *)
+
 (* Let's expose all that as a UI. *)
 
 functor Import1(M : sig

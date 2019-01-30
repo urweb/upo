@@ -1,64 +1,100 @@
+fun splitLine line =
+    let
+        fun readStringLiteral line acc =
+            case String.split line #"\"" of
+                None => error <xml>Quoted CSV field value is missing a closing double quote.</xml>
+              | Some (chars, line') =>
+                if String.length line' > 0 && String.sub line' 0 = #"\"" then
+                    readStringLiteral (String.suffix line' 1) (acc ^ "\"")
+                else
+                    (acc ^ chars, line')
+    
+        fun fields line justReadQuoted acc =
+            case String.msplit {Haystack = line, Needle = ",\""} of
+                None =>
+                if line = "" then
+                    acc
+                else
+                    line :: acc
+              | Some (field, #",", line') =>
+                let
+                    val acc =
+                        if justReadQuoted then
+                            if String.all Char.isSpace field then
+                                acc
+                            else
+                                error <xml>There are extra characters after a quoted CSV field value.</xml>
+                        else
+                            field :: acc
+                in
+                    fields line' False acc
+                end
+              | Some (betterBeWhitespace, #"\"", line') =>
+                if not (String.all Char.isSpace betterBeWhitespace) then
+                    error <xml>CSV file contains other nonspace characters ("{[betterBeWhitespace]}") before first double quote of a field value.</xml>
+                else
+                    let
+                        val (lit, line') = readStringLiteral line' ""
+                    in
+                        fields line' True (lit :: acc)
+                    end
+              | Some _ => error <xml>CSV: impossible return from <tt>String.msplit</tt>!</xml>
+    in
+        fields line False []
+    end
+
+fun nextLine lines =
+    let
+        fun findIt pos lines =
+            case lines of
+                "" => None
+              | _ =>
+                if String.sub lines 0 = #"\n" then
+                    Some pos
+                else if String.sub lines 0 = #"\"" then
+                    skipQuoted (pos+1) (String.suffix lines 1)
+                else
+                    findIt (pos+1) (String.suffix lines 1)
+
+        and skipQuoted pos lines =
+            case lines of
+                "" => None
+              | _ =>
+                if String.sub lines 0 = #"\"" then
+                    let
+                        val lines = String.suffix lines 1
+                    in
+                        case lines of
+                            "" => None
+                          | _ =>
+                            if String.sub lines 0 = #"\"" then
+                                skipQuoted (pos+2) (String.suffix lines 1)
+                            else
+                                findIt (pos+1) lines
+                    end
+                else
+                    skipQuoted (pos+1) (String.suffix lines 1)
+    in
+        case findIt 0 lines of
+            None =>
+            if String.all Char.isSpace lines then
+                None
+            else
+                Some (lines, "")
+          | Some pos =>
+            Some (String.substring lines {Start = 0, Len = pos},
+                  String.suffix lines (pos+1))
+    end
+    
 fun csvFold [m] (_ : monad m) [acc] (processHeaderLine : string -> acc -> m acc)
             (processRow : list string -> acc -> m acc) =
     let
-        fun doLine line acc =
-            let
-                fun readStringLiteral line acc =
-                    case String.split line #"\"" of
-                        None => error <xml>Quoted CSV field value is missing a closing double quote.</xml>
-                      | Some (chars, line') =>
-                        if String.length line' > 0 && String.sub line' 0 = #"\"" then
-                            readStringLiteral (String.suffix line' 1) (acc ^ "\"")
-                        else
-                            (acc ^ chars, line')
-                
-                fun fields line justReadQuoted acc =
-                    case String.msplit {Haystack = line, Needle = ",\""} of
-                        None =>
-                        if line = "" then
-                            acc
-                        else
-                            line :: acc
-                      | Some (field, #",", line') =>
-                        let
-                            val acc =
-                                if justReadQuoted then
-                                    if String.all Char.isSpace field then
-                                        acc
-                                    else
-                                        error <xml>There are extra characters after a quoted CSV field value.</xml>
-                                else
-                                    field :: acc
-                        in
-                            fields line' False acc
-                        end
-                      | Some (betterBeWhitespace, #"\"", line') =>
-                        if not (String.all Char.isSpace betterBeWhitespace) then
-                            error <xml>CSV file contains other nonspace characters ("{[betterBeWhitespace]}") before first double quote of a field value.</xml>
-                        else
-                            let
-                                val (lit, line') = readStringLiteral line' ""
-                            in
-                                fields line' True (lit :: acc)
-                            end
-                      | Some _ => error <xml>CSV: impossible return from <tt>String.msplit</tt>!</xml>
-
-                val fields = fields line False []
-            in
-                processRow fields acc
-            end
-
         fun loop (header : int) input acc =
-            case String.split input #"\n" of
-                None =>
-                (case input of
-                     "" => return acc
-                   | _ => if header = 0
-                          then doLine input acc
-                          else processHeaderLine input acc)
+            case nextLine input of
+                None => return acc
               | Some (line, input) =>
                 if header = 0
-                then acc <- doLine line acc; loop 0 input acc
+                then acc <- processRow (splitLine line) acc; loop 0 input acc
                 else acc <- processHeaderLine line acc; loop (header-1) input acc
     in
         loop
