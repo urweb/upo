@@ -1,0 +1,7 @@
+database dbname=upotest
+sql ss.sql
+library ../default
+rewrite url Ss/*
+safeGet main
+
+ss
