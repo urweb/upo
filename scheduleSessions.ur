@@ -45,12 +45,14 @@ functor Make(M: sig
     open M
 
     val session_eq' : eq $sessionKey = @@Record.eq [sessionKey] session_eq sessionFl
+    val time_eq' : eq $time = @@Record.eq [time] time_eq timeFl
 
     val session_ord' : ord $sessionKey = @@Record.ord [sessionKey] session_ord sessionFl
     val time_ord' : ord $time = @@Record.ord [time] time_ord timeFl
 
     datatype update =
              NewTime of $sessionKey * $time * string (* string rendering of time *)
+           | AssignTime of $sessionKey * $time * string (* string rendering of speaker *)
 
     table listeners : { Channel : channel update }
                         
@@ -159,6 +161,19 @@ functor Make(M: sig
                                          src <- source "";
                                          set tms (List.sort (fn (a, _, _) (b, _, _) => a > b) ((tm, tmS, src) :: tmsV))) sesl;
                         loop ()
+                      | AssignTime (ses, tm, spkrS) =>
+                        sesl <- get a.Sessions;
+                        List.app (fn (ses', {Times = tms, ...}) =>
+                                     if ses' <> ses then
+                                         return ()
+                                     else
+                                         tmsV <- get tms;
+                                         List.app (fn (tm', _, s) =>
+                                                      if tm' <> tm then
+                                                          return ()
+                                                      else
+                                                          set s spkrS) tmsV) sesl;
+                        loop ()
             in
                 spawn (loop ())
             end
@@ -178,6 +193,25 @@ functor Make(M: sig
             queryI1 (SELECT * FROM listeners)
             (fn {Channel = ch} => send ch (NewTime (ses, tm, show tm)))
 
+        fun setSpeaker ses tm spkrS =
+            case read spkrS of
+                None => error <xml>Invalid speaker</xml>
+              | Some spkr =>
+                @@Sql.easy_update [sessionKey ++ time] [map option speakerKey] [_] !
+                  (@mp [sql_injectable_prim] [sql_injectable]
+                    (fn [t] (_ : sql_injectable_prim t) => _)
+                    (@Folder.concat ! sessionFl timeFl)
+                    (session_inj ++ time_inj))
+                  (@mp [sql_injectable_prim] [fn t => sql_injectable (option t)]
+                    (fn [t] (_ : sql_injectable_prim t) => _) speakerFl speaker_inj)
+                  (@Folder.concat ! sessionFl timeFl)
+                  (@Folder.mp speakerFl)
+                  talk
+                  (ses ++ tm)
+                  (@mp [ident] [option] (fn [t] => Some) speakerFl spkr);
+                queryI1 (SELECT * FROM listeners)
+                        (fn {Channel = ch} => send ch (AssignTime (ses, tm, spkrS)))
+            
         fun render _ a = <xml>
           <dyn signal={sesl <- signal a.Sessions;
                        return (List.mapX (fn (ses, r) => <xml>
@@ -200,7 +234,9 @@ functor Make(M: sig
                                           <div class="card-header">{[tmS]}</div>
 
                                           <div class="card-body">
-                                            <cselect source={sp}>
+                                            <cselect source={sp}
+                                                     onchange={spkrS <- get sp;
+                                                               rpc (setSpeaker ses tm spkrS)}>
                                               <coption></coption>
                                               {List.mapX (fn spk => <xml><coption>{[spk]}</coption></xml>) a.Speakers}
                                             </cselect>
