@@ -83,7 +83,7 @@ functor Make(M : sig
                              let
                                  val (label, link) = f row
                              in
-                                 <xml><td><a class="btn btn-info" href={link}>{[label]}</a></td></xml>
+                                 <xml><td class="col-sm-1"><a class="btn btn-info" href={link}>{[label]}</a></td></xml>
                              end)
                          buttonsFl self.Buttons}
                        {@mapX2 [show] [ident] [tr]
