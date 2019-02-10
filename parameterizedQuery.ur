@@ -11,17 +11,17 @@ functor Make(M : sig
                  con results :: {Type}
                  val resultsFl : folder results
                  val resultLabels : $(map (fn _ => string) results)
-                 val buttons : $(mapU ($results -> string (* label *) * url) buttons)
                  val query : $(map fst3 params) -> sql_query [] [] [] results
                  val shows : $(map show results)
              end) = struct
     open M
     
-    type a = {Ids : $(map (fn _ => id) params),
+    type a = {Buttons : $(mapU ($results -> string (* label *) * url) buttons),
+              Ids : $(map (fn _ => id) params),
               Widgets : $(map snd3 params),
               Results : source (list $results)}
 
-    val create =
+    fun create bs =
         ids <- @Monad.mapR0 _ [fn _ => id]
                 (fn [nm ::_] [p ::_] => fresh)
                 paramsFl;
@@ -31,7 +31,8 @@ functor Make(M : sig
                    @Widget.create w cfg)
                paramsFl widgets;
         rs <- source [];
-        return {Ids = ids,
+        return {Buttons = bs,
+                Ids = ids,
                 Widgets = ws,
                 Results = rs}
 
@@ -68,7 +69,7 @@ functor Make(M : sig
           {@mapX [fn _ => $results -> string * url] [tr]
            (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] _ =>
                <xml><th/></xml>)
-           buttonsFl buttons}
+           buttonsFl self.Buttons}
           {@mapX [fn _ => string] [tr]
             (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (s : string) =>
                 <xml><th>{[s]}</th></xml>)
@@ -82,9 +83,9 @@ functor Make(M : sig
                              let
                                  val (label, link) = f row
                              in
-                                 <xml><td><a class="btn" href={link}>{[label]}</a></td></xml>
+                                 <xml><td><a class="btn btn-info" href={link}>{[label]}</a></td></xml>
                              end)
-                         buttonsFl buttons}
+                         buttonsFl self.Buttons}
                        {@mapX2 [show] [ident] [tr]
                          (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (v : t) =>
                              <xml><td>{[v]}</td></xml>)
@@ -93,7 +94,8 @@ functor Make(M : sig
       </table>
     </xml>
 
-    val ui = {Create = create,
-              Onload = onload,
-              Render = render}
+    type input = _
+    fun ui bs = {Create = create bs,
+                 Onload = onload,
+                 Render = render}
 end

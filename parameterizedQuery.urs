@@ -11,7 +11,6 @@ functor Make(M : sig
                  con results :: {Type}
                  val resultsFl : folder results
                  val resultLabels : $(map (fn _ => string) results)
-                 val buttons : $(mapU ($results -> string (* label *) * url) buttons)
                  val query : $(map fst3 params) -> sql_query [] [] [] results
                  val shows : $(map show results)
-             end) : Ui.S0
+             end) : Ui.S where type input = $(mapU ($M.results -> string (* label *) * url) M.buttons)
