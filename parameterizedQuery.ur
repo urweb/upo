@@ -15,13 +15,15 @@ functor Make(M : sig
                  val shows : $(map show results)
              end) = struct
     open M
-    
-    type a = {Buttons : $(mapU ($results -> string (* label *) * url) buttons),
+
+    (* We put the button-function record in a source to ease server-to-client embedding. *)
+    type a = {Buttons : source $(mapU ($results -> string (* label *) * url) buttons),
               Ids : $(map (fn _ => id) params),
               Widgets : $(map snd3 params),
               Results : source (list $results)}
 
     fun create bs =
+        bs <- source bs;
         ids <- @Monad.mapR0 _ [fn _ => id]
                 (fn [nm ::_] [p ::_] => fresh)
                 paramsFl;
@@ -66,17 +68,19 @@ functor Make(M : sig
       
       <table class="bs-table table-striped">
         <tr>
-          {@mapX [fn _ => $results -> string * url] [tr]
-           (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] _ =>
-               <xml><th/></xml>)
-           buttonsFl self.Buttons}
+          <dyn signal={bs <- signal self.Buttons;
+                       return (@mapX [fn _ => $results -> string * url] [tr]
+                                (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] _ =>
+                                    <xml><th/></xml>)
+                                buttonsFl bs)}/>
           {@mapX [fn _ => string] [tr]
             (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (s : string) =>
                 <xml><th>{[s]}</th></xml>)
             resultsFl resultLabels}
         </tr>
 
-        <dyn signal={rs <- signal self.Results;
+        <dyn signal={bs <- signal self.Buttons;
+                     rs <- signal self.Results;
                      return (List.mapX (fn row => <xml><tr>
                        {@mapX [fn _ => $results -> string * url] [tr]
                          (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] f =>
@@ -85,7 +89,7 @@ functor Make(M : sig
                              in
                                  <xml><td class="col-sm-1"><a class="btn btn-info" href={link}>{[label]}</a></td></xml>
                              end)
-                         buttonsFl self.Buttons}
+                         buttonsFl bs}
                        {@mapX2 [show] [ident] [tr]
                          (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (v : t) =>
                              <xml><td>{[v]}</td></xml>)
