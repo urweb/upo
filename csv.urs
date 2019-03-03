@@ -13,11 +13,14 @@ val parse : fs ::: {Type}
             -> string
             -> list $fs
 
-val importTableWithHeader : fs ::: {Type} -> cs ::: {{Unit}}
-                            -> $(map sql_injectable fs) -> $(map read fs) -> folder fs
+val importTableWithHeader : fs ::: {Type} -> fsC ::: {Type} -> cs ::: {{Unit}}
+                            -> [fs ~ fsC]
+                            => $(map sql_injectable (fs ++ fsC)) -> $(map read fs)
+                            -> folder fs -> folder fsC
                             -> $(map (fn _ => string) fs)
                                (* for each column, the name of its header in the CSV file *)
-                            -> sql_table fs cs
+                            -> $fsC
+                            -> sql_table (fs ++ fsC) cs
                             -> string
                             -> transaction unit
 
@@ -45,15 +48,19 @@ functor Import1(M : sig
 
 functor ImportWithHeader1(M : sig
                               con fs :: {Type}
+                              con fsC :: {Type}
+                              constraint fs ~ fsC
                               con cs :: {{Unit}}
-                              val tab : sql_table fs cs
+                              val tab : sql_table (fs ++ fsC) cs
 
-                              val injs : $(map sql_injectable fs)
+                              val injs : $(map sql_injectable (fs ++ fsC))
                               val reads : $(map read fs)
                               val fl : folder fs
+                              val flC : folder fsC
                               val headers : $(map (fn _ => string) fs)
                               (* This record says which CSV-file header corresponds to each field.
                                * Note that there may be fields of the CSV file that are not used to import data. *)
+                              val constants : $fsC
 
                               val mayAccess : transaction bool
                           end) : Ui.S0

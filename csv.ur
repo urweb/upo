@@ -140,9 +140,10 @@ fun positionInList [a] (_ : eq a) (x : a) (ls : list a) : option int =
                 None => None
               | Some n => Some (n + 1)
     
-fun importTableWithHeader [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs)
-    (headers : $(map (fn _ => string) fs))
-    (tab : sql_table fs cs) (input : string) =
+fun importTableWithHeader [fs] [fsC] [cs] [fs ~ fsC]
+    (injs : $(map sql_injectable (fs ++ fsC))) (reads : $(map read fs)) (fl : folder fs) (flC : folder fsC)
+    (headers : $(map (fn _ => string) fs)) (constants : $fsC)
+    (tab : sql_table (fs ++ fsC) cs) (input : string) =
     Monad.ignore (@csvFold _
                    (fn line _ =>
                        let
@@ -175,14 +176,15 @@ fun importTableWithHeader [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $
                            None => error <xml>Somehow started parsing CSV data rows before parsing header.</xml>
                          | Some hs =>
                            (fs : list string) <- return (List.rev fs);
-                           @Sql.easy_insert injs fl tab (@map2 [read] [fn _ => int] [ident]
-                                                          (fn [t] (_ : read t) (posn : int) =>
-                                                              case List.nth fs posn of
-                                                                  None => error <xml>CSV line is too short.</xml>
-                                                                | Some token => case read token of
-                                                                                    None => error <xml>Malformed CSV token "{[token]}"</xml>
-                                                                                  | Some v => v)
-                                                          fl reads hs);
+                           @@Sql.easy_insert [fs ++ fsC] [_] injs (@Folder.concat ! fl flC) tab
+                            (@map2 [read] [fn _ => int] [ident]
+                              (fn [t] (_ : read t) (posn : int) =>
+                                  case List.nth fs posn of
+                                      None => error <xml>CSV line is too short.</xml>
+                                    | Some token => case read token of
+                                                        None => error <xml>Malformed CSV token "{[token]}"</xml>
+                                                      | Some v => v)
+                              fl reads hs ++ constants);
                            return hso)
                     1 input None)
 
@@ -281,13 +283,17 @@ end
 
 functor ImportWithHeader1(M : sig
                               con fs :: {Type}
+                              con fsC :: {Type}
+                              constraint fs ~ fsC
                               con cs :: {{Unit}}
-                              val tab : sql_table fs cs
+                              val tab : sql_table (fs ++ fsC) cs
 
-                              val injs : $(map sql_injectable fs)
+                              val injs : $(map sql_injectable (fs ++ fsC))
                               val reads : $(map read fs)
                               val fl : folder fs
+                              val flC : folder fsC
                               val headers : $(map (fn _ => string) fs)
+                              val constants : $fsC
 
                               val mayAccess : transaction bool
                           end) = struct
@@ -316,7 +322,7 @@ functor ImportWithHeader1(M : sig
         if not ma then
             error <xml>Access denied</xml>
         else
-           @importTableWithHeader injs reads fl headers tab s
+           @importTableWithHeader ! injs reads fl flC headers constants tab s
 
     fun claimUpload h =
         res <- AjaxUpload.claim h;
