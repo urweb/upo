@@ -2210,7 +2210,7 @@ functor Make(M : sig
               (fn {Channel = ch} => send ch (maker [fn p => indexDelta p.1] (IndexAdd (r.KeyOf vs)))))
           (@Folder.mp fl) which t
 
-    and entry (which : anyKey) =
+    and entry_create (which : anyKey) =
         auth (Read (@Variant.erase (@Folder.mp fl) which));
 
         ch <- channel;
@@ -2362,10 +2362,17 @@ functor Make(M : sig
               end)
           fl which t;
 
-        tabbed page (Some (weakener (@Variant.erase (@Folder.mp fl) which))) (fn ctxv => return <xml>
-          <active code={set ctx (Some ctxv); return <xml></xml>}/>
-          {bod}
-        </xml>)
+        return (ctx, bod)
+
+    and entry_render ctxv (ctx, bod) = <xml>
+      <active code={set ctx (Some ctxv); return <xml></xml>}/>
+      {bod}
+    </xml>
+        
+    and entry (which : anyKey) =
+        a <- entry_create which;
+        tabbed page (Some (weakener (@Variant.erase (@Folder.mp fl) which)))
+               (fn ctxv => return (entry_render ctxv a))
 
     and edit (which : anyKey) (override : bool) =
         auth (Update which);
@@ -2488,4 +2495,12 @@ functor Make(M : sig
                       (fn [p :::_] (t : t1 tables' (dupF p)) => t.Title)
                       fl t
 
+    type input = variant (map (fn p => p.1) tables)
+    type a = source (option Ui.context) * xbody
+    fun ui which = {
+        Create = entry_create which,
+        Onload = fn _ => return (),
+        Render = entry_render
+    }
+                     
 end
