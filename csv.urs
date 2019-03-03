@@ -30,6 +30,21 @@ val splitLine : string -> list string
 val nextLine : string -> option (string * string)
 (* Split at first line of a CSV text, if there is a first line. *)
 
+(* For exporting CSV: *)
+val build : fs ::: {Type} -> tab ::: Name
+            -> folder fs
+            -> $(map show fs)
+            -> $(map (fn _ => string) fs)
+            -> sql_query [] [] [tab = fs] []
+            -> transaction string
+
+val buildComputed : fs ::: {Type}
+                    -> folder fs
+                    -> $(map show fs)
+                    -> $(map (fn _ => string) fs)
+                    -> sql_query [] [] [] fs
+                    -> transaction string
+                         
 (* Let's expose all that as a UI. *)
 
 functor Import1(M : sig

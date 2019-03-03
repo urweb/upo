@@ -619,7 +619,7 @@ functor Make(M : sig
                                                                   CLASS "bs-active"
                                                               else
                                                                   CLASS ""));
-                                     return (if avail then cls else classes cls danger)}
+                                     return (if avail then cls else classes cls bg_danger)}
                             onmouseover={fn _ =>
                                             if t.ReadOnly then
                                                 return ()

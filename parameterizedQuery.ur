@@ -1,18 +1,22 @@
 open Bootstrap4
 
-functor Make(M : sig
-                 con params :: {(Type * Type * Type)}
-                 val widgets : $(map Widget.t' params)
-                 val paramsFl : folder params
-                 val paramLabels : $(map (fn _ => string) params)
+signature S = sig
+    con params :: {(Type * Type * Type)}
+    val widgets : $(map Widget.t' params)
+    val paramsFl : folder params
+    val paramLabels : $(map (fn _ => string) params)
 
+    con results :: {Type}
+    val resultsFl : folder results
+    val resultLabels : $(map (fn _ => string) results)
+    val query : $(map fst3 params) -> sql_query [] [] [] results
+    val shows : $(map show results)
+end
+
+functor Html(M : sig
+                 include S
                  con buttons :: {Unit}
                  val buttonsFl : folder buttons
-                 con results :: {Type}
-                 val resultsFl : folder results
-                 val resultLabels : $(map (fn _ => string) results)
-                 val query : $(map fst3 params) -> sql_query [] [] [] results
-                 val shows : $(map show results)
              end) = struct
     open M
 
@@ -42,7 +46,7 @@ functor Make(M : sig
 
     fun runQuery vs =
         queryL (query vs)
-                   
+
     fun render _ self = <xml>
       <table class="bs-table table-striped">
         {@mapX4 [fn _ => string] [Widget.t'] [fn _ => id] [snd3] [tabl]
@@ -65,7 +69,7 @@ functor Make(M : sig
                           set self.Results rs}/>
 
       <hr/>
-      
+
       <table class="bs-table table-striped">
         <tr>
           <dyn signal={bs <- signal self.Buttons;
@@ -102,4 +106,63 @@ functor Make(M : sig
     fun ui bs = {Create = create bs,
                  Onload = onload,
                  Render = render}
+end
+
+functor Csv(M : sig
+                include S
+                val filename : string
+            end) = struct
+    open M
+
+    type a = {Ids : $(map (fn _ => id) params),
+              Widgets : $(map snd3 params)}
+
+    fun generate ps () : transaction page =
+        csv <- @@Csv.buildComputed [results] resultsFl shows resultLabels (query ps);
+        setHeader (blessResponseHeader "Content-Disposition")
+                  ("attachment; filename=" ^ filename);
+        returnBlob (textBlob csv) (blessMime "text/csv")
+
+    val create =
+        ids <- @Monad.mapR0 _ [fn _ => id]
+                (fn [nm ::_] [p ::_] => fresh)
+                paramsFl;
+        ws <- @Monad.mapR _ [Widget.t'] [snd3]
+               (fn [nm ::_] [p ::_] (w : Widget.t' p) =>
+                   cfg <- @Widget.configure w;
+                   @Widget.create w cfg)
+               paramsFl widgets;
+        return {Ids = ids,
+                Widgets = ws}
+
+    fun onload _ = return ()
+
+    fun runQuery vs =
+        queryL (query vs)
+
+    fun render _ self = <xml>
+      <table class="bs-table table-striped">
+        {@mapX4 [fn _ => string] [Widget.t'] [fn _ => id] [snd3] [tabl]
+          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (s : string) (w : Widget.t' p) (id : id) (c : p.2) =>
+              <xml><tr class="form-group">
+                <th><label class="control-label" for={id}>{[s]}</label></th>
+                <td>{@Widget.asWidget w c (Some id)}</td>
+              </tr></xml>)
+            paramsFl paramLabels widgets self.Ids self.Widgets}
+      </table>
+
+      <dyn signal={vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                          (fn [nm ::_] [p ::_] (w : Widget.t' p) (c : p.2) =>
+                              @Widget.value w c)
+                          paramsFl widgets self.Widgets;
+                   return <xml><form>
+                     <submit class="btn btn-primary"
+                             value="Search"
+                             action={generate vs}/>
+                   </form></xml>}/>
+    </xml>
+
+    val ui = {Create = create,
+              Onload = onload,
+              Render = render}
 end
