@@ -96,7 +96,7 @@ functor Make(M : sig
                                                    id <- fresh;
                                                    return (id, x))
                                                otherFl (r -- reviewer -- when);
-                                     rs <- source (Summary other);
+                                     rs <- source (Full other);
                                      waiting <- source False;
                                      return {Reviewer = r.reviewer,
                                              When = r.when,
@@ -128,7 +128,7 @@ functor Make(M : sig
                                        id <- fresh;
                                        return (id, x))
                                    otherFl r.Other;
-                         st <- source (Summary other);
+                         st <- source (Full other);
                          waiting <- source False;
                          set a.Reviews (List.append rs ({Reviewer = r.Reviewer,
                                                          When = r.When,
@@ -141,7 +141,7 @@ functor Make(M : sig
                                        id <- fresh;
                                        return (id, x))
                                    otherFl r.Other;
-                         st <- source (Summary other);
+                         st <- source (Full other);
                          rs <- List.mapM (fn r' =>
                                              if r'.Reviewer = r.Reviewer then
                                                  set r'.WaitingForRpc False;
