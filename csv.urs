@@ -2,6 +2,7 @@
 
 val importTable : fs ::: {Type} -> cs ::: {{Unit}}
                   -> $(map sql_injectable fs) -> $(map read fs) -> folder fs
+                  -> char (* separator character [conventionally comma] *)
                   -> sql_table fs cs
                   -> int (* the number of header lines to skip *)
                   -> string
@@ -9,6 +10,7 @@ val importTable : fs ::: {Type} -> cs ::: {{Unit}}
 
 val parse : fs ::: {Type}
             -> $(map sql_injectable fs) -> $(map read fs) -> folder fs
+            -> char (* separator *)
             -> int (* the number of header lines to skip *)
             -> string
             -> list $fs
@@ -17,6 +19,7 @@ val importTableWithHeader : fs ::: {Type} -> fsC ::: {Type} -> cs ::: {{Unit}}
                             -> [fs ~ fsC]
                             => $(map sql_injectable (fs ++ fsC)) -> $(map read fs)
                             -> folder fs -> folder fsC
+                            -> char (* separator character *)
                             -> $(map (fn _ => string) fs)
                                (* for each column, the name of its header in the CSV file *)
                             -> $fsC
@@ -24,7 +27,7 @@ val importTableWithHeader : fs ::: {Type} -> fsC ::: {Type} -> cs ::: {{Unit}}
                             -> string
                             -> transaction unit
 
-val splitLine : string -> list string
+val splitLine : char (* separator *) -> string -> list string
 (* A handy exported helper: split a single line into fields at commas (taking quoting into account). *)
 
 val nextLine : string -> option (string * string)
@@ -33,6 +36,7 @@ val nextLine : string -> option (string * string)
 (* For exporting CSV: *)
 val build : fs ::: {Type} -> tab ::: Name
             -> folder fs
+            -> char (* separator *)
             -> $(map show fs)
             -> $(map (fn _ => string) fs)
             -> sql_query [] [] [tab = fs] []
@@ -40,6 +44,7 @@ val build : fs ::: {Type} -> tab ::: Name
 
 val buildComputed : fs ::: {Type}
                     -> folder fs
+                    -> char (* separator *)
                     -> $(map show fs)
                     -> $(map (fn _ => string) fs)
                     -> sql_query [] [] [] fs
@@ -59,6 +64,8 @@ functor Import1(M : sig
 
                     val skipHeaderLines : int
                     val mayAccess : transaction bool
+
+                    val separator : char
                 end) : Ui.S0
 
 functor ImportWithHeader1(M : sig
@@ -78,6 +85,8 @@ functor ImportWithHeader1(M : sig
                               val constants : $fsC
 
                               val mayAccess : transaction bool
+
+                              val separator : char
                           end) : Ui.S0
 
 (* And we can also generate CSV data: *)
@@ -91,4 +100,6 @@ functor Generate1(M : sig
 
                       val mayAccess : transaction bool
                       val filename : string (* Tell browsers this is the name of the file being downloaded. *)
+
+                      val separator : char
                   end) : Ui.S0

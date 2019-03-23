@@ -118,7 +118,7 @@ functor Csv(M : sig
               Widgets : $(map snd3 params)}
 
     fun generate ps () : transaction page =
-        csv <- @@Csv.buildComputed [results] resultsFl shows resultLabels (query ps);
+        csv <- @@Csv.buildComputed [results] resultsFl #"," shows resultLabels (query ps);
         setHeader (blessResponseHeader "Content-Disposition")
                   ("attachment; filename=" ^ filename);
         returnBlob (textBlob csv) (blessMime "text/csv")

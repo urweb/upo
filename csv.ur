@@ -1,4 +1,4 @@
-fun splitLine line =
+fun splitLine sep line =
     let
         fun readStringLiteral line acc =
             case String.split line #"\"" of
@@ -10,34 +10,35 @@ fun splitLine line =
                     (acc ^ chars, line')
     
         fun fields line justReadQuoted acc =
-            case String.msplit {Haystack = line, Needle = ",\""} of
+            case String.msplit {Haystack = line, Needle = String.str sep ^ "\""} of
                 None =>
                 if line = "" then
                     acc
                 else
                     line :: acc
-              | Some (field, #",", line') =>
-                let
-                    val acc =
-                        if justReadQuoted then
-                            if String.all Char.isSpace field then
-                                acc
-                            else
-                                error <xml>There are extra characters after a quoted CSV field value.</xml>
-                        else
-                            field :: acc
-                in
-                    fields line' False acc
-                end
-              | Some (betterBeWhitespace, #"\"", line') =>
-                if not (String.all Char.isSpace betterBeWhitespace) then
-                    error <xml>CSV file contains other nonspace characters ("{[betterBeWhitespace]}") before first double quote of a field value.</xml>
-                else
+              | Some (field, sep', line') =>
+                if sep' = sep then
                     let
-                        val (lit, line') = readStringLiteral line' ""
+                        val acc =
+                            if justReadQuoted then
+                                if String.all Char.isSpace field then
+                                    acc
+                                else
+                                    error <xml>There are extra characters after a quoted CSV field value.</xml>
+                            else
+                                field :: acc
                     in
-                        fields line' True (lit :: acc)
+                        fields line' False acc
                     end
+                else
+                    if not (String.all Char.isSpace field) then
+                        error <xml>CSV file contains other nonspace characters ("{[field]}") before first double quote of a field value.</xml>
+                    else
+                        let
+                            val (lit, line') = readStringLiteral line' ""
+                        in
+                            fields line' True (lit :: acc)
+                        end
               | Some _ => error <xml>CSV: impossible return from <tt>String.msplit</tt>!</xml>
     in
         fields line False []
@@ -87,14 +88,14 @@ fun nextLine lines =
     end
     
 fun csvFold [m] (_ : monad m) [acc] (processHeaderLine : string -> acc -> m acc)
-            (processRow : list string -> acc -> m acc) =
+            (processRow : list string -> acc -> m acc) sep =
     let
         fun loop (header : int) input acc =
             case nextLine input of
                 None => return acc
               | Some (line, input) =>
                 if header = 0
-                then acc <- processRow (splitLine line) acc; loop 0 input acc
+                then acc <- processRow (splitLine sep line) acc; loop 0 input acc
                 else acc <- processHeaderLine line acc; loop (header-1) input acc
     in
         loop
@@ -118,16 +119,16 @@ fun parseLine_simple [fs] (injs : $(map sql_injectable fs)) (reads : $(map read 
     end
     
 fun parse [fs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs)
-          (header : int) (input : string) =
+          sep (header : int) (input : string) =
     IdentityMonad.run (@csvFold _
                         (fn _ acc => return acc)
-                        (fn fs acc => return (@parseLine_simple injs reads fl fs :: acc)) header input [])
+                        (fn fs acc => return (@parseLine_simple injs reads fl fs :: acc)) sep header input [])
 
-fun importTable [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs)
+fun importTable [fs] [cs] (injs : $(map sql_injectable fs)) (reads : $(map read fs)) (fl : folder fs) sep
                 (tab : sql_table fs cs) (header : int) (input : string) =
     @csvFold _
      (fn _ () => return ())
-     (fn fs () => @Sql.easy_insert injs fl tab (@parseLine_simple injs reads fl fs)) header input ()
+     (fn fs () => @Sql.easy_insert injs fl tab (@parseLine_simple injs reads fl fs)) sep header input ()
 
 fun positionInList [a] (_ : eq a) (x : a) (ls : list a) : option int =
     case ls of
@@ -142,7 +143,7 @@ fun positionInList [a] (_ : eq a) (x : a) (ls : list a) : option int =
     
 fun importTableWithHeader [fs] [fsC] [cs] [fs ~ fsC]
     (injs : $(map sql_injectable (fs ++ fsC))) (reads : $(map read fs)) (fl : folder fs) (flC : folder fsC)
-    (headers : $(map (fn _ => string) fs)) (constants : $fsC)
+    sep (headers : $(map (fn _ => string) fs)) (constants : $fsC)
     (tab : sql_table (fs ++ fsC) cs) (input : string) =
     Monad.ignore (@csvFold _
                    (fn line _ =>
@@ -156,7 +157,7 @@ fun importTableWithHeader [fs] [fsC] [cs] [fs ~ fsC]
                                         pos) fl headers positions
 
                            fun splitHeader posn line positions =
-                               case String.split line #"," of
+                               case String.split line sep of
                                    None => processHeader posn line positions
                                  | Some (header, rest) => splitHeader (posn+1) rest (processHeader posn header positions)
 
@@ -186,7 +187,7 @@ fun importTableWithHeader [fs] [fsC] [cs] [fs ~ fsC]
                                                       | Some v => v)
                               fl reads hs ++ constants);
                            return hso)
-                    1 input None)
+                    sep 1 input None)
 
 open Bootstrap4
 
@@ -202,6 +203,8 @@ functor Import1(M : sig
 
                     val skipHeaderLines : int
                     val mayAccess : transaction bool
+
+                    val separator : char
                 end) = struct
 
     open M
@@ -228,7 +231,7 @@ functor Import1(M : sig
         if not ma then
             error <xml>Access denied</xml>
         else
-           @importTable injs reads fl tab skipHeaderLines s
+           @importTable injs reads fl separator tab skipHeaderLines s
 
     fun claimUpload h =
         res <- AjaxUpload.claim h;
@@ -296,6 +299,8 @@ functor ImportWithHeader1(M : sig
                               val constants : $fsC
 
                               val mayAccess : transaction bool
+
+                              val separator : char
                           end) = struct
 
     open M
@@ -322,7 +327,7 @@ functor ImportWithHeader1(M : sig
         if not ma then
             error <xml>Access denied</xml>
         else
-           @importTableWithHeader ! injs reads fl flC headers constants tab s
+           @importTableWithHeader ! injs reads fl flC separator headers constants tab s
 
     fun claimUpload h =
         res <- AjaxUpload.claim h;
@@ -388,8 +393,8 @@ fun escape' s =
               | _ => String.str ch ^ escape' rest
         end
 
-fun escape s =
-    if String.all (fn ch => ch <> #"," && ch <> #"\"" && ch <> #"\n" && ch <> #"\r") s then
+fun escape sep s =
+    if String.all (fn ch => ch <> sep && ch <> #"\"" && ch <> #"\n" && ch <> #"\r") s then
         s
     else
         if String.all (fn ch => ch <> #"\"") s then
@@ -397,36 +402,36 @@ fun escape s =
         else
             "\"" ^ escape' s ^ "\""
 
-fun build [fs] [tab] (fl : folder fs) (shows : $(map show fs)) (labels : $(map (fn _ => string) fs)) (q : sql_query [] [] [tab = fs] []) =
+fun build [fs] [tab] (fl : folder fs) sep (shows : $(map show fs)) (labels : $(map (fn _ => string) fs)) (q : sql_query [] [] [tab = fs] []) =
     query q (fn r acc =>
                 return
                     (acc ^ @foldR2 [show] [ident] [fn _ => string]
                             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) acc =>
                                 case acc of
-                                    "" => escape (show x)
-                                  | _ => escape (show x) ^ "," ^ acc)
+                                    "" => escape sep (show x)
+                                  | _ => escape sep (show x) ^ String.str sep ^ acc)
                             "" fl shows r.tab ^ "\n"))
           (@foldR [fn _ => string] [fn _ => string]
             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] s acc =>
                 case acc of
-                    "" => escape s
-                  | _ => escape s ^ "," ^ acc)
+                    "" => escape sep s
+                  | _ => escape sep s ^ String.str sep ^ acc)
             "" fl labels ^ "\n")
 
-fun buildComputed [fs] (fl : folder fs) (shows : $(map show fs)) (labels : $(map (fn _ => string) fs)) (q : sql_query [] [] [] fs) =
+fun buildComputed [fs] (fl : folder fs) sep (shows : $(map show fs)) (labels : $(map (fn _ => string) fs)) (q : sql_query [] [] [] fs) =
     query q (fn r acc =>
                 return
                     (acc ^ @foldR2 [show] [ident] [fn _ => string]
                             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) acc =>
                                 case acc of
-                                    "" => escape (show x)
-                                  | _ => escape (show x) ^ "," ^ acc)
+                                    "" => escape sep (show x)
+                                  | _ => escape sep (show x) ^ "," ^ acc)
                             "" fl shows r ^ "\n"))
           (@foldR [fn _ => string] [fn _ => string]
             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] s acc =>
                 case acc of
-                    "" => escape s
-                  | _ => escape s ^ "," ^ acc)
+                    "" => escape sep s
+                  | _ => escape sep s ^ "," ^ acc)
             "" fl labels ^ "\n")
 
 functor Generate1(M : sig
@@ -439,13 +444,15 @@ functor Generate1(M : sig
 
                       val mayAccess : transaction bool
                       val filename : string
+
+                      val separator : char
                   end) = struct
 
     open M
 
     type a = unit
 
-    val build = @build fl shows labels query
+    val build = @build fl separator shows labels query
 
     fun generate () : transaction page =
         ma <- mayAccess;
