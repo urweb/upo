@@ -11,6 +11,8 @@ signature S = sig
     val resultLabels : $(map (fn _ => string) results)
     val query : $(map fst3 params) -> sql_query [] [] [] results
     val shows : $(map show results)
+
+    val authorized : transaction bool
 end
 
 functor Html(M : sig
