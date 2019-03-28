@@ -9,10 +9,10 @@ fun splitLine sep line =
                 else
                     (acc ^ chars, line')
     
-        fun fields line justReadQuoted acc =
+        fun fields line justReadSeparator justReadQuoted acc =
             case String.msplit {Haystack = line, Needle = String.str sep ^ "\""} of
                 None =>
-                if line = "" then
+                if line = "" && not justReadSeparator then
                     acc
                 else
                     line :: acc
@@ -28,7 +28,7 @@ fun splitLine sep line =
                             else
                                 field :: acc
                     in
-                        fields line' False acc
+                        fields line' True False acc
                     end
                 else
                     if not (String.all Char.isSpace field) then
@@ -37,11 +37,11 @@ fun splitLine sep line =
                         let
                             val (lit, line') = readStringLiteral line' ""
                         in
-                            fields line' True (lit :: acc)
+                            fields line' True True (lit :: acc)
                         end
               | Some _ => error <xml>CSV: impossible return from <tt>String.msplit</tt>!</xml>
     in
-        fields line False []
+        fields line False False []
     end
 
 fun nextLine lines =
