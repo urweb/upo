@@ -237,7 +237,6 @@ fun foreignbox_default [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : 
       AsWidget = fn me id =>
                     let
                         val inner = <xml>
-                          <coption></coption>
                           {List.mapX (fn v => <xml><coption>{[v]}</coption></xml>) me.Choices}
                         </xml>
                     in
