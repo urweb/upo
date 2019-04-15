@@ -135,7 +135,7 @@ fun text [full ::: {Type}]
                                         <xml>
                                           {old.tname.Render entry aux r}
                                           <tr>
-                                            <th>{[lab]}</th>
+                                            <th class="col-sm-2">{[lab]}</th>
                                             <td>{[r.col]}</td>
                                           </tr>
                                         </xml>,
@@ -176,7 +176,7 @@ fun hyperref [full ::: {Type}]
                                           {case checkUrl (show r.col) of
                                                None => <xml></xml>
                                              | Some url => <xml><tr>
-                                               <th>{[lab]}</th>
+                                               <th class="col-sm-2">{[lab]}</th>
                                                <td><a href={url}><tt>{[r.col]}</tt></a></td>
                                              </tr></xml>}
                                         </xml>,
@@ -217,7 +217,7 @@ fun image [full ::: {Type}]
                                           {case checkUrl (show r.col) of
                                                None => <xml></xml>
                                              | Some url => <xml><tr>
-                                               <th>{[lab]}</th>
+                                               <th class="col-sm-2">{[lab]}</th>
                                                <td><img src={url} class={cls}/></td>
                                              </tr></xml>}
                                         </xml>,
@@ -256,7 +256,7 @@ fun textOpt [full ::: {Type}]
                                         <xml>
                                           {old.tname.Render entry aux r}
                                           <tr>
-                                            <th>{[lab]}</th>
+                                            <th class="col-sm-2">{[lab]}</th>
                                             <td>{[r.col]}</td>
                                           </tr>
                                         </xml>,
@@ -301,7 +301,7 @@ fun checkbox [full ::: {Type}]
                                         <xml>
                                           {old.tname.Render entry aux r}
                                           <tr>
-                                            <th>{[lab]}</th>
+                                            <th class="col-sm-2">{[lab]}</th>
                                             <td>{[r.col]}</td>
                                           </tr>
                                         </xml>,
@@ -344,7 +344,7 @@ fun htmlbox [full ::: {Type}]
                                            <xml>
                                              {old.tname.Render entry aux r}
                                              <tr>
-                                               <th>{[lab]}</th>
+                                               <th class="col-sm-2">{[lab]}</th>
                                                <td>{Widget.html r.col}</td>
                                              </tr>
                                            </xml>,
@@ -406,7 +406,7 @@ fun foreign [full ::: {Type}]
                                         <xml>
                                           {old.tname.Render entry aux r}
                                           <tr>
-                                            <th>{[lab]}</th>
+                                            <th class="col-sm-2">{[lab]}</th>
                                             <td>{entry (make [ftname] r.col) (show r.col)}</td>
                                           </tr>
                                         </xml>,
@@ -451,7 +451,7 @@ fun foreign [full ::: {Type}]
                                            <xml>
                                              {old.ftname.Render entry aux r}
                                              <tr>
-                                               <th>{[clab]}</th>
+                                               <th class="col-sm-2">{[clab]}</th>
                                                <td>{List.mapX (fn key => <xml>{entry (make [tname] key) (show key)}<br/></xml>) children}</td>
                                              </tr>
                                            </xml>
@@ -538,7 +538,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                          <xml>
                                            {old.tname1.Render entry aux r}
                                            <tr>
-                                             <th>{[lab1]}</th>
+                                             <th class="col-sm-2">{[lab1]}</th>
                                              <td>{List.mapX (fn (k2, others) => <xml>{entry (make [tname2] k2) (show k2)}
                                                {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
                                                  (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (v : p.1) =>
@@ -733,7 +733,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                          <xml>
                                            {old.tname2.Render entry aux r}
                                            <tr>
-                                             <th>{[lab2]}</th>
+                                             <th class="col-sm-2">{[lab2]}</th>
                                              <td>{List.mapX (fn (k1, others) => <xml>{entry (make [tname1] k1) (show k1)}
                                                {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
                                                  (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (v : p.1) =>
@@ -1054,7 +1054,7 @@ functor ManyToManyWithFile(M : sig
                                              <xml>
                                                {old.tname1.Render entry aux r}
                                                <tr>
-                                                 <th>{[lab1]}</th>
+                                                 <th class="col-sm-2">{[lab1]}</th>
                                                  <td>
                                                    {List.mapX (fn (k2, others, uploadO) => <xml>{entry (make [tname2] k2) (show k2)}
                                                      {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
@@ -1319,7 +1319,7 @@ functor ManyToManyWithFile(M : sig
                                              <xml>
                                                {old.tname2.Render entry aux r}
                                                <tr>
-                                                 <th>{[lab2]}</th>
+                                                 <th class="col-sm-2">{[lab2]}</th>
                                                  <td>
                                                    {List.mapX (fn (k1, others, uploadO) => <xml>{entry (make [tname1] k1) (show k1)}
                                                      {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
@@ -1565,7 +1565,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                          <xml>
                                            {old.tname1.Render entry aux r}
                                            <tr>
-                                             <th>{[lab1]}</th>
+                                             <th class="col-sm-2">{[lab1]}</th>
                                              <td>{List.mapX (fn (k2, others) => <xml>{entry (make [tname2] k2) (show k2)}
                                                {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
                                                  (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (v : p.1) =>
@@ -1791,7 +1791,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                          <xml>
                                            {old.tname2.Render entry aux r}
                                            <tr>
-                                             <th>{[lab2]}</th>
+                                             <th class="col-sm-2">{[lab2]}</th>
                                              <td>{List.mapX (fn (k1, others) => <xml>{entry (make [tname1] k1) (show k1)}
                                                {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
                                                  (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) (w : Widget.t' p) (v : p.1) =>
