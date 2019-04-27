@@ -7,15 +7,22 @@ functor Make(M : sig
                  val widgetsInj : $(map (fn p => sql_injectable p.1) widgets)
                  val labels : $(map (fn _ => string) widgets)
 
+                 con constants :: {Type}
+                 val constants : $constants
+                 val constantsFl : folder constants
+                 val constantsInj : $(map sql_injectable constants)
+
+                 constraint constants ~ widgets
+                                    
                  type context
                  val context : transaction (option context)
-                             (* Return [None] if this user may not submit the form. *)
                       
                  con others :: {Type}
                  val others : context -> $(map (sql_exp [] [] []) others)
                  constraint widgets ~ others
-                                         
-                 table tab : $(map fst3 widgets ++ others)
+                 constraint constants ~ others
+
+                 table tab : $(map fst3 widgets ++ constants ++ others)
              end) = struct
 
     open M
@@ -52,7 +59,11 @@ functor Make(M : sig
           | Some ctx =>
             dml (insert tab (@map2 [fn p => sql_injectable p.1] [fst3] [fn p => sql_exp [] [] [] p.1]
                               (fn [p] (_ : sql_injectable p.1) => sql_inject)
-                              widgetsFl widgetsInj vs ++ others ctx))
+                              widgetsFl widgetsInj vs
+                              ++ @map2 [sql_injectable] [ident] [sql_exp [] [] []]
+                              (fn [t] (_ : sql_injectable t) => sql_inject)
+                              constantsFl constantsInj constants
+                              ++ others ctx))
                    
     fun render _ self = <xml>
       <dyn signal={sub <- signal self.Formstate;

@@ -7,6 +7,13 @@ functor Make(M : sig
                  val widgetsInj : $(map (fn p => sql_injectable p.1) widgets)
                  val labels : $(map (fn _ => string) widgets)
 
+                 con constants :: {Type}
+                 val constants : $constants
+                 val constantsFl : folder constants
+                 val constantsInj : $(map sql_injectable constants)
+
+                 constraint constants ~ widgets
+                                    
                  type context
                  val context : transaction (option context)
                              (* Return [None] if this user may not submit the form. *)
@@ -14,6 +21,7 @@ functor Make(M : sig
                  con others :: {Type}
                  val others : context -> $(map (sql_exp [] [] []) others)
                  constraint widgets ~ others
+                 constraint constants ~ others
                      
-                 table tab : $(map fst3 widgets ++ others)
+                 table tab : $(map fst3 widgets ++ constants ++ others)
              end) : Ui.S0
