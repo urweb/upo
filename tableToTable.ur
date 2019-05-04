@@ -86,6 +86,9 @@ functor Make(M : sig
                widgetsFl widgets cfg;
         fs <- source (Pending ws);
 
+        dml (DELETE FROM tableIn
+             WHERE {@@Sql.easy_where [#T] [map fst3 key] [map fst3 otherIn] [[]] [_] [[]] ! ! keyInj (@Folder.mp keyFl) k});
+
         return {InValues = row,
                 Ids = ids,
                 Formstate = fs}
@@ -116,14 +119,14 @@ functor Make(M : sig
                                  <p>Thanks for submitting the form.</p>
                                </xml>
                              | Pending ws => <xml><div>
-                                 {@mapX3 [fn _ => string] [Widget.t'] [fst3] [body]
-                                     (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] lab w v => <xml>
-                                       <div class="form-group">
-                                         <label class="control-label">{[lab]}</label>
-                                         {@Widget.asValue w v}
-                                       </div>
-                                     </xml>)
-                                     inFl labelsIn widgetsIn self.InValues}
+                                 <table class="bs-table table-striped">
+                                   {@mapX3 [fn _ => string] [Widget.t'] [fst3] [tabl]
+                                       (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] lab w v => <xml><tr>
+                                         <th>{[lab]}</th>
+                                         <td>{@Widget.asValue w v}</td>
+                                       </tr></xml>)
+                                       inFl labelsIn widgetsIn self.InValues}
+                                 </table>
                                               
                                  {@mapX4 [fn _ => string] [Widget.t'] [fn _ => id] [snd3] [body]
                                      (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] lab w id v => <xml>
