@@ -70,15 +70,15 @@ val intbox = { Configure = return (),
                Value = fn s => v <- signal s; return (Option.get 0 (read v)),
                AsValue = txt }
 
-val timebox = { Configure = return (),
-                Create = fn () => source "",
-                Initialize = fn () n => source (show n),
-                Reset = fn s => set s "",
-                AsWidget = fn s ido =>
+val timebox = { Configure = t <- now; return (show t),
+                Create = fn t => s <- source ""; return (t, s),
+                Initialize = fn t n => s <- source (show n); return (t, s),
+                Reset = fn (_, s) => set s "",
+                AsWidget = fn (t, s) ido =>
                               case ido of
-                                  None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
-                                | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
-                Value = fn s => v <- signal s; return (Option.get minTime (read v)),
+                                  None => <xml><ctextbox placeholder={t} class={Bootstrap4.form_control} source={s}/></xml>
+                                | Some id => <xml><ctextbox placeholder={t} class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                Value = fn (_, s) => v <- signal s; return (Option.get minTime (read v)),
                 AsValue = fn t => if t = minTime then <xml><b>INVALID</b></xml> else txt t }
 
 val urlbox = { Configure = return (),
