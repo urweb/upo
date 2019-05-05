@@ -38,7 +38,10 @@ functor Html(M : sig
                    cfg <- @Widget.configure w;
                    @Widget.create w cfg)
                paramsFl widgets;
-        rs <- source [];
+        rs <- (case @Row.isEmpty' [fn r => $(map fst3 r)] paramsFl of
+                   None => return []
+                 | Some cast => queryL (query (cast ())));
+        rs <- source rs;
         return {Buttons = bs,
                 Ids = ids,
                 Widgets = ws,
