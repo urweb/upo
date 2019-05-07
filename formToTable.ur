@@ -30,21 +30,26 @@ functor Make(M : sig
     datatype formstate =
              Pending of $(map snd3 widgets)
            | Submitted
-         
+
+    type input = $(map (fn p => option p.1) widgets)
+
     type a = {Config : $(map thd3 widgets),
               Ids : $(map (fn _ => id) widgets),
               Formstate : source formstate}
 
-    val create =
+    fun create ws =
         cfg <- @Monad.mapR _ [Widget.t'] [thd3]
                 (fn [nm ::_] [p ::_] => @Widget.configure)
                 widgetsFl widgets;
         ids <- @Monad.mapR0 _ [fn _ => id]
                 (fn [nm ::_] [p ::_] => fresh)
                 widgetsFl;
-        ws <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
-               (fn [nm ::_] [p ::_] => @Widget.create)
-               widgetsFl widgets cfg;
+        ws <- @Monad.mapR3 _ [Widget.t'] [thd3] [fn p => option p.1] [snd3]
+               (fn [nm ::_] [p ::_] w cfg vo =>
+                   case vo of
+                       None => @Widget.create w cfg
+                     | Some v => @Widget.initialize w cfg v)
+               widgetsFl widgets cfg ws;
         fs <- source (Pending ws);
         return {Config = cfg,
                 Ids = ids,
@@ -100,8 +105,8 @@ functor Make(M : sig
                                </div></xml>)}/>
     </xml>
 
-    val ui = {Create = create,
-              Onload = onload,
-              Render = render}
+    fun ui ws = {Create = create ws,
+                 Onload = onload,
+                 Render = render}
                         
 end

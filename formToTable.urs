@@ -24,4 +24,4 @@ functor Make(M : sig
                  constraint constants ~ others
                      
                  table tab : $(map fst3 widgets ++ constants ++ others)
-             end) : Ui.S0
+             end) : Ui.S where type input = $(map (fn p => option p.1) M.widgets)
