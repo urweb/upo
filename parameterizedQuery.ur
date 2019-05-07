@@ -6,27 +6,28 @@ signature S = sig
     val paramsFl : folder params
     val paramLabels : $(map (fn _ => string) params)
 
-    con results :: {Type}
-    val resultsFl : folder results
-    val resultLabels : $(map (fn _ => string) results)
-    val query : $(map fst3 params) -> sql_query [] [] [] results
-    val shows : $(map show results)
-
     val authorized : transaction bool
 end
 
 functor Html(M : sig
                  include S
+
+                 con results :: {(Type * Type * Type)}
+                 val resultsFl : folder results
+                 val resultLabels : $(map (fn _ => string) results)
+                 val query : $(map fst3 params) -> sql_query [] [] [] (map fst3 results)
+                 val resultWidgets : $(map Widget.t' results)
+
                  con buttons :: {Unit}
                  val buttonsFl : folder buttons
              end) = struct
     open M
 
     (* We put the button-function record in a source to ease server-to-client embedding. *)
-    type a = {Buttons : source $(mapU ($results -> string (* label *) * url) buttons),
+    type a = {Buttons : source $(mapU ($(map fst3 results) -> string (* label *) * url) buttons),
               Ids : $(map (fn _ => id) params),
               Widgets : $(map snd3 params),
-              Results : source (list $results)}
+              Results : source (list $(map fst3 results))}
 
     fun create bs =
         bs <- source bs;
@@ -82,7 +83,7 @@ functor Html(M : sig
       <table class="bs-table table-striped">
         <tr>
           <dyn signal={bs <- signal self.Buttons;
-                       return (@mapX [fn _ => $results -> string * url] [tr]
+                       return (@mapX [fn _ => $(map fst3 results) -> string * url] [tr]
                                 (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] _ =>
                                     <xml><th/></xml>)
                                 buttonsFl bs)}/>
@@ -95,7 +96,7 @@ functor Html(M : sig
         <dyn signal={bs <- signal self.Buttons;
                      rs <- signal self.Results;
                      return (List.mapX (fn row => <xml><tr>
-                       {@mapX [fn _ => $results -> string * url] [tr]
+                       {@mapX [fn _ => $(map fst3 results) -> string * url] [tr]
                          (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] f =>
                              let
                                  val (label, link) = f row
@@ -103,10 +104,10 @@ functor Html(M : sig
                                  <xml><td class="col-sm-1"><a class="btn btn-info" href={link}>{[label]}</a></td></xml>
                              end)
                          buttonsFl bs}
-                       {@mapX2 [show] [ident] [tr]
-                         (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (v : t) =>
-                             <xml><td>{[v]}</td></xml>)
-                         resultsFl shows row}
+                       {@mapX2 [Widget.t'] [fst3] [tr]
+                         (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                             <xml><td>{@Widget.asValue w v}</td></xml>)
+                         resultsFl resultWidgets row}
                      </tr></xml>) rs)}/>
       </table>
     </xml>
@@ -119,6 +120,13 @@ end
 
 functor Csv(M : sig
                 include S
+
+                con results :: {Type}
+                val resultsFl : folder results
+                val resultLabels : $(map (fn _ => string) results)
+                val query : $(map fst3 params) -> sql_query [] [] [] results
+                val shows : $(map show results)
+
                 val filename : string
             end) = struct
     open M
