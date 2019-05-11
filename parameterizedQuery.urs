@@ -20,7 +20,7 @@ functor Html(M : sig
 
                  con buttons :: {Unit}
                  val buttonsFl : folder buttons
-             end) : Ui.S where type input = $(mapU ($(map fst3 M.results) -> string (* label *) * url) M.buttons)
+             end) : Ui.S where type input = $(mapU ($(map fst3 M.params) -> $(map fst3 M.results) -> string (* label *) * url) M.buttons)
 
 functor Csv(M : sig
                 include S

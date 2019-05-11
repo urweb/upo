@@ -24,7 +24,7 @@ functor Html(M : sig
     open M
 
     (* We put the button-function record in a source to ease server-to-client embedding. *)
-    type a = {Buttons : source $(mapU ($(map fst3 results) -> string (* label *) * url) buttons),
+    type a = {Buttons : source $(mapU ($(map fst3 params) -> $(map fst3 results) -> string (* label *) * url) buttons),
               Ids : $(map (fn _ => id) params),
               Widgets : $(map snd3 params),
               Results : source (list $(map fst3 results))}
@@ -83,7 +83,7 @@ functor Html(M : sig
       <table class="bs-table table-striped">
         <tr>
           <dyn signal={bs <- signal self.Buttons;
-                       return (@mapX [fn _ => $(map fst3 results) -> string * url] [tr]
+                       return (@mapX [fn _ => $(map fst3 params) -> $(map fst3 results) -> string * url] [tr]
                                 (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] _ =>
                                     <xml><th/></xml>)
                                 buttonsFl bs)}/>
@@ -93,13 +93,17 @@ functor Html(M : sig
             resultsFl resultLabels}
         </tr>
 
-        <dyn signal={bs <- signal self.Buttons;
+        <dyn signal={vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (c : p.2) =>
+                                @Widget.value w c)
+                            paramsFl widgets self.Widgets;
+                     bs <- signal self.Buttons;
                      rs <- signal self.Results;
                      return (List.mapX (fn row => <xml><tr>
-                       {@mapX [fn _ => $(map fst3 results) -> string * url] [tr]
+                       {@mapX [fn _ => $(map fst3 params) -> $(map fst3 results) -> string * url] [tr]
                          (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] f =>
                              let
-                                 val (label, link) = f row
+                                 val (label, link) = f vs row
                              in
                                  <xml><td class="col-sm-1"><a class="btn btn-info" href={link}>{[label]}</a></td></xml>
                              end)
