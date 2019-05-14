@@ -30,10 +30,6 @@ fun mayClose acc poster =
       | Admin r => Some r.User
       | _ => None
 
-style post
-style post_header
-style post_body
-
 functor Make(M : sig
                  con key :: {Type}
                  con thread :: Name
@@ -519,10 +515,10 @@ functor Make(M : sig
                                    return (case h of
                                                Nil => <xml></xml>
                                              | Cons (msg, ls') => <xml>
-                                               <div class={post}>
+                                               <div class="card">
                                                  <dyn signal={r <- signal msg;
                                                               return <xml>
-                                                                <div class={post_header}>{[r.Who]} at {[r.When]}
+                                                                <div class="card-header">{[r.Who]} at {[r.When]}
                                                                   {case mayEdit a.Access r.Who of
                                                                        None => <xml></xml>
                                                                      | Some _ =>
@@ -551,7 +547,7 @@ functor Make(M : sig
                                                                                                    <xml>Yes!</xml>))}
                                                                 </div>
 
-                                                                <div class={post_body}>{@Widget.asValue text r.Text}</div>
+                                                                <div class="card-body">{@Widget.asValue text r.Text}</div>
                                                               </xml>}/>
                                                </div>
 
