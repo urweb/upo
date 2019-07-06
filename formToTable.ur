@@ -23,6 +23,8 @@ functor Make(M : sig
                  constraint constants ~ others
 
                  table tab : $(map fst3 widgets ++ constants ++ others)
+
+                 val onSubmit : context -> $(map fst3 widgets ++ constants) -> transaction unit
              end) = struct
 
     open M
@@ -68,7 +70,8 @@ functor Make(M : sig
                               ++ @map2 [sql_injectable] [ident] [sql_exp [] [] []]
                               (fn [t] (_ : sql_injectable t) => sql_inject)
                               constantsFl constantsInj constants
-                              ++ others ctx))
+                              ++ others ctx));
+            onSubmit ctx (vs ++ constants)
                    
     fun render _ self = <xml>
       <dyn signal={sub <- signal self.Formstate;

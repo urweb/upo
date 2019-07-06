@@ -24,4 +24,6 @@ functor Make(M : sig
                  constraint constants ~ others
                      
                  table tab : $(map fst3 widgets ++ constants ++ others)
+
+                 val onSubmit : context -> $(map fst3 widgets ++ constants) -> transaction unit
              end) : Ui.S where type input = $(map (fn p => option p.1) M.widgets)
