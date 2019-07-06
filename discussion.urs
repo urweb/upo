@@ -11,10 +11,6 @@ datatype access =
        | Admin of { User : string }
          (* Full privileges *)
 
-style post
-style post_header
-style post_body
-
 functor Make(M : sig
                  con key :: {Type}
                  con thread :: Name
