@@ -49,4 +49,6 @@ functor Make(M : sig
                  val port : $(map fst3 (key ++ otherIn)) -> $ported
                      
                  table tableOut : $(ported ++ map fst3 widgets ++ constants ++ others)
+
+                 val onSubmit : context -> $(ported ++ map fst3 widgets ++ constants) -> transaction unit
              end) : Ui.S where type input = $(map fst3 M.key)

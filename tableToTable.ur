@@ -49,6 +49,8 @@ functor Make(M : sig
                  val port : $(map fst3 (key ++ otherIn)) -> $ported
                      
                  table tableOut : $(ported ++ map fst3 widgets ++ constants ++ others)
+
+                 val onSubmit : context -> $(ported ++ map fst3 widgets ++ constants) -> transaction unit
              end) = struct
 
     open M
@@ -110,7 +112,8 @@ functor Make(M : sig
                           ++ @map2 [sql_injectable] [ident] [sql_exp [] [] []]
                           (fn [t] (_ : sql_injectable t) => sql_inject)
                           constantsFl constantsInj constants
-                          ++ others ctx))
+                          ++ others ctx));
+            onSubmit ctx (port inv ++ constants ++ vs)
                    
     fun render _ self = <xml>
       <dyn signal={sub <- signal self.Formstate;
