@@ -20,6 +20,8 @@ functor Html(M : sig
 
                  con buttons :: {Unit}
                  val buttonsFl : folder buttons
+
+                 val onResult : option ($(map fst3 results) -> transaction unit)
              end) = struct
     open M
 
@@ -27,7 +29,8 @@ functor Html(M : sig
     type a = {Buttons : source $(mapU ($(map fst3 params) -> $(map fst3 results) -> string (* label *) * url) buttons),
               Ids : $(map (fn _ => id) params),
               Widgets : $(map snd3 params),
-              Results : source (list $(map fst3 results))}
+              Results : source (list $(map fst3 results)),
+              RunningAction : source bool}
 
     fun create bs =
         bs <- source bs;
@@ -43,10 +46,12 @@ functor Html(M : sig
                    None => return []
                  | Some cast => queryL (query (cast ())));
         rs <- source rs;
+        ra <- source False;
         return {Buttons = bs,
                 Ids = ids,
                 Widgets = ws,
-                Results = rs}
+                Results = rs,
+                RunningAction = ra}
 
     fun onload _ = return ()
 
@@ -57,6 +62,18 @@ functor Html(M : sig
         else
             error <xml>Access denied</xml>
 
+    val runAction =
+        case onResult of
+            None => fn _ => return ()
+          | Some f => fn rs =>
+            b <- authorized;
+            if b then
+                List.app (fn v => case onResult of
+                                      None => return ()
+                                    | Some f => f v) rs
+            else
+                error <xml>Access denied</xml>
+            
     fun render _ self = <xml>
       <table class="bs-table table-striped">
         {@mapX4 [fn _ => string] [Widget.t'] [fn _ => id] [snd3] [tabl]
@@ -80,6 +97,36 @@ functor Html(M : sig
 
       <hr/>
 
+      {case onResult of
+           None => <xml></xml>
+         | _ => <xml>
+           <dyn signal={rs <- signal self.Results;
+                        case rs of
+                            [] => return <xml></xml>
+                          | _ =>
+                            ra <- signal self.RunningAction;
+                            return (if ra then
+                                        <xml>
+                                          <button class="btn disabled"
+                                                  value="Running action..."/>
+                                          <hr/>
+                                        </xml>
+                                    else
+                                        <xml>
+                                          <button class="btn"
+                                                  value="Run action on these results"
+                                                  onclick={fn _ =>
+                                                              sure <- confirm "Are you sure you want to run the action?";
+                                                              if sure then
+                                                                  set self.RunningAction True;
+                                                                  rpc (runAction rs);
+                                                                  set self.RunningAction False
+                                                              else
+                                                                  return ()}/>
+                                          <hr/>
+                                        </xml>)}/>
+         </xml>}
+             
       <table class="bs-table table-striped">
         <tr>
           <dyn signal={bs <- signal self.Buttons;

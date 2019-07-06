@@ -20,6 +20,10 @@ functor Html(M : sig
 
                  con buttons :: {Unit}
                  val buttonsFl : folder buttons
+
+                 val onResult : option ($(map fst3 results) -> transaction unit)
+                 (* If present, include a button to run this function
+                  * server-side on every result. *)
              end) : Ui.S where type input = $(mapU ($(map fst3 M.params) -> $(map fst3 M.results) -> string (* label *) * url) M.buttons)
 
 functor Csv(M : sig
