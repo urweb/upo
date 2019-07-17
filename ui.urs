@@ -117,6 +117,11 @@ val modalAnchor : context
                   -> transaction xbody (* content of modal dialog *)
                   -> xbody
 
+(* Alternatively, activate the modal dialog imperatively. *)
+val activateModal : context
+                    -> xbody
+                    -> transaction unit
+                     
 (* A standard template for creating the modal form *)
 val modal : transaction unit     (* callback on clicking main button *)
             -> xbody             (* main prompt *)

@@ -266,6 +266,10 @@ fun modalAnchor ctx cls bod onclick = <xml>
   </a>
 </xml>
 
+fun activateModal ctx bod =
+    set ctx.ModalSpot bod;
+    UpoFfi.activateModal ctx.ModalId
+
 fun modal bcode titl bod blab = <xml>
   <div class="modal-dialog">
     <div class="modal-content">

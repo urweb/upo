@@ -7,6 +7,9 @@ allow env SSL_CLIENT_S_DN
 allow mime text/csv
 allow mime text/tab-separated-values
 allow meta viewport
+ffi upoFfi
+clientOnly UpoFfi.activateModal
+jsFunc UpoFfi.activateModal=activateModal
 
 $/list
 $/char

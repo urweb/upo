@@ -5,3 +5,7 @@ $(window).resize(function () {
 $(function () { 
    $('body').css('padding-top', parseInt($('.navbar').css("height"))+10);
 });
+
+function activateModal(id) {
+    $('#' + id).modal({});
+}
