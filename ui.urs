@@ -121,6 +121,8 @@ val modalAnchor : context
 val activateModal : context
                     -> xbody
                     -> transaction unit
+val deactivateModal : context
+                      -> transaction unit
                      
 (* A standard template for creating the modal form *)
 val modal : transaction unit     (* callback on clicking main button *)

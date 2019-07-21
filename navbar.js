@@ -7,5 +7,9 @@ $(function () {
 });
 
 function activateModal(id) {
-    $('#' + id).modal({});
+    $('#' + id).modal('show');
+}
+
+function deactivateModal(id) {
+    $('#' + id).modal('hide');
 }

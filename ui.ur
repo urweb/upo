@@ -270,6 +270,9 @@ fun activateModal ctx bod =
     set ctx.ModalSpot bod;
     UpoFfi.activateModal ctx.ModalId
 
+fun deactivateModal ctx =
+    UpoFfi.deactivateModal ctx.ModalId
+
 fun modal bcode titl bod blab = <xml>
   <div class="modal-dialog">
     <div class="modal-content">

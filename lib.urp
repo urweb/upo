@@ -9,7 +9,9 @@ allow mime text/tab-separated-values
 allow meta viewport
 ffi upoFfi
 clientOnly UpoFfi.activateModal
+clientOnly UpoFfi.deactivateModal
 jsFunc UpoFfi.activateModal=activateModal
+jsFunc UpoFfi.deactivateModal=deactivateModal
 
 $/list
 $/char
