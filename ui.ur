@@ -154,9 +154,7 @@ functor Make(M : THEME) = struct
               <dyn signal={signal ms}/>
             </div>
 
-            <main role="main" class="container">
-              {t.Render {ModalId = mid, ModalSpot = ms} state}
-            </main>
+            {t.Render {ModalId = mid, ModalSpot = ms} state}
           </body>
         </xml>
 

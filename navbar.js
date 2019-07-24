@@ -1,10 +1,14 @@
-$(window).resize(function () { 
-   $('body').css('padding-top', parseInt($('.navbar').css("height"))+10);
-});
+function startBelowNavbar() {
+    var height = parseInt($('.navbar').css("height"));
+    if (height > 0)
+        $('body').css('padding-top', height+10);
+    else
+        // Oh, we must be in an embeddable widget.
+        $('body').css('padding-top', 0);
+}
 
-$(function () { 
-   $('body').css('padding-top', parseInt($('.navbar').css("height"))+10);
-});
+$(window).resize(startBelowNavbar);
+$(startBelowNavbar);
 
 function activateModal(id) {
     $('#' + id).modal('show');
