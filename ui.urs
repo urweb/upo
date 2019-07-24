@@ -78,6 +78,11 @@ functor Make(M : THEME) : sig
                  -> t a    (* content *)
                  -> transaction page
 
+    (* Even simpler: this view is for "widgets" to be embedded elsewhere via iframes, etc. *)
+    val embeddable : a ::: Type
+                     -> t a  (* content *)
+                     -> transaction page
+
     (* Render a page with several named tabs, each with its own UI.
      * Switch between tabs using the top navbar. *)
     val tabbed : ts ::: {Type} -> folder ts
