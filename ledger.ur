@@ -6,7 +6,30 @@ type entry = {When : time,
 type t = {From : time, To : time} -> transaction (list (list entry))
 (* Invariant: each output sublist is sorted by When in descending order,
  * so we will be able to do an efficient merge into one sorted list. *)
- 
+
+fun oneMonthLater (y, m) =
+    if m = Datetime.December then
+        (y+1, Datetime.January)
+    else
+        (y, Datetime.intToMonth (Datetime.monthToInt m + 1))
+
+val _ : eq (int * Datetime.month) = Record.eq
+        
+fun ymIn t =
+    let
+        val t = Datetime.fromTime t
+    in
+        (t.Year, t.Month)
+    end
+
+fun ymOut (y, m) =
+    Datetime.toTime {Year = y,
+                     Month = m,
+                     Day = 1,
+                     Hour = 0,
+                     Minute = 0,
+                     Second = 0}
+        
 fun fromTable [when :: Name] [fs] [ks] [[when] ~ fs]
     (tab : sql_table ([when = time] ++ fs) ks)
     (howMuch : $([when = time] ++ fs) -> int)
@@ -21,6 +44,78 @@ fun fromTable [when :: Name] [fs] [ks] [[when] ~ fs]
                                           HowMuch = howMuch r});
     return (ls :: [])
 
+fun deltaAndMultiplier [kt] [k1 :: Name] [when1 :: Name] [change :: Name] [rest1]
+    [k2 :: Name] [when2 :: Name] [multiplier :: Name] [rest2] [ks1] [ks2]
+    [[when1] ~ [change]] [[when1, change] ~ [k1]] [[when1, change] ~ rest1] [[k1] ~ rest1]
+    [[when2] ~ [multiplier]] [[when2, multiplier] ~ [k2]] [[when2, multiplier] ~ rest2] [[k2] ~ rest2]
+    (_ : eq kt) (_ : show kt)
+    (deltas : sql_table ([k1 = kt, when1 = time, change = int] ++ rest1) ks1)
+    (multipliers : sql_table ([k2 = kt, when2 = time, multiplier = int] ++ rest2) ks2) bounds =
+    let
+        val b = ymIn bounds.From
+        val e = ymIn bounds.To
+
+        fun assemble cur groups ds ms acc =
+            if cur = e then
+                acc
+            else
+                let
+                    val relevant =
+                        case ms of
+                            [] => None
+                          | r :: ms' =>
+                            if r.when2 > ymOut cur then
+                                None
+                            else
+                                Some (ms', ds,
+                                      case List.assoc r.k2 groups of
+                                          None => ((r.k2, {Multiplier = r.multiplier, Count = 0}) :: groups)
+                                        | Some _ => List.mp (fn (k', g) => (k', if k' = r.k2 then {Multiplier = r.multiplier, Count = g.Count} else g)) groups)
+
+                    val relevant =
+                        case relevant of
+                            Some _ => relevant
+                          | None =>
+                            case ds of
+                                [] => None
+                              | r :: ds' =>
+                                if r.when1 > ymOut cur then
+                                    None
+                                else
+                                    Some (ms, ds',
+                                          case List.assoc r.k1 groups of
+                                              None => ((r.k1, {Count = r.change, Multiplier = 0}) :: groups)
+                                            | Some _ => List.mp (fn (k', g) => (k', if k' = r.k1 then {Count = g.Count + r.change, Multiplier = g.Multiplier} else g)) groups)
+                in
+                    case relevant of
+                        None => assemble (oneMonthLater cur) groups ds ms
+                                (List.append
+                                     (List.mapPartial (fn (k, g) =>
+                                                          let
+                                                              val hm = g.Multiplier * g.Count
+                                                          in
+                                                              if hm = 0 then
+                                                                  None
+                                                              else
+                                                                  Some {When = ymOut cur,
+                                                                        What = txt k,
+                                                                        HowMuch = hm}
+                                                          end) groups)
+                                 acc)
+                      | Some (ms', ds', groups') => assemble cur groups' ds' ms' acc
+                end
+    in
+        ds <- queryL1 (SELECT deltas.{k1}, deltas.{when1}, deltas.{change}
+                       FROM deltas
+                       WHERE deltas.{when1} <= {[bounds.To]}
+                       ORDER BY deltas.{when1});
+        ms <- queryL1 (SELECT multipliers.{k2}, multipliers.{when2}, multipliers.{multiplier}
+                       FROM multipliers
+                       WHERE multipliers.{when2} <= {[bounds.To]}
+                       ORDER BY multipliers.{when2});
+        return (assemble b [] ds ms [] :: [])
+    end
+    
 fun merge (lss : list (list entry)) (acc : list entry) : list entry =
     let
         val latest = List.foldl (fn ls latest =>
@@ -98,14 +193,9 @@ functor Make(M : sig
               | Some m =>
                 let
                     val m = Datetime.intToMonth (m - 1)
+                    val p = (y, m)
                 in
-                    return (y, m,
-                            Datetime.toTime {Year = y,
-                                             Month = m,
-                                             Day = 1,
-                                             Hour = 0,
-                                             Minute = 0,
-                                             Second = 0})
+                    return (p, ymOut p)
                 end
 
     fun generate bounds =
@@ -115,13 +205,10 @@ functor Make(M : sig
         else
             error <xml>Access denied</xml>
 
-    fun monthsFromEntries (* current month, as year and month *) cy cm
-                          (* end month *) ey em
+    fun monthsFromEntries (* current month, as year and month *) cur
+                          (* end month *) end_
                           es bal acc =
-        if (if em = Datetime.December then
-                cy = ey+1 && cm = Datetime.January
-            else
-                cy = ey && cm = Datetime.intToMonth (Datetime.monthToInt em + 1)) then
+        if cur = end_ then
             return (List.rev acc)
         else
             let
@@ -132,24 +219,18 @@ functor Make(M : sig
                         let
                             val dt = Datetime.fromTime e.When
                         in
-                            if dt.Year = cy && dt.Month = cm then
+                            if (dt.Year, dt.Month) = cur then
                                 extractFromMonth es' (bal + e.HowMuch) (e :: acc)
                             else
                                 (es, bal, acc)
                         end
 
                 val (remaining, bal, thisMonth) = extractFromMonth es bal []
-
-                val (ny, nm) =
-                    if cm = Datetime.December then
-                        (cy+1, Datetime.January)
-                    else
-                        (cy, Datetime.intToMonth (Datetime.monthToInt cm + 1))
             in
                 expanded <- source False;
-                monthsFromEntries ny nm ey em remaining bal
-                                  ({Year = cy,
-                                    Month = cm,
+                monthsFromEntries (oneMonthLater cur) end_ remaining bal
+                                  ({Year = cur.1,
+                                    Month = cur.2,
                                     Balance = bal,
                                     Entries = thisMonth,
                                     Expanded = expanded} :: acc)
@@ -175,10 +256,10 @@ functor Make(M : sig
       <button class="btn btn-primary"
               value="Calculate"
               onclick={fn _ =>
-                          (sy, sm, start) <- timeOf a.StartYear a.StartMonth;
-                          (ey, em, end_) <- timeOf a.EndYear a.EndMonth;
+                          (startp, start) <- timeOf a.StartYear a.StartMonth;
+                          (endp, end_) <- timeOf a.EndYear a.EndMonth;
                           es <- rpc (generate {From = start, To = addSeconds end_ (31 * 24 * 60 * 60)});
-                          ms <- monthsFromEntries sy sm ey em (merge es []) 0 [];
+                          ms <- monthsFromEntries startp (oneMonthLater endp) (merge es []) 0 [];
                           set a.Months ms}/>
 
       <hr/>
