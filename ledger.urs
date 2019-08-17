@@ -53,6 +53,26 @@ val flatAveragedEstimate :
 
     -> t flatAveragedEstimate
 
+(* Like the last one, but grouping entries by additional columns *)
+con groupedAveragedEstimate :: Type -> (Type * Type)
+val groupedAveragedEstimate :
+    (* Forecasting parameters *)
+    k ::: Name -> kt ::: Type -> monthsToAverage :: Name -> addToCountMonthly :: Name -> maxCount :: Name -> monthlyPercentChangeInMultiplier :: Name -> ks ::: {{Unit}}
+    -> [[monthsToAverage] ~ [addToCountMonthly]] => [[monthsToAverage, addToCountMonthly] ~ [maxCount]]
+    => [[monthsToAverage, addToCountMonthly, maxCount] ~ [monthlyPercentChangeInMultiplier]]
+    => [[monthsToAverage, addToCountMonthly, maxCount, monthlyPercentChangeInMultiplier] ~ [k]]
+    => eq kt
+    -> sql_table ([k = kt, monthsToAverage = int, addToCountMonthly = int, maxCount = int, monthlyPercentChangeInMultiplier = int]) ks
+
+    (* Ground-truth table *)
+    -> k2 :: Name -> when :: Name -> fs ::: {Type} -> gks ::: {{Unit}}
+    -> [[k2] ~ fs] => [[when] ~ [k2 = kt] ++ fs]
+    => sql_table ([when = time, k2 = kt] ++ fs) gks
+    -> ({k2 : kt} -> xbody) (* category description *)
+    -> ($([when = time, k2 = kt] ++ fs) -> int) (* extracting transaction value *)
+
+    -> t (groupedAveragedEstimate kt)
+
 con compose :: (Type * Type) -> (Type * Type) -> (Type * Type)
 val compose : a ::: (Type * Type) -> b ::: (Type * Type) -> t a -> t b -> t (compose a b)
 

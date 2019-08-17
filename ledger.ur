@@ -201,6 +201,142 @@ fun flatAveragedEstimate [monthsToAverage :: Name] [addToCountMonthly :: Name] [
                         return {StartingBalance = 0,
                                 Entries = buildMonths (max bounds.From (oneMonthLater m)) count avg [] :: []}
                     end}
+
+type groupedAveragedEstimate (kt :: Type) =
+     (list (kt * {Lookback : source string,
+                  Add : source string,
+                  Max : source string,
+                  Percent : source string}),
+      list (kt * {Lookback : int,
+                  Add : int,
+                  Max : int,
+                  Percent : int}))
+fun groupedAveragedEstimate [k ::: Name] [kt ::: Type] [monthsToAverage :: Name] [addToCountMonthly :: Name] [maxCount :: Name] [monthlyPercentChangeInMultiplier :: Name] [ks]
+    [[monthsToAverage] ~ [addToCountMonthly]] [[monthsToAverage, addToCountMonthly] ~ [maxCount]]
+    [[monthsToAverage, addToCountMonthly, maxCount] ~ [monthlyPercentChangeInMultiplier]]
+    [[monthsToAverage, addToCountMonthly, maxCount, monthlyPercentChangeInMultiplier] ~ [k]]
+    (eqk : eq kt)
+    (params : sql_table ([k = kt, monthsToAverage = int, addToCountMonthly = int, maxCount = int, monthlyPercentChangeInMultiplier = int]) ks)
+    [k2 :: Name] [when :: Name] [fs] [gks] [[k2] ~ fs] [[when] ~ [k2 = kt] ++ fs]
+    (tab : sql_table ([when = time, k2 = kt] ++ fs) gks) (what : {k2 : kt} -> xbody)
+    (howMuch : $([when = time, k2 = kt] ++ fs) -> int) : t (groupedAveragedEstimate kt) =
+    {Create = rs <- List.mapQuery (SELECT * FROM params) (fn {Params = r} => (r.k, r -- k));
+              rs <- query1 (SELECT DISTINCT tab.{k2}
+                            FROM tab)
+                           (fn rk rs =>
+                               return (case List.assoc rk.k2 rs of
+                                           None => (rk.k2, @@map0 [fn _ :: Unit => int] (fn [u ::_] => 0) [[monthsToAverage, addToCountMonthly, maxCount, monthlyPercentChangeInMultiplier]] _) :: rs
+                                         | Some _ => rs)) rs;
+              rs <- List.mapM (fn (k, r) => r <- Monad.mapR [fn _ :: Unit => int] [fn _ => source string] (fn [nm ::_] [u ::_] n => source (show n)) r; return (k, r)) rs;
+              return (List.mp (fn (k, r) => (k, {Lookback = r.monthsToAverage, Add = r.addToCountMonthly, Max = r.maxCount, Percent = r.monthlyPercentChangeInMultiplier})) rs),
+     Settings = List.mapX (fn (k, r) => <xml>
+       <h2>{what {k2 = k}}</h2>
+       <div class="form-group">
+         <label class="control-label">How many recent months to average:</label>
+         <div><ctextbox source={r.Lookback}/></div>
+       </div>
+       <div class="form-group">
+         <label class="control-label">How much to increase count per month:</label>
+         <div><ctextbox source={r.Add}/></div>
+       </div>
+       <div class="form-group">
+         <label class="control-label">Maximum count:</label>
+         <div><ctextbox source={r.Max}/></div>
+       </div>
+       <div class="form-group">
+         <label class="control-label">Percent increase in multiplier per month:</label>
+         <div><ctextbox source={r.Percent}/></div>
+       </div>
+     </xml>),
+     Parameters = List.mapM (fn (k, r) => r <- Monad.mapR [fn _ :: Unit => source string] [fn _ => int] (fn [nm ::_] [u ::_] s => s <- signal s; return (Option.get 0 (read s))) r;
+                                return (k, r)),
+     Calculate = fn params bounds =>
+                    let
+                        fun oneMonth m remaining =
+                            cs <- query1 (SELECT *
+                                          FROM tab
+                                          WHERE {[monthOut m]} <= tab.{when}
+                                            AND tab.{when} < {[monthOut (oneMonthLater m)]})
+                                         (fn r cs =>
+                                             let
+                                                 val k = r.k2
+                                             in
+                                                 return (case List.assoc k cs of
+                                                             None => (k, (1, howMuch r)) :: cs
+                                                           | Some (count, sum) => List.mp (fn (k', v) => if k' = k then (k, (count + 1, sum + howMuch r)) else (k', v)) cs)
+                                             end)
+                                         [];
+                            return (List.mapPartial (fn (k, (count, sum)) =>
+                                                        case List.assoc k remaining of
+                                                            None => None
+                                                          | Some _ =>
+                                                            Some (k,
+                                                                  (count,
+                                                                   if count = 0 then
+                                                                       0
+                                                                   else
+                                                                       sum / count))) cs)
+
+                        fun sumMonths m remaining =
+                            case remaining of
+                                [] => return []
+                              | _ =>
+                                cs1 <- oneMonth m remaining;
+                                cs <- sumMonths (oneMonthEarlier m) (List.mapPartial (fn (k, lookback) =>
+                                                                                         if lookback <= 1 then
+                                                                                             None
+                                                                                         else
+                                                                                             Some (k, lookback - 1)) remaining);
+                                cs' <- return (List.mp (fn (k, (count, sum)) =>
+                                                           let
+                                                               val sum = case List.assoc k cs of
+                                                                             None => sum
+                                                                           | Some (_, sum') => sum + sum'
+                                                           in
+                                                               (k, (count, sum))
+                                                           end) cs1);
+                                return (List.foldl (fn (k, (_, sum)) cs' =>
+                                                       case List.assoc k cs' of
+                                                           None => (k, (0, sum)) :: cs'
+                                                         | Some _ => cs') cs' cs)
+
+                        fun buildMonths cur cs acc =
+                            if cur > bounds.To then
+                                List.rev acc
+                            else
+                                let
+                                    val (cs, acc) = List.foldl (fn (k, (count, multiplier)) (cs, acc) =>
+                                                                   case List.assoc k params of
+                                                                       None => (cs, acc)
+                                                                     | Some ps =>
+                                                                       let
+                                                                           val count = min (count + ps.Add) ps.Max
+                                                                           val multiplier = multiplier * (100 + ps.Percent) / 100
+                                                                       in
+                                                                           ((k, (count, multiplier)) :: cs,
+                                                                            {When = cur, What = what {k2 = k}, HowMany = count, HowMuch = count * multiplier} :: acc)
+                                                                       end) ([], acc) cs
+                                in
+                                    buildMonths (oneMonthLater cur) cs acc
+                                end
+                    in
+                        m <- now;
+                        m <- return (monthIn m);
+                        cs <- sumMonths m (List.mapPartial (fn (k, pr) => if pr.Lookback <= 0 then
+                                                                              None
+                                                                          else
+                                                                              Some (k, pr.Lookback)) params);
+                        cs <- return (List.mp (fn (k, (count, sum)) =>
+                                                  (k, (count,
+                                                       case List.assoc k params of
+                                                           None => sum
+                                                         | Some pr => if pr.Lookback <= 0 then
+                                                                          0
+                                                                      else
+                                                                          sum / pr.Lookback))) cs);
+                        return {StartingBalance = 0,
+                                Entries = buildMonths (max bounds.From (oneMonthLater m)) cs [] :: []}
+                    end}
      
 fun merge (lss : list (list entry)) (acc : list entry) : list entry =
     let
