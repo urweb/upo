@@ -1,31 +1,29 @@
 open Bootstrap4
 
-type t (u :: {Type}) (w :: Type) (d :: Type) = {
-     Create : $u -> transaction w,
+type t (w :: Type) (d :: Type) = {
+     Create : string -> transaction w,
      Render : w -> xbody,
      Value : w -> signal d,
-     Apply : $u -> d -> transaction unit
+     Apply : string -> d -> transaction unit
 }
 
 con singleRowTable1 (fs :: {(Type * Type * Type)}) = option $(map snd3 fs)
 con singleRowTable2 (fs :: {(Type * Type * Type)}) = option $(map fst3 fs)
-fun singleRowTable [u ::: {Type}] [group :: Name] [auth ::: {Type}] [aks ::: {{Unit}}]
+fun singleRowTable [u ::: Name] [group :: Name] [auth ::: {Type}] [aks ::: {{Unit}}]
     [fs ::: {(Type * Type * Type)}] [fks ::: {{Unit}}]
-    [u ~ auth] [[group] ~ u ++ auth]
-    (ufl : folder u) (uinjs : $(map sql_injectable u))
+    [[u] ~ auth] [[group] ~ [u = string] ++ auth]
     (fl : folder fs) (ws : $(map Widget.t' fs))
     (injs : $(map (fn p => sql_injectable p.1) fs))
     (title : string)
-    (auth : sql_table (u ++ [group = bool] ++ auth) aks)
+    (auth : sql_table ([u = string, group = bool] ++ auth) aks)
     (fs : sql_table (map fst3 fs) fks)
     (labels : $(map (fn _ => string) fs))
-    : t u (singleRowTable1 fs) (singleRowTable2 fs) =
+    : t (singleRowTable1 fs) (singleRowTable2 fs) =
       let
           fun check u =
               oneRowE1 (SELECT COUNT( * ) > 0
                         FROM auth
-                        WHERE {@@Sql.easy_where [#Auth] [u] [[group = bool] ++ auth]
-                          [[]] [_] [_] ! ! uinjs ufl u}
+                        WHERE auth.{u} = {[u]}
                           AND auth.{group})
       in
           {Create = fn u =>
@@ -80,29 +78,27 @@ fun singleRowTable [u ::: {Type}] [group :: Name] [auth ::: {Type}] [aks ::: {{U
 
 con tableWithAcl1 (kt :: Type) (fs :: {(Type * Type * Type)}) = list (kt * $(map snd3 fs))
 con tableWithAcl2 (kt :: Type) (fs :: {(Type * Type * Type)}) = list (kt * $(map fst3 fs))
-fun tableWithAcl [u ::: {Type}] [k ::: Name] [kt ::: Type] [auth ::: {Type}] [aks ::: {{Unit}}]
+fun tableWithAcl [u ::: Name] [k ::: Name] [kt ::: Type] [auth ::: {Type}] [aks ::: {{Unit}}]
     [k2 ::: Name] [fs ::: {(Type * Type * Type)}] [fks ::: {{Unit}}]
-    [u ~ [k]] [u ++ [k = kt] ~ auth] [[k2] ~ fs]
-    (ufl : folder u)
-    (uinj : $(map sql_injectable u)) (kinj : sql_injectable_prim kt)
+    [[u] ~ [k]] [[u = string, k = kt] ~ auth] [[k2] ~ fs]
+    (kinj : sql_injectable_prim kt)
     (fl : folder fs) (ws : $(map Widget.t' fs))
     (injs : $(map (fn p => sql_injectable_prim p.1) fs))
     (title : kt -> string)
-    (auth : sql_table (u ++ [k = kt] ++ auth) aks)
+    (auth : sql_table ([u = string, k = kt] ++ auth) aks)
     (fs : sql_table ([k2 = kt] ++ map fst3 fs) fks)
     (labels : $(map (fn _ => string) fs))
-    : t u (tableWithAcl1 kt fs) (tableWithAcl2 kt fs) =
+    : t (tableWithAcl1 kt fs) (tableWithAcl2 kt fs) =
       {Create = fn u =>
                    List.mapQueryM ({{{@sql_query1 [[]] ! ! ! !
                                       {Distinct = False,
-                                       From = @@sql_left_join [[]] [[Auth = u ++ [k = kt] ++ auth]]
+                                       From = @@sql_left_join [[]] [[Auth = [u = string, k = kt] ++ auth]]
                                                 [[Fs = map (fn t => (t, option t)) ([k2 = kt] ++ map fst3 fs)]]
                                                 ! ! ! {Fs = @mp [sql_injectable_prim] [fn t => nullify t (option t)] @@nullify_prim
                                                              (@Folder.concat ! _ (@@Folder.mp [fst3] [fs] fl)) ({k2 = kinj} ++ injs)}
                                                 (FROM auth) (FROM fs)
                                                 (WHERE auth.{k} = fs.{k2}),
-                                       Where = @@Sql.easy_where [#Auth] [u] [[k = kt] ++ auth]
-                                                 [[Fs = _]] [_] [_] ! ! uinj ufl u,
+                                       Where = (WHERE auth.{u} = {[u]}),
                                        GroupBy = sql_subset_all [_],
                                        Having = (WHERE TRUE),
                                        SelectFields = sql_subset [[Auth = ([k = kt], _), Fs = (map (fn p => option p.1) fs, _)]],
@@ -137,8 +133,7 @@ fun tableWithAcl [u ::: {Type}] [k ::: Name] [kt ::: Type] [auth ::: {Type}] [ak
                   List.app (fn (k, v) =>
                                allowed <- oneRowE1 (SELECT COUNT( * ) > 0
                                                     FROM auth
-                                                    WHERE {@@Sql.easy_where [#Auth] [u] [[k = kt] ++ auth]
-                                                        [[]] [_] [_] ! ! uinj ufl u}
+                                                    WHERE auth.{u} = {[u]}
                                                       AND auth.{k} = {[k]});
                                if not allowed then
                                    error <xml>Access denied</xml>
@@ -152,8 +147,8 @@ fun tableWithAcl [u ::: {Type}] [k ::: Name] [kt ::: Type] [auth ::: {Type}] [ak
       
 type compose1 (a :: Type) (b :: Type) = a * b
 type compose2 (a :: Type) (b :: Type) = a * b
-fun compose [u ::: {Type}] [a1 ::: Type] [b1 ::: Type] [a2 ::: Type] [b2 ::: Type]
-            (a : t u a1 a2) (b : t u b1 b2) : t u (compose1 a1 b1) (compose2 a2 b2) = {
+fun compose [a1 ::: Type] [b1 ::: Type] [a2 ::: Type] [b2 ::: Type]
+            (a : t a1 a2) (b : t b1 b2) : t (compose1 a1 b1) (compose2 a2 b2) = {
     Create = fn u =>
                 w1 <- a.Create u;
                 w2 <- b.Create u;
@@ -172,12 +167,11 @@ fun compose [u ::: {Type}] [a1 ::: Type] [b1 ::: Type] [a2 ::: Type] [b2 ::: Typ
 }
     
 functor Make(M : sig
-                 con u :: {Type}
                  type p1
                  type p2
-                 val t : t u p1 p2
+                 val t : t p1 p2
 
-                 val whoami : transaction (option $u)
+                 val whoami : transaction (option string)
              end) = struct
     open M
     
