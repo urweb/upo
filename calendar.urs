@@ -35,7 +35,7 @@ functor FromTable(M : sig
                       val kinds : $(mapU string times)
                       val sh : show $(map fst3 key)
                   end) : sig
-    con private
+    con private :: (Type * Type * Type)
     con tag = M.tag
     val cal : t (map fst3 M.key) [tag = private]
 end

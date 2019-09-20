@@ -39,7 +39,7 @@ functor WithDueDate(M : sig
                         val allowAnyUser : bool
                         (* Only one user, not necessarily this one, needs to have done the task. *)
                     end) : sig
-    con private
+    type private
     con tag = M.tag
     val todo : t M.key [tag = private]
 end
@@ -87,7 +87,7 @@ functor WithForeignDueDate(M : sig
                                val title : string
                                val render : $(key ++ subkey) -> string (* username *) -> xbody
                            end) : sig
-    con private
+    type private
     con tag = M.tag
     val todo : t (M.key ++ M.subkey) [tag = private]
 end
@@ -120,7 +120,7 @@ functor WithCompletionFlag(M : sig
                                val title : string
                                val render : $(key ++ subkey) -> string (* username *) -> xbody
                     end) : sig
-    con private
+    type private
     con tag = M.tag
     val todo : t (M.key ++ M.subkey) [tag = private]
 end
@@ -154,7 +154,7 @@ functor WithCompletionFlagAndDueDate(M : sig
                                          val title : string
                                          val render : $(key ++ subkey) -> string (* username *) -> xbody
                     end) : sig
-    con private
+    type private
     con tag = M.tag
     val todo : t (M.key ++ M.subkey) [tag = private]
 end
@@ -184,7 +184,7 @@ functor Happenings(M : sig
                        val title : string
                        val render : $key -> xbody
                    end) : sig
-    con private
+    type private
     con tag = M.tag
     val todo : t M.key [tag = private]
 end
@@ -227,7 +227,7 @@ functor Grading(M : sig
                     val title : string
                     val render : $([guser = string] ++ akey) -> string (* username *) -> xbody
                 end) : sig
-    con private
+    type private
     con tag = M.tag
     con guser = M.guser
     val todo : t ([guser = string] ++ M.akey) [tag = private]

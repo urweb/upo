@@ -3,7 +3,7 @@ type context
 
 (* A general type of GUI units, which can be composed and dropped into pages.
  * The parameter is the unit's state, which should be generated on the server. *)
-type t a = {
+type t (a :: Type) = {
      Create : transaction a,
      Onload : a -> transaction unit,
      Render : context -> a -> xbody

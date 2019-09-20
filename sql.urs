@@ -36,7 +36,7 @@ val easy_select : fs ::: {Type}
                   -> qtablename :: Name
                   -> sql_table fs ks
                   -> sql_exp [qtablename = fs] [] [] bool
-                  -> sql_order_by [qtablename = _] []
+                  -> sql_order_by [qtablename = fs] []
                   -> sql_query [] [] [qtablename = fs] [] 
 
 (* Easy table insert with constants *)
