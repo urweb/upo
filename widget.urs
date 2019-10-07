@@ -11,6 +11,7 @@ val configure : value ::: Type -> state ::: Type -> config ::: Type -> t value s
 val create : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> config -> transaction state
 val initialize : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> config -> value -> transaction state
 val reset : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> transaction unit
+val reconfigure : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> config -> transaction unit
 val asWidget : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> option id (* Use this ID if you can, to help group with labels. *) -> xbody
 val value : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> signal value
 val asValue : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> value -> xbody
@@ -20,6 +21,7 @@ val make : value ::: Type -> state ::: Type -> config ::: Type
                 Create : config -> transaction state,
                 Initialize : config -> value -> transaction state,
                 Reset : state -> transaction unit,
+                Reconfigure : state -> config -> transaction unit,
                 AsWidget : state -> option id -> xbody,
                 Value : state -> signal value,
                 AsValue : value -> xbody }

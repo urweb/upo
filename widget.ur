@@ -3,6 +3,7 @@ con t (value :: Type) (state :: Type) (config :: Type) =
         Create : config -> transaction state,
         Initialize : config -> value -> transaction state,
         Reset : state -> transaction unit,
+        Reconfigure : state -> config -> transaction unit,
         AsWidget : state -> option id -> xbody,
         Value : state -> signal value,
         AsValue : value -> xbody }
@@ -13,6 +14,7 @@ fun configure [value] [state] [config] (t : t value state config) = t.Configure
 fun create [value] [state] [config] (t : t value state config) = t.Create
 fun initialize [value] [state] [config] (t : t value state config) = t.Initialize
 fun reset [value] [state] [config] (t : t value state config) = t.Reset
+fun reconfigure [value] [state] [config] (t : t value state config) = t.Reconfigure
 fun asWidget [value] [state] [config] (t : t value state config) = t.AsWidget
 fun value [value] [state] [config] (t : t value state config) = t.Value
 fun asValue [value] [state] [config] (t : t value state config) = t.AsValue
@@ -24,6 +26,7 @@ val textbox = { Configure = return (),
                 Create = fn () => source "",
                 Initialize = fn () => source,
                 Reset = fn s => set s "",
+                Reconfigure = fn _ () => return (),
                 AsWidget = fn s ido =>
                               case ido of
                                   None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
@@ -35,23 +38,25 @@ val opt_textbox = { Configure = return (),
                     Create = fn () => source "",
                     Initialize = fn () o => source (Option.get "" o),
                     Reset = fn s => set s "",
+                    Reconfigure = fn _ () => return (),
                     AsWidget = fn s ido =>
                                   case ido of
                                       None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
                                     | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
-                Value = fn s =>
-                           v <- signal s;
-                           return (case v of
-                                       "" => None
-                                     | _ => Some v),
-                AsValue = fn o => case o of
-                                      None => <xml></xml>
-                                    | Some s => txt s }
+                    Value = fn s =>
+                               v <- signal s;
+                               return (case v of
+                                           "" => None
+                                         | _ => Some v),
+                    AsValue = fn o => case o of
+                                          None => <xml></xml>
+                                        | Some s => txt s }
 
 val checkbox = { Configure = return (),
                  Create = fn () => source False,
                  Initialize = fn () => source,
                  Reset = fn s => set s False,
+                 Reconfigure = fn _ () => return (),
                  AsWidget = fn s ido =>
                                case ido of
                                    None => <xml><ccheckbox class={Bootstrap4.form_control} source={s}/></xml>
@@ -63,6 +68,7 @@ val intbox = { Configure = return (),
                Create = fn () => source "",
                Initialize = fn () n => source (show n),
                Reset = fn s => set s "",
+               Reconfigure = fn _ () => return (),
                AsWidget = fn s ido =>
                              case ido of
                                  None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
@@ -74,6 +80,7 @@ val timebox = { Configure = t <- now; return (show t),
                 Create = fn t => s <- source ""; return (t, s),
                 Initialize = fn t n => s <- source (show n); return (t, s),
                 Reset = fn (_, s) => set s "",
+                Reconfigure = fn _ _ => return (),
                 AsWidget = fn (t, s) ido =>
                               case ido of
                                   None => <xml><ctextbox placeholder={t} class={Bootstrap4.form_control} source={s}/></xml>
@@ -85,6 +92,7 @@ val urlbox = { Configure = return (),
                Create = fn () => source "",
                Initialize = fn () => source,
                Reset = fn s => set s "",
+               Reconfigure = fn _ () => return (),
                AsWidget = fn s ido =>
                              case ido of
                                  None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
@@ -153,6 +161,7 @@ val htmlbox = { Configure = return (),
                 Create = fn () => ed "",
                 Initialize = fn () => ed,
                 Reset = fn me => Ckeditor.setContent me "",
+                Reconfigure = fn _ () => return (),
                 AsWidget = fn me _ => Ckeditor.show me,
                 Value = Ckeditor.content,
                 AsValue = html }
@@ -172,6 +181,7 @@ fun choicebox [a ::: Type] (_ : show a) (_ : read a) (choice : a) (choices : lis
                       s <- source (show v);
                       return {Choices = choice :: choices, Source = s},
       Reset = fn me => set me.Source (show choice),
+      Reconfigure = fn _ () => return (),
       AsWidget = fn me id =>
                     let
                         val inner = <xml>
@@ -190,7 +200,7 @@ fun choicebox [a ::: Type] (_ : show a) (_ : read a) (choice : a) (choices : lis
       AsValue = txt }
 
 type foreignbox (a :: Type) =
-    { Choices : list a,
+    { Choices : source (list a),
       Source : source string }
 
 type foreignbox_config (a :: Type) = list a
@@ -198,22 +208,28 @@ type foreignbox_config (a :: Type) = list a
 fun foreignbox [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : sql_query [] [] [] [f = a]) =
     { Configure = List.mapQuery q (fn r => r.f),
       Create = fn ls =>
+                  ls <- source ls;
                   s <- source "";
                   return {Choices = ls, Source = s},
       Initialize = fn ls v =>
+                      ls <- source ls;
                       s <- source (show v);
                       return {Choices = ls, Source = s},
       Reset = fn me => set me.Source "",
+      Reconfigure = fn me ls => set me.Choices ls,
       AsWidget = fn me id =>
                     let
-                        val inner = <xml>
+                        fun inner choices = <xml>
                           <coption></coption>
-                          {List.mapX (fn v => <xml><coption>{[v]}</coption></xml>) me.Choices}
+                          {List.mapX (fn v => <xml><coption>{[v]}</coption></xml>) choices}
                         </xml>
                     in
-                        case id of
-                            None => <xml><cselect class={Bootstrap4.form_control} source={me.Source}>{inner}</cselect></xml>
-                          | Some id => <xml><cselect class={Bootstrap4.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
+                        <xml>
+                          <dyn signal={choices <- signal me.Choices;
+                                       return (case id of
+                                                   None => <xml><cselect class={Bootstrap4.form_control} source={me.Source}>{inner choices}</cselect></xml>
+                                                 | Some id => <xml><cselect class={Bootstrap4.form_control} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
+                        </xml>
                     end,
       Value = fn me =>
                  v <- signal me.Source;
@@ -228,21 +244,27 @@ con foreignbox_default_config = foreignbox_config
 fun foreignbox_default [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : sql_query [] [] [] [f = a]) (default : a) =
     { Configure = List.mapQuery q (fn r => r.f),
       Create = fn ls =>
+                  ls <- source ls;
                   s <- source "";
                   return {Choices = ls, Source = s},
       Initialize = fn ls v =>
+                      ls <- source ls;
                       s <- source (show v);
                       return {Choices = ls, Source = s},
       Reset = fn me => set me.Source "",
+      Reconfigure = fn me ls => set me.Choices ls,
       AsWidget = fn me id =>
                     let
-                        val inner = <xml>
-                          {List.mapX (fn v => <xml><coption>{[v]}</coption></xml>) me.Choices}
+                        fun inner choices = <xml>
+                          {List.mapX (fn v => <xml><coption>{[v]}</coption></xml>) choices}
                         </xml>
                     in
-                        case id of
-                            None => <xml><cselect class={Bootstrap4.form_control} source={me.Source}>{inner}</cselect></xml>
-                          | Some id => <xml><cselect class={Bootstrap4.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
+                        <xml>
+                          <dyn signal={choices <- signal me.Choices;
+                                       return (case id of
+                                                   None => <xml><cselect class={Bootstrap4.form_control} source={me.Source}>{inner choices}</cselect></xml>
+                                                 | Some id => <xml><cselect class={Bootstrap4.form_control} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
+                        </xml>
                     end,
       Value = fn me =>
                  v <- signal me.Source;
