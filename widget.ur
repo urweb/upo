@@ -272,3 +272,78 @@ fun foreignbox_default [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : 
                              "" => default
                            | _ => Option.get default (read v)),
       AsValue = txt }
+
+functor Fuzzybox(M : sig
+                     con f :: Name
+                     con fs :: {Type}
+                     constraint [f] ~ fs
+                     table t : ([f = string] ++ fs)
+
+                     val top_n : int
+                 end) = struct
+    open M
+
+    datatype stage =
+             NotInitialized (* so no point in similarity-sorting *)
+           | Initialized of string
+           | FetchedSortedList of string
+         
+    type state =
+         { Stage : source stage,
+           Choices : source (list string),
+           Source : source string }
+
+    type config = list string
+
+    fun bestMatches v =
+        List.mapQuery (SELECT t.{f}
+                       FROM t
+                       ORDER BY similarity(t.{f}, {[v]}) DESC
+                       LIMIT {top_n})
+        (fn r => r.T.f)
+
+    fun w () =
+        { Configure = List.mapQuery (SELECT t.{f} FROM t ORDER BY t.{f}) (fn r => r.T.f),
+          Create = fn ls =>
+                      ls <- source ls;
+                      s <- source "";
+                      st <- source NotInitialized;
+                      return {Choices = ls, Source = s, Stage = st},
+          Initialize = fn ls v =>
+                          ls <- source ls;
+                          s <- source v;
+                          st <- source (Initialized v);
+                          return {Choices = ls, Source = s, Stage = st},
+          Reset = fn me => set me.Source "",
+          Reconfigure = fn me ls =>
+                           set me.Choices ls;
+                           st <- get me.Stage;
+                           case st of
+                               FetchedSortedList v => set me.Stage (Initialized v)
+                             | _ => return (),
+          AsWidget = fn me id =>
+                        let
+                            fun inner choices = <xml>
+                              {List.mapX (fn v => <xml><coption>{[v]}</coption></xml>) choices}
+                            </xml>
+                        in
+                            <xml>
+                              <dyn signal={st <- signal me.Stage;
+                                           case st of
+                                               Initialized v =>
+                                               return <xml>
+                                                 <active code={spawn (cs <- rpc (bestMatches v);
+                                                                      set me.Choices cs;
+                                                                      set me.Stage (FetchedSortedList v));
+                                                               return <xml></xml>}/>
+                                               </xml>
+                                             | _ =>
+                                               choices <- signal me.Choices;
+                                               return (case id of
+                                                           None => <xml><cselect class={Bootstrap4.form_control} source={me.Source}>{inner choices}</cselect></xml>
+                                                         | Some id => <xml><cselect class={Bootstrap4.form_control} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
+                            </xml>
+                        end,
+          Value = fn me => signal me.Source,
+          AsValue = txt }
+end

@@ -85,3 +85,19 @@ val foreignbox_default : a ::: Type -> f ::: Name ->
                            -> sql_query [] [] [] [f = a]
                            -> a (* default value *)
                            -> t a (foreignbox_default a) (foreignbox_default_config a)
+
+(* We might also want foreignboxes sorted by similarity to initial value
+ * (even if it doesn't appear in the set of choices). *)
+functor Fuzzybox(M : sig
+                     con f :: Name
+                     con fs :: {Type}
+                     constraint [f] ~ fs
+                     table t : ([f = string] ++ fs)
+
+                     val top_n : int
+                     (* Truncate similarity-sorted list to this length. *)
+                 end) : sig
+    type state
+    type config
+    val w : unit -> t string state config
+end
