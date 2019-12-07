@@ -319,7 +319,9 @@ functor Fuzzybox(M : sig
                            set me.Choices ls;
                            st <- get me.Stage;
                            case st of
-                               FetchedSortedList v => set me.Stage (Initialized v)
+                               FetchedSortedList v =>
+                               set me.Source v;
+                               set me.Stage (Initialized v)
                              | _ => return (),
           AsWidget = fn me id =>
                         let
