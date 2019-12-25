@@ -83,6 +83,12 @@ functor Make(M : THEME) : sig
                      -> t a  (* content *)
                      -> transaction page
 
+    (* Slightly less simple: add a title. *)
+    val minimal : a ::: Type
+                  -> string (* title *)
+                  -> t a  (* content *)
+                  -> transaction page
+
     (* Render a page with several named tabs, each with its own UI.
      * Switch between tabs using the top navbar. *)
     val tabbed : ts ::: {Type} -> folder ts

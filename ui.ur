@@ -158,6 +158,28 @@ functor Make(M : THEME) = struct
           </body>
         </xml>
 
+    fun minimal [a] titl (t : t a) =
+        mid <- fresh;
+        ms <- source <xml/>;
+        state <- t.Create;
+        return <xml>
+          <head>
+            {@mapUX [url] [_]
+              (fn [nm ::_] [rest ::_] [_~_] url =>
+                  <xml><link rel="stylesheet" href={url}/></xml>)
+              M.fl M.css}
+            <title>{[titl]}</title>
+          </head>
+
+          <body onload={t.Onload state}>
+            <div class="modal" id={mid}>
+              <dyn signal={signal ms}/>
+            </div>
+
+            {t.Render {ModalId = mid, ModalSpot = ms} state}
+          </body>
+        </xml>
+
     fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => option string * t a) ts)) =
         url <- currentUrl;
         nid <- fresh;
