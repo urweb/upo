@@ -342,7 +342,7 @@ fun modal bcode titl bod blab = <xml>
 </xml>
 
 fun simpleModal bod blab = <xml>
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-body">
         {bod}
