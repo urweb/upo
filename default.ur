@@ -4,7 +4,7 @@ con r = _
 val fl = _
 
 val css =
-    {Bootstrap = bless "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css",
+    {Bootstrap = bless "https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css",
      FontAwesome = bless "https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css",
      Upo = bless "/style.css"}
 

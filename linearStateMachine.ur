@@ -144,7 +144,7 @@ functor Make(M : sig
                                  return (if cur = st' then
                                              txt (labelOf cur)
                                          else
-                                             Ui.modalButton ctx (CLASS "btn")
+                                             Ui.modalButton ctx (CLASS "btn btn-secondary")
                                                             (txt (labelOf st'))
                                                             (return (Ui.modal
                                                                          (rpc (change {From = cur, To = st'}))

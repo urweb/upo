@@ -555,7 +555,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                True fl mm then
                                <xml/>
                            else
-                               Ui.modalButton ctx (CLASS "buttn btn btn-default btn-xs")
+                               Ui.modalButton ctx (CLASS "buttn btn btn-secondary btn-xs")
                                <xml><span class="glyphicon glyphicon-plus"/></xml>
                                (widgets <- @Monad.mapR2 _ [tag] [thd3] [snd3]
                                             (fn [nm ::_] [p ::_] (r : tag p) (cfg : p.3) => r.Fresh cfg longS)
@@ -637,7 +637,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                         <xml/>
                                                     else <xml>
                                                       <span class={buttn}>
-                                                        {Ui.modalButton ctx (CLASS "btn btn-default btn-xs")
+                                                        {Ui.modalButton ctx (CLASS "btn btn-secondary btn-xs")
                                                         <xml><span class="glyphicon glyphicon-edit"/></xml>
                                                         (@Record.select2' [tag] [thd3] [fst3] [fst3] fl
                                                         (fn [p] (t : tag p) (cfg : p.3) (maker : p.1 -> variant (map fst3 tags)) (x : p.1) =>
@@ -658,7 +658,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                                                              </xml>
                                                                              <xml>Save Calendar Entry</xml>))
                                                         t.Tags cfg d)}
-                                                        {Ui.modalButton ctx (CLASS "btn btn-default btn-xs")
+                                                        {Ui.modalButton ctx (CLASS "btn btn-secondary btn-xs")
                                                                         <xml><span class="glyphicon glyphicon-trash"/></xml>
                                                                         (return (@Record.select [tag] [fst3] fl
                                                                         (fn [p] (t : tag p) (x : p.1) =>
