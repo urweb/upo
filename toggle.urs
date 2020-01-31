@@ -22,4 +22,7 @@ functor Make(M : sig
                  (* Callbacks for when flags change *)
                  val onRsvp : string -> transaction unit
                  val onUnrsvp : string -> transaction unit
+
+                 (* For the latter, first run this procedure to check if the user really meant it. *)
+                 val confirmUnrsvp : transaction bool
              end) : Ui.S where type input = string (* username *)

@@ -23,6 +23,8 @@ functor Make(M : sig
 
                  val onRsvp : string -> transaction unit
                  val onUnrsvp : string -> transaction unit
+
+                 val confirmUnrsvp : transaction bool
              end) = struct
     open M
 
@@ -83,8 +85,12 @@ functor Make(M : sig
                           <xml>
                             <button class="btn btn-primary"
                                     onclick={fn _ =>
-                                                rpc unrsvp;
-                                                set a {flagT = False, flagF = True}}>
+                                                doit <- confirmUnrsvp;
+                                                if doit then
+                                                    rpc unrsvp;
+                                                    set a {flagT = False, flagF = True}
+                                                else
+                                                    return ()}>
                               {trueButtonText}
                             </button>
                           </xml>
