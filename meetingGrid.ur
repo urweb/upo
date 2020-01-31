@@ -339,7 +339,7 @@ functor Make(M : sig
         structure FullGrid = struct
             type themSet = list ($themKey * int (* number of meetings this them has at this time *))
             type timeMap = list ($timeKey * bool (* available? *) * themSet)
-            type usMap = list ($usKey * $usOffice * timeMap)
+            type usMap = list ($usKey * $usOffice * timeMap * list $themKey (* requested but not scheduled yet *))
             type themMap = list ($themKey * list $timeKey (* unavailable times *))
             type input = _
             type a = _
@@ -370,7 +370,7 @@ functor Make(M : sig
                             case times of
                                 [] =>
                                 (* Finished with one us.  Move to next. *)
-                                initMap ((us --- usOffice, us --- usKey, List.rev timesDone) :: acc)
+                                initMap ((us --- usOffice, us --- usKey, List.rev timesDone, []) :: acc)
                                         rows
                                         uses'
                                         allTimes
@@ -507,11 +507,19 @@ functor Make(M : sig
                                         ORDER BY {{{@Sql.order_by allFl
                                           (@Sql.some_fields [#Meeting] [all] ! ! allFl)
                                           sql_asc}}});
-                    meetings <- List.mapM (fn (us, off, tms) =>
+                    meetings <- List.mapM (fn (us, off, tms, _) =>
                                               tms' <- List.mapM (fn (tm, avail, ths) =>
                                                                     ths <- source ths;
                                                                     return (tm, avail, ths)) tms;
-                                              return (us, off, tms'))
+                                              requested <- queryL1 (SELECT preference.{{themKey}}
+                                                                    FROM preference
+                                                                    WHERE {@@Sql.easy_where [#Preference] [usKey] [_] [_] [_] [_]
+                                                                      ! ! usInj' usFl us}
+                                                                      AND preference.ByHome = {[byHome]}
+                                                                    ORDER BY {{{@Sql.order_by themFl
+                                                                                 (@Sql.some_fields [#Preference] [themKey] ! ! themFl)
+                                                                      sql_asc}}});
+                                              return (us, off, tms', requested))
                                           (initMap []
                                                    meetings
                                                    uses
@@ -601,9 +609,17 @@ functor Make(M : sig
 
                 <tbody style="height: 500px">
                   (* One row per us *)
-                  {List.mapX (fn (us, off, tms) => <xml>
+                  {List.mapX (fn (us, off, tms, requested) => <xml>
                     <tr dynStyle={b <- filt (us ++ off); return (if b then STYLE "" else STYLE "display: none")}>
-                      <td style={colwidth}><strong>{[us]}{[off]}</strong></td>
+                      <td style={colwidth}><strong>{[us]}{[off]}</strong>
+                        <dyn signal={reqs <- List.filterM (fn th => b <- List.existsM (fn (_, _, ths) =>
+                                                                                          thsV <- signal ths;
+                                                                                          return (List.exists (fn (th', _) => th' = th) thsV)) tms;
+                                                              return (not b)) requested;
+                                     return (case reqs of
+                                                 [] => <xml></xml>
+                                               | req1 :: reqs => <xml><span class="tooltip glyphicon glyphicon-question-circle"><span class="tooltiptext"><i>Requested but unscheduled:</i> {[req1]}{List.mapX (fn v => <xml>, {[v]}</xml>) reqs}</span></span></xml>)}/>
+                      </td>
 
                       (* One column per time *)
                       {List.mapX (fn (tm, avail, ths) => <xml>
@@ -742,7 +758,7 @@ functor Make(M : sig
                 end
 
             fun tweakMeeting (f : themSet -> themSet) (g : int -> int) (us : $usKey) (th : $themKey) (tm : $timeKey) =
-                List.app (fn (us', _, tms) =>
+                List.app (fn (us', _, tms, _) =>
                              (if us' = us then
                                  let
                                      fun addTimes tms =
@@ -781,7 +797,7 @@ functor Make(M : sig
                             fun findExistingMeeting uses =
                                 case uses of
                                     [] => return 0
-                                  | (_, _, tms) :: uses' =>
+                                  | (_, _, tms, _) :: uses' =>
                                     let
                                         fun fem tms =
                                             case tms of
