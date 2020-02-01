@@ -66,6 +66,11 @@ functor Import1(M : sig
                     val mayAccess : transaction bool
 
                     val separator : char
+
+                    (* This additional UI is shown below the import button
+                     * and recreated after every import. *)
+                    type refreshed
+                    val refreshed : Ui.t refreshed
                 end) : Ui.S0
 
 functor ImportWithHeader1(M : sig
@@ -87,6 +92,9 @@ functor ImportWithHeader1(M : sig
                               val mayAccess : transaction bool
 
                               val separator : char
+
+                              type refreshed
+                              val refreshed : Ui.t refreshed
                           end) : Ui.S0
 
 (* And we can also generate CSV data: *)

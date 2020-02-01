@@ -205,6 +205,9 @@ functor Import1(M : sig
                     val mayAccess : transaction bool
 
                     val separator : char
+
+                    type refreshed
+                    val refreshed : Ui.t refreshed
                 end) = struct
 
     open M
@@ -216,15 +219,19 @@ functor Import1(M : sig
            | Uploaded
          
     type a = {UploadStatus : source uploadStatus,
-              PasteHere : source string}
+              PasteHere : source string,
+              Subwidget : source refreshed}
 
     val create =
         us <- source AtRest;
         ph <- source "";
+        sub <- refreshed.Create;
+        sub <- source sub;
         return {UploadStatus = us,
-                PasteHere = ph}
+                PasteHere = ph,
+                Subwidget = sub}
 
-    fun onload _ = return ()
+    fun onload a = sub <- get a.Subwidget; refreshed.Onload sub
 
     fun import s =
         ma <- mayAccess;
@@ -242,12 +249,20 @@ functor Import1(M : sig
                 None => error <xml>Uploaded file is not text.</xml>
               | Some s => import s
                    
-    fun render _ a = <xml>
+    val subwidget = refreshed.Create
+
+    fun refresh a =
+        sub <- rpc subwidget;
+        set a.Subwidget sub;
+        refreshed.Onload sub
+
+    fun render ctx a = <xml>
       Upload CSV file:
       <active code={AjaxUpload.render {SubmitLabel = Some "Submit",
                                        OnBegin = set a.UploadStatus Uploading,
                                        OnSuccess = fn h =>
                                                       rpc (claimUpload h);
+                                                      refresh a;
                                                       set a.UploadStatus Uploaded,
                                        OnError = set a.UploadStatus UploadFailed}}/><br/>
       <dyn signal={us <- signal a.UploadStatus;
@@ -275,7 +290,13 @@ functor Import1(M : sig
                 onclick={fn _ =>
                             csv <- get a.PasteHere;
                             rpc (import csv);
+                            refresh a;
                             set a.PasteHere ""}/>
+
+      <hr/>
+
+      <dyn signal={sub <- signal a.Subwidget;
+                   return (refreshed.Render ctx sub)}/>
     </xml>
 
     val ui = {Create = create,
@@ -301,6 +322,9 @@ functor ImportWithHeader1(M : sig
                               val mayAccess : transaction bool
 
                               val separator : char
+
+                              type refreshed
+                              val refreshed : Ui.t refreshed
                           end) = struct
 
     open M
@@ -312,15 +336,19 @@ functor ImportWithHeader1(M : sig
            | Uploaded
          
     type a = {UploadStatus : source uploadStatus,
-              PasteHere : source string}
+              PasteHere : source string,
+              Subwidget : source refreshed}
 
     val create =
         us <- source AtRest;
         ph <- source "";
+        sub <- refreshed.Create;
+        sub <- source sub;
         return {UploadStatus = us,
-                PasteHere = ph}
+                PasteHere = ph,
+                Subwidget = sub}
 
-    fun onload _ = return ()
+    fun onload a = sub <- get a.Subwidget; refreshed.Onload sub
 
     fun import s =
         ma <- mayAccess;
@@ -338,12 +366,20 @@ functor ImportWithHeader1(M : sig
                 None => error <xml>Uploaded file is not text.</xml>
               | Some s => import s
                    
-    fun render _ a = <xml>
+    val subwidget = refreshed.Create
+
+    fun refresh a =
+        sub <- rpc subwidget;
+        set a.Subwidget sub;
+        refreshed.Onload sub
+
+    fun render ctx a = <xml>
       Upload CSV file:
       <active code={AjaxUpload.render {SubmitLabel = Some "Submit",
                                        OnBegin = set a.UploadStatus Uploading,
                                        OnSuccess = fn h =>
                                                       rpc (claimUpload h);
+                                                      refresh a;
                                                       set a.UploadStatus Uploaded,
                                        OnError = set a.UploadStatus UploadFailed}}/><br/>
       <dyn signal={us <- signal a.UploadStatus;
@@ -371,13 +407,18 @@ functor ImportWithHeader1(M : sig
                 onclick={fn _ =>
                             csv <- get a.PasteHere;
                             rpc (import csv);
+                            refresh a;                            
                             set a.PasteHere ""}/>
+
+      <hr/>
+
+      <dyn signal={sub <- signal a.Subwidget;
+                   return (refreshed.Render ctx sub)}/>
     </xml>
 
     val ui = {Create = create,
               Onload = onload,
               Render = render}
-
 end
 
 fun escape' s =
