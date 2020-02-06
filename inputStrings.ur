@@ -74,7 +74,7 @@ functor Make(M : sig
 
     fun render t = <xml>
       <h2>
-        <button class="btn"
+        <button class="btn btn-secondary"
                 onclick={fn _ =>
                             exp <- get t.Editing;
                             set t.Editing (not exp)}>

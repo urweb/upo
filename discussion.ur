@@ -522,7 +522,7 @@ functor Make(M : sig
                                                                   {case mayEdit a.Access r.Who of
                                                                        None => <xml></xml>
                                                                      | Some _ =>
-                                                                       Ui.modalButton ctx (CLASS "btn")
+                                                                       Ui.modalButton ctx (CLASS "btn btn-secondary")
                                                                                       <xml><span class="glyphicon glyphicon-edit"/></xml>
                                                                                       (newText <- @Widget.initialize text a.Config r.Text;
                                                                                        return (Ui.modal
@@ -577,12 +577,12 @@ functor Make(M : sig
                                     <xml></xml>
                                 else if cl then <xml>
                                   <b>Closed</b>
-                                  <button class="btn"
+                                  <button class="btn btn-secondary"
                                   value="Mark open"
                                   onclick={fn _ => rpc (setClosed a.Key th False)}/>
                                 </xml> else <xml>
                                   <b>Open</b>
-                                  <button class="btn"
+                                  <button class="btn btn-secondary"
                                   value="Mark closed"
                                   onclick={fn _ => rpc (setClosed a.Key th True)}/>
                                 </xml>)
@@ -614,7 +614,7 @@ functor Make(M : sig
               <dyn signal={nt <- signal a.NewThread;
                            return (case nt of
                                        None => <xml>
-                                         <button class="btn"
+                                         <button class="btn btn-secondary"
                                                  value="New Thread"
                                                  onclick={fn _ =>
                                                              s <- source "";
@@ -636,7 +636,7 @@ functor Make(M : sig
                                                            set a.NewThread None;
                                                            th <- rpc (newThread a.Key subj priv);
                                                            set a.Thread (show (toMilliseconds th))}/>
-                                       <button class="btn"
+                                       <button class="btn btn-secondary"
                                                value="Cancel"
                                                onclick={fn _ => set a.NewThread None}/>
                                        </xml>)}/>

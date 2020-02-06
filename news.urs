@@ -1,8 +1,5 @@
 (* Blog-style sequences of posted blurbs *)
 
-style item
-style header
-
 datatype access =
          Forbidden
        | Read

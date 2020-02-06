@@ -107,13 +107,13 @@ functor Html(M : sig
                             ra <- signal self.RunningAction;
                             return (if ra then
                                         <xml>
-                                          <button class="btn disabled"
+                                          <button class="btn btn-secondary disabled"
                                                   value="Running action..."/>
                                           <hr/>
                                         </xml>
                                     else
                                         <xml>
-                                          <button class="btn"
+                                          <button class="btn btn-secondary"
                                                   value="Run action on these results"
                                                   onclick={fn _ =>
                                                               sure <- confirm "Are you sure you want to run the action?";

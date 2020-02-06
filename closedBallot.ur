@@ -277,7 +277,7 @@ functor Make(M : sig
                            <button class={if myVotes = 0 then
                                               CLASS "disabled btn"
                                           else
-                                              CLASS "btn"}
+                                              CLASS "btn btn-secondary"}
                                    onclick={fn _ => rpc (del {Ballot = a.Ballot,
                                                               Choice = ch.Key})}>
                              <span class="glyphicon glyphicon-minus"/>
@@ -287,7 +287,7 @@ functor Make(M : sig
                                                 | Some n => myVotes >= n) then
                                               CLASS "disabled btn"
                                           else
-                                              CLASS "btn"}
+                                              CLASS "btn btn-secondary"}
                                    onclick={fn _ => rpc (add {Ballot = a.Ballot,
                                                               Choice = ch.Key})}>
 

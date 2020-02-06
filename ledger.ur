@@ -505,13 +505,13 @@ functor Make(M : sig
                        <td>
                          <dyn signal={expd <- signal m.Expanded;
                                       return (if not expd then
-                                                  <xml><button class="btn"
+                                                  <xml><button class="btn btn-secondary"
                                                                onclick={fn _ => set m.Expanded True}>
                                                     <span class="glyphicon glyphicon-chevron-down"/>
                                                   </button></xml>
                                               else
                                                   <xml>
-                                                    <button class="btn"
+                                                    <button class="btn btn-secondary"
                                                             onclick={fn _ => set m.Expanded False}>
                                                       <span class="glyphicon glyphicon-chevron-up"/>
                                                     </button>

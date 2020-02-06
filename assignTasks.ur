@@ -138,7 +138,7 @@ functor Make(M : sig
                                      <dyn signal={ras <- signal a.RandomAssignees;
                                                   return (case ras of
                                                               None => <xml>
-                                                                <button class="btn"
+                                                                <button class="btn btn-secondary"
                                                                         onclick={fn _ =>
                                                                                     case a.Eligible of
                                                                                         [] => error <xml>AssignTasks: no eligibility categories</xml>
@@ -151,18 +151,18 @@ functor Make(M : sig
                                                                 </button>
                                                               </xml>
                                                             | Some ls => <xml>
-                                                                <button class="btn"
+                                                                <button class="btn btn-secondary"
                                                                         onclick={fn _ => set a.RandomAssignees None}>
                                                                   <span class="glyphicon glyphicon-menu-up"/> Close
                                                                 </button>
 
-                                                                <button class="btn"
+                                                                <button class="btn btn-secondary"
                                                                         onclick={fn _ => List.app (fn (_, sel) => set sel False) ls}>
                                                                   Nobody
                                                                 </button>
 
                                                                 {List.mapX (fn (nm, ls') => <xml>
-                                                                  <button class="btn"
+                                                                  <button class="btn btn-secondary"
                                                                           onclick={fn _ => List.app (fn (u, sel) => set sel (List.mem u ls')) ls}>
                                                                     {[nm]}
                                                                   </button>

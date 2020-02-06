@@ -1,8 +1,5 @@
 open Bootstrap4
 
-style item
-style header
-
 datatype access =
          Forbidden
        | Read
@@ -217,17 +214,17 @@ functor Make(M : sig
                              | Cons (r, ps') => <xml>
                                {render' ctx a ps'}
 
-                               <div class={item}>
-                                 <div class={header}>
+                               <div class="card">
+                                 <div class="card-header">
                                    <dyn signal={mode <- signal r.Mode;
                                                 return (case mode of
-                                                            Hidden => <xml><button class="btn"
+                                                            Hidden => <xml><button class="btn btn-secondary"
                                                                                    onclick={fn _ => set r.Mode Expanded}>
-                                                                             <span class="glyphicon glyphicon-collapse-down"/>
+                                                                             <span class="glyphicon glyphicon-caret-down"/>
                                                                            </button></xml>
-                                                          | _ => <xml><button class="btn"
+                                                          | _ => <xml><button class="btn btn-secondary"
                                                                               onclick={fn _ => set r.Mode Hidden}>
-                                                                        <span class="glyphicon glyphicon-collapse-up"/>
+                                                                        <span class="glyphicon glyphicon-caret-up"/>
                                                                       </button></xml>)}/>
                                    <dyn signal={p <- signal r.Post;
                                                 return <xml>
@@ -237,7 +234,7 @@ functor Make(M : sig
                                                      <xml></xml>
                                                    else
                                                      <xml>
-                                                       <button class="btn"
+                                                       <button class="btn btn-secondary"
                                                                onclick={fn _ =>
                                                                            title <- @Widget.initialize title a.TitleConfig p.Title;
                                                                            body <- @Widget.initialize body a.BodyConfig p.Body;
@@ -265,30 +262,34 @@ functor Make(M : sig
                                               return (case mode of
                                                           Hidden => <xml></xml>
                                                         | Expanded => <xml>
-                                                          <dyn signal={p <- signal r.Post;
-                                                                       return (@Widget.asValue body p.Body)}/>
+                                                          <div class="card-body">
+                                                            <dyn signal={p <- signal r.Post;
+                                                                         return (@Widget.asValue body p.Body)}/>
+                                                          </div>
                                                         </xml>
                                                         | Editing ed => <xml>
-                                                          <div class="form-group">
-                                                            <label class="control-label" for={ed.TitleId}>Title</label>
-                                                            {@Widget.asWidget title ed.Title (Some ed.TitleId)}
-                                                            <label class="control-label" for={ed.BodyId}>Body</label>
-                                                            {@Widget.asWidget body ed.Body (Some ed.BodyId)}
-                                                          </div>
+                                                          <div class="card-body">
+                                                            <div class="form-group">
+                                                              <label class="control-label" for={ed.TitleId}>Title</label>
+                                                              {@Widget.asWidget title ed.Title (Some ed.TitleId)}
+                                                              <label class="control-label" for={ed.BodyId}>Body</label>
+                                                              {@Widget.asWidget body ed.Body (Some ed.BodyId)}
+                                                            </div>
 
-                                                          <dyn signal={p <- signal r.Post;
-                                                                       return <xml>
-                                                                         <button class="btn btn-primary"
-                                                                                 value="Save"
-                                                                                 onclick={fn _ =>
-                                                                                             title <- current (@Widget.value title ed.Title);
-                                                                                             body <- current (@Widget.value body ed.Body);
-                                                                                             rpc (modify (p -- #Title -- #Body ++ {Title = title, Body = body}));
-                                                                                             set r.Mode Expanded}/>
-                                                                       </xml>}/>
-                                                          <button class="btn"
-                                                                  value="Cancel"
-                                                                  onclick={fn _ => set r.Mode Expanded}/>
+                                                            <dyn signal={p <- signal r.Post;
+                                                                         return <xml>
+                                                                           <button class="btn btn-primary"
+                                                                                   value="Save"
+                                                                                   onclick={fn _ =>
+                                                                                               title <- current (@Widget.value title ed.Title);
+                                                                                               body <- current (@Widget.value body ed.Body);
+                                                                                               rpc (modify (p -- #Title -- #Body ++ {Title = title, Body = body}));
+                                                                                               set r.Mode Expanded}/>
+                                                                         </xml>}/>
+                                                            <button class="btn btn-secondary"
+                                                                    value="Cancel"
+                                                                    onclick={fn _ => set r.Mode Expanded}/>
+                                                          </div>
                                                         </xml>)}/>
                                </div>
                              </xml>)}/>
@@ -322,7 +323,7 @@ functor Make(M : sig
                                                          body <- current (@Widget.value body np.Body);
                                                          rpc (add {Title = title, Body = body});
                                                          set a.NewPost None}/>
-                                     <button class="btn"
+                                     <button class="btn btn-secondary"
                                              value="Cancel"
                                              onclick={fn _ => set a.NewPost None}/>
                                    </div>

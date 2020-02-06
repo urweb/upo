@@ -259,14 +259,14 @@ functor Make(M : sig
                                                                 | Some r => Some r.Comment);
                                                return (case cur of
                                                     None => <xml>
-                                                      <button class="btn btn-sm"
+                                                      <button class="btn btn-secondary btn-sm"
                                                               value="Add your comment"
                                                               onclick={fn _ =>
                                                                           s <- source "";
                                                                           set ent.YourNewComment (Some s)}/>
                                                     </xml>
                                                   | Some cur => <xml>
-                                                      <button class="btn btn-sm"
+                                                      <button class="btn btn-secondary btn-sm"
                                                               value="Edit your comment"
                                                               onclick={fn _ =>
                                                                           s <- source cur;
@@ -281,7 +281,7 @@ functor Make(M : sig
                                                                    s <- Basis.get ync;
                                                                    set ent.YourNewComment None;
                                                                    rpc (makeComment ent.Key s)}/>
-                                               <button class="btn"
+                                               <button class="btn btn-secondary"
                                                        value="Cancel"
                                                        onclick={fn _ => set ent.YourNewComment None}/>
                                              </xml>}/>

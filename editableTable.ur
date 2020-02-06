@@ -179,7 +179,7 @@ functor Make(M : sig
                                                 None => <xml>
                                                   <td>
                                                     {if a.Perm.Delete then
-                                                         Ui.modalButton ctx (CLASS "btn")
+                                                         Ui.modalButton ctx (CLASS "btn btn-secondary")
                                                                         <xml><span class="glyphicon glyphicon-remove"/></xml>
                                                                         (return (Ui.modal
                                                                                      (rpc (del r.Content))
@@ -189,7 +189,7 @@ functor Make(M : sig
                                                      else
                                                          <xml/>}
                                                     {if a.Perm.Modify then <xml>
-                                                         <button class="btn"
+                                                         <button class="btn btn-secondary"
                                                                  onclick={fn _ =>
                                                                              fr <- initRow a.Config r.Content;
                                                                              set r.Editing (Some fr)}>
@@ -206,7 +206,7 @@ functor Make(M : sig
                                                 </xml>
                                               | Some ws => <xml>
                                                 <td>
-                                                  <button class="btn"
+                                                  <button class="btn btn-secondary"
                                                           onclick={fn _ =>
                                                                       vs <- rowOut ws;
                                                                       set r.Editing None;
@@ -214,7 +214,7 @@ functor Make(M : sig
                                                                                 New = vs})}>
                                                     <span class="glyphicon glyphicon-check"/>
                                                   </button>
-                                                  <button class="btn"
+                                                  <button class="btn btn-secondary"
                                                           onclick={fn _ => set r.Editing None}>
                                                     <span class="glyphicon glyphicon-remove"/>
                                                   </button>

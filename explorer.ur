@@ -578,7 +578,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                     </div>
                                                     <div class="input-group">
                                                       <span class="input-group-btn">
-                                                        <button class="btn"
+                                                        <button class="btn btn-secondary"
                                                                 onclick={fn _ =>
                                                                             sv <- get s;
                                                                             if sv = "" then
@@ -625,7 +625,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                           {if @Row.isEmpty fl then
                                                                                                <xml></xml>
                                                                                            else <xml>
-                                                                                             <td><button class="btn"
+                                                                                             <td><button class="btn btn-secondary"
                                                                                                          onclick={fn _ =>
                                                                                                                      wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
                                                                                                                               (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
@@ -634,7 +634,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                                                      set ws0 (Some wids)}>
                                                                                                <span class="glyphicon glyphicon-pencil"/>
                                                                                              </button></td>
-                                                                                             <td><button class="btn"
+                                                                                             <td><button class="btn btn-secondary"
                                                                                                          onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
                                                                                                <span class="glyphicon glyphicon-remove"/>
                                                                                              </button></td>
@@ -648,7 +648,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                           (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
                                                                                               <xml><td>{@Widget.asWidget w s None}</td></xml>)
                                                                                           fl ws wids}
-                                                                                        <td><button class="btn"
+                                                                                        <td><button class="btn btn-secondary"
                                                                                                     onclick={fn _ =>
                                                                                                                 vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
                                                                                                                         (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
@@ -658,7 +658,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                                                 set ws0 None}>
                                                                                           <span class="glyphicon glyphicon-check"/>
                                                                                         </button></td>
-                                                                                        <td><button class="btn"
+                                                                                        <td><button class="btn btn-secondary"
                                                                                                     onclick={fn _ => set ws0 None}>
                                                                                           <span class="glyphicon glyphicon-remove"/>
                                                                                         </button></td>
@@ -773,7 +773,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                     </div>
                                                     <div class="input-group">
                                                       <span class="input-group-btn">
-                                                        <button class="btn"
+                                                        <button class="btn btn-secondary"
                                                                 onclick={fn _ =>
                                                                             sv <- get s;
                                                                             if sv = "" then
@@ -820,7 +820,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                           {if @Row.isEmpty fl then
                                                                                                <xml></xml>
                                                                                            else <xml>
-                                                                                             <td><button class="btn"
+                                                                                             <td><button class="btn btn-secondary"
                                                                                                          onclick={fn _ =>
                                                                                                                      wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
                                                                                                                               (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
@@ -829,7 +829,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                                                      set ws0 (Some wids)}>
                                                                                                <span class="glyphicon glyphicon-pencil"/>
                                                                                              </button></td>
-                                                                                             <td><button class="btn"
+                                                                                             <td><button class="btn btn-secondary"
                                                                                                          onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
                                                                                                <span class="glyphicon glyphicon-remove"/>
                                                                                              </button></td>
@@ -843,7 +843,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                           (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
                                                                                               <xml><td>{@Widget.asWidget w s None}</td></xml>)
                                                                                           fl ws wids}
-                                                                                        <td><button class="btn"
+                                                                                        <td><button class="btn btn-secondary"
                                                                                                     onclick={fn _ =>
                                                                                                                 vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
                                                                                                                         (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
@@ -853,7 +853,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                                                 set ws0 None}>
                                                                                           <span class="glyphicon glyphicon-check"/>
                                                                                         </button></td>
-                                                                                        <td><button class="btn"
+                                                                                        <td><button class="btn btn-secondary"
                                                                                                     onclick={fn _ => set ws0 None}>
                                                                                           <span class="glyphicon glyphicon-remove"/>
                                                                                         </button></td>
@@ -1103,7 +1103,7 @@ functor ManyToManyWithFile(M : sig
                                                         </div>
                                                         <div class="input-group">
                                                           <span class="input-group-btn">
-                                                            <button class="btn"
+                                                            <button class="btn btn-secondary"
                                                                     onclick={fn _ =>
                                                                                 sv <- get s;
                                                                                 if sv = "" then
@@ -1159,7 +1159,7 @@ functor ManyToManyWithFile(M : sig
                                                                                               {if @Row.isEmpty fl then
                                                                                                    <xml></xml>
                                                                                                else <xml>
-                                                                                                 <td><button class="btn"
+                                                                                                 <td><button class="btn btn-secondary"
                                                                                                              onclick={fn _ =>
                                                                                                                          wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
                                                                                                                                   (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
@@ -1169,7 +1169,7 @@ functor ManyToManyWithFile(M : sig
                                                                                                                          set ws0 (Some (wids, upl))}>
                                                                                                    <span class="glyphicon glyphicon-pencil"/>
                                                                                                  </button></td>
-                                                                                                 <td><button class="btn"
+                                                                                                 <td><button class="btn btn-secondary"
                                                                                                              onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
                                                                                                    <span class="glyphicon glyphicon-remove"/>
                                                                                                  </button></td>
@@ -1189,7 +1189,7 @@ functor ManyToManyWithFile(M : sig
                                                                                                                                OnSuccess = fn upload => set upl (Some upload),
                                                                                                                                OnError = error <xml>Error uploading file.  Maybe it has an unsupported type?</xml>}}/>
                                                                                                                                                                                                                                                                                       </td>
-                                                                                            <td><button class="btn"
+                                                                                            <td><button class="btn btn-secondary"
                                                                                                         onclick={fn _ =>
                                                                                                                     vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
                                                                                                                             (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
@@ -1200,7 +1200,7 @@ functor ManyToManyWithFile(M : sig
                                                                                                                     set ws0 None}>
                                                                                               <span class="glyphicon glyphicon-check"/>
                                                                                             </button></td>
-                                                                                            <td><button class="btn"
+                                                                                            <td><button class="btn btn-secondary"
                                                                                                         onclick={fn _ => set ws0 None}>
                                                                                               <span class="glyphicon glyphicon-remove"/>
                                                                                             </button></td>
@@ -1368,7 +1368,7 @@ functor ManyToManyWithFile(M : sig
                                                         </div>
                                                         <div class="input-group">
                                                           <span class="input-group-btn">
-                                                            <button class="btn"
+                                                            <button class="btn btn-secondary"
                                                                     onclick={fn _ =>
                                                                                 sv <- get s;
                                                                                 if sv = "" then
@@ -1424,7 +1424,7 @@ functor ManyToManyWithFile(M : sig
                                                                                               {if @Row.isEmpty fl then
                                                                                                    <xml></xml>
                                                                                                else <xml>
-                                                                                                 <td><button class="btn"
+                                                                                                 <td><button class="btn btn-secondary"
                                                                                                              onclick={fn _ =>
                                                                                                                          wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
                                                                                                                                   (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
@@ -1434,7 +1434,7 @@ functor ManyToManyWithFile(M : sig
                                                                                                                          set ws0 (Some (wids, upl))}>
                                                                                                    <span class="glyphicon glyphicon-pencil"/>
                                                                                                  </button></td>
-                                                                                                 <td><button class="btn"
+                                                                                                 <td><button class="btn btn-secondary"
                                                                                                              onclick={fn _ => set sl (List.filter (fn (k1', _, _) => k1' <> k1) slv)}>
                                                                                                    <span class="glyphicon glyphicon-remove"/>
                                                                                                  </button></td>
@@ -1454,7 +1454,7 @@ functor ManyToManyWithFile(M : sig
                                                                                                                                OnSuccess = fn upload => set upl (Some upload),
                                                                                                                                OnError = error <xml>Error uploading file.  Maybe it has an unsupported type?</xml>}}/>
                                                                                                                                                                                                                                                                                       </td>
-                                                                                            <td><button class="btn"
+                                                                                            <td><button class="btn btn-secondary"
                                                                                                         onclick={fn _ =>
                                                                                                                     vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
                                                                                                                             (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
@@ -1465,7 +1465,7 @@ functor ManyToManyWithFile(M : sig
                                                                                                                     set ws0 None}>
                                                                                               <span class="glyphicon glyphicon-check"/>
                                                                                             </button></td>
-                                                                                            <td><button class="btn"
+                                                                                            <td><button class="btn btn-secondary"
                                                                                                         onclick={fn _ => set ws0 None}>
                                                                                               <span class="glyphicon glyphicon-remove"/>
                                                                                             </button></td>
@@ -1605,7 +1605,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                     </div>
                                                     <div class="input-group">
                                                       <span class="input-group-btn">
-                                                        <button class="btn"
+                                                        <button class="btn btn-secondary"
                                                                 onclick={fn _ =>
                                                                             sv <- get s;
                                                                             if sv = "" then
@@ -1652,7 +1652,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                         <td>{if i = 0 then
                                                                                                  <xml></xml>
                                                                                              else
-                                                                                                 <xml><button class="btn"
+                                                                                                 <xml><button class="btn btn-secondary"
                                                                                                               onclick={fn _ =>
                                                                                                                           let
                                                                                                                               val (before, after) = List.splitAt (i-1) slv
@@ -1667,7 +1667,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                         <td>{if i = len-1 then
                                                                                                  <xml></xml>
                                                                                              else
-                                                                                                 <xml><button class="btn"
+                                                                                                 <xml><button class="btn btn-secondary"
                                                                                                               onclick={fn _ =>
                                                                                                                           let
                                                                                                                               val (before, after) = List.splitAt i slv
@@ -1682,7 +1682,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                         {if @Row.isEmpty fl then
                                                                                              <xml></xml>
                                                                                          else <xml>
-                                                                                           <td><button class="btn"
+                                                                                           <td><button class="btn btn-secondary"
                                                                                                        onclick={fn _ =>
                                                                                                                    wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
                                                                                                                             (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
@@ -1691,7 +1691,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                                                    set ws0 (Some wids)}>
                                                                                                          <span class="glyphicon glyphicon-pencil"/>
                                                                                            </button></td>
-                                                                                           <td><button class="btn"
+                                                                                           <td><button class="btn btn-secondary"
                                                                                                        onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
                                                                                              <span class="glyphicon glyphicon-remove"/>
                                                                                            </button></td>
@@ -1704,7 +1704,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                           (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
                                                                                               <xml><td>{@Widget.asWidget w s None}</td></xml>)
                                                                                           fl ws wids}
-                                                                                        <td><button class="btn"
+                                                                                        <td><button class="btn btn-secondary"
                                                                                                     onclick={fn _ =>
                                                                                                                 vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
                                                                                                                         (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
@@ -1714,7 +1714,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                                                 set ws0 None}>
                                                                                           <span class="glyphicon glyphicon-check"/>
                                                                                         </button></td>
-                                                                                        <td><button class="btn"
+                                                                                        <td><button class="btn btn-secondary"
                                                                                                     onclick={fn _ => set ws0 None}>
                                                                                           <span class="glyphicon glyphicon-remove"/>
                                                                                         </button></td>
@@ -1831,7 +1831,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                     </div>
                                                     <div class="input-group">
                                                       <span class="input-group-btn">
-                                                        <button class="btn"
+                                                        <button class="btn btn-secondary"
                                                                 onclick={fn _ =>
                                                                             sv <- get s;
                                                                             if sv = "" then
@@ -1875,7 +1875,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                             (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
                                                                                                 <xml><td>{[@Widget.asValue w v]}</td></xml>)
                                                                                             fl ws vals}
-                                                                                          <td><button class="btn"
+                                                                                          <td><button class="btn btn-secondary"
                                                                                                       onclick={fn _ =>
                                                                                                                   wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
                                                                                                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
@@ -1884,7 +1884,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                                                   set ws0 (Some wids)}>
                                                                                             <span class="glyphicon glyphicon-pencil"/>
                                                                                           </button></td>
-                                                                                          <td><button class="btn"
+                                                                                          <td><button class="btn btn-secondary"
                                                                                                       onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
                                                                                             <span class="glyphicon glyphicon-remove"/>
                                                                                           </button></td>
@@ -1900,7 +1900,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                         {if @Row.isEmpty fl then
                                                                                              <xml></xml>
                                                                                          else <xml>
-                                                                                           <td><button class="btn"
+                                                                                           <td><button class="btn btn-secondary"
                                                                                                        onclick={fn _ =>
                                                                                                                    vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
                                                                                                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
@@ -1910,7 +1910,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                                                    set ws0 None}>
                                                                                              <span class="glyphicon glyphicon-check"/>
                                                                                            </button></td>
-                                                                                           <td><button class="btn"
+                                                                                           <td><button class="btn btn-secondary"
                                                                                                        onclick={fn _ => set ws0 None}>
                                                                                              <span class="glyphicon glyphicon-remove"/>
                                                                                            </button></td>
@@ -2304,7 +2304,7 @@ functor Make(M : sig
                                            {if mayDelete then
                                                 <xml>
                                                   <dyn signal={n <- signal locks;
-                                                               return (Ui.modalButton ctx (if n = 0 then CLASS "btn" else CLASS "btn btn-danger")
+                                                               return (Ui.modalButton ctx (if n = 0 then CLASS "btn btn-secondary" else CLASS "btn btn-danger")
                                                                                       <xml>Delete</xml>
                                                                                       (return (Ui.modal (ck <- get curKey;
                                                                                                          worked <- rpc (delete (maker [fn p => p.1] ck) False);
@@ -2346,7 +2346,7 @@ functor Make(M : sig
                                                                set est (NotEditing (row1, row2))
                                                            else
                                                                return ()}>Save</button>
-                                       <button class="btn"
+                                       <button class="btn btn-secondary"
                                                onclick={fn _ => rpc (unedit (maker [fn p => p.1] (r.KeyOf row)));
                                                            set est (NotEditing (row, aux))}>Cancel</button>
                                      </p>

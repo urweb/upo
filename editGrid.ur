@@ -119,7 +119,7 @@ functor Make(M : sig
                      return (List.mapX (fn r => <xml>
                        <tr>
                          <td>
-                           {Ui.modalButton ctx (CLASS "btn")
+                           {Ui.modalButton ctx (CLASS "btn btn-secondary")
                                            <xml><span class="glyphicon glyphicon-remove"/></xml>
                                            (return (Ui.modal
                                                         (rpc (del r.OldKey);

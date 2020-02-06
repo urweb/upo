@@ -301,7 +301,7 @@ functor Make(M : sig
                            <button class={if myVotes = 0 then
                                               CLASS "disabled btn"
                                           else
-                                              CLASS "btn"}
+                                              CLASS "btn btn-secondary"}
                                    onclick={fn _ => rpc (del {Ballot = a.Ballot,
                                                               Choice = ch.Key})}>
                              <span class="glyphicon glyphicon-minus"/>
@@ -311,7 +311,7 @@ functor Make(M : sig
                                                 | Some n => myVotes >= n) then
                                               CLASS "disabled btn"
                                           else
-                                              CLASS "btn"}
+                                              CLASS "btn btn-secondary"}
                                    onclick={fn _ => rpc (add {Ballot = a.Ballot,
                                                                      Choice = ch.Key})}>
                              <span class="glyphicon glyphicon-plus"/>
@@ -339,7 +339,7 @@ functor Make(M : sig
                                           {if showVotes then
                                                <xml/>
                                            else
-                                               <xml><button class="btn"
+                                               <xml><button class="btn btn-secondary"
                                                             onclick={fn _ => set ch.ShowVoters False}>
                                                       <span class="glyphicon glyphicon-chevron-left"/>
                                                     </button></xml>}
@@ -348,7 +348,7 @@ functor Make(M : sig
                                                                                        Some 1 => <xml/>
                                                                                      | _ => <xml> ({[n]})</xml>}</xml>) votes}
                                         </xml> else <xml>
-                                          <button class="btn"
+                                          <button class="btn btn-secondary"
                                                   onclick={fn _ => set ch.ShowVoters True}>
                                             <span class="glyphicon glyphicon-chevron-right"/>
                                           </button>

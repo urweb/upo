@@ -204,7 +204,7 @@ functor Make(M : sig
                                                    </xml>)
                                                    gfl grades}
                                                </cselect>
-                                               <button class="btn btn-sm"
+                                               <button class="btn btn-secondary btn-sm"
                                                        onclick={fn _ =>
                                                                    set rb None;
                                                                    rbv <- get rbs;
@@ -276,7 +276,7 @@ functor Make(M : sig
                                                                              | _ => error <xml>FinalGrades: Unknown bound spec</xml>}>
                                                  <span class="glyphicon glyphicon-check"/>
                                                </button>
-                                               <button class="btn btn-sm"
+                                               <button class="btn btn-secondary btn-sm"
                                                        onclick={fn _ => set rb None}>
                                                  <span class="glyphicon glyphicon-remove"/>
                                                </button>
@@ -302,7 +302,7 @@ functor Make(M : sig
                                              in
                                                  <xml>
                                                    {[rng]}
-                                                   <button class="btn btn-sm"
+                                                   <button class="btn btn-secondary btn-sm"
                                                            onclick={fn _ =>
                                                                        s <- source rng;
                                                                        set rb (Some s)}>
@@ -326,7 +326,7 @@ functor Make(M : sig
                                                  in
                                                      <xml>
                                                        *{[text]}
-                                                       <button class="btn btn-sm"
+                                                       <button class="btn btn-secondary btn-sm"
                                                                onclick={fn _ =>
                                                                            s <- source text;
                                                                            set newgr (Some s)}>
@@ -338,7 +338,7 @@ functor Make(M : sig
                                                  case ranges of
                                                      [] => <xml>
                                                        -
-                                                       <button class="btn btn-sm"
+                                                       <button class="btn btn-secondary btn-sm"
                                                                onclick={fn _ =>
                                                                            s <- source "";
                                                                            set newgr (Some s)}>
@@ -354,7 +354,7 @@ functor Make(M : sig
                                                          in
                                                              <xml>
                                                                {[text]}
-                                                               <button class="btn btn-sm"
+                                                               <button class="btn btn-secondary btn-sm"
                                                                        onclick={fn _ =>
                                                                                    s <- source text;
                                                                                    set newgr (Some s)}>
@@ -365,7 +365,7 @@ functor Make(M : sig
                                                      else
                                                          <xml>
                                                            -
-                                                           <button class="btn btn-sm"
+                                                           <button class="btn btn-secondary btn-sm"
                                                                    onclick={fn _ =>
                                                                                s <- source "";
                                                                                set newgr (Some s)}>
@@ -384,7 +384,7 @@ functor Make(M : sig
                                            gfl grades}
                                        </cselect>
 
-                                       <button class="btn btn-sm"
+                                       <button class="btn btn-secondary btn-sm"
                                                onclick={fn _ =>
                                                            set newgr None;
                                                            g <- get gs;
@@ -393,7 +393,7 @@ functor Make(M : sig
                                                            rpc (setSpecialCase key g)}>
                                          <span class="glyphicon glyphicon-check"/>
                                        </button>
-                                       <button class="btn btn-sm"
+                                       <button class="btn btn-secondary btn-sm"
                                                onclick={fn _ => set newgr None}>
                                          <span class="glyphicon glyphicon-remove"/>
                                        </button>

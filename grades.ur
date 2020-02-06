@@ -47,7 +47,7 @@ functor OneStudent(M : sig
                          return (if expV then
                                      <xml><li>
                                        <button onclick={fn _ => set exp False}>
-                                         <span class="glyphicon glyphicon-collapse-up"/>
+                                         <span class="glyphicon glyphicon-caret-up"/>
                                        </button>
                                        {[lab]} ({[min]}{if min = max then
                                                             <xml/>
@@ -60,7 +60,7 @@ functor OneStudent(M : sig
                                  else
                                      <xml><li>
                                        <button onclick={fn _ => set exp True}>
-                                         <span class="glyphicon glyphicon-collapse-down"/>
+                                         <span class="glyphicon glyphicon-caret-down"/>
                                        </button>
                                        {[lab]} ({[min]}{if min = max then
                                                             <xml/>
@@ -106,7 +106,7 @@ functor AllStudents(M : sig
               <li> {[lab]}
                 <dyn signal={expV <- signal exp;
                              return (if expV then <xml>
-                               <button class="btn"
+                               <button class="btn btn-secondary"
                                        onclick={fn _ => set exp False}
                                        value="Hide Grades"/>
                                <table class="bs-table table-striped">
@@ -119,7 +119,7 @@ functor AllStudents(M : sig
                                                 <xml><tr> <td>{[student]}</td> <td>{[grade]}</td> </tr></xml>) gs}
                                </table>
                              </xml> else <xml>
-                               <button class="btn"
+                               <button class="btn btn-secondary"
                                        onclick={fn _ => set exp True}
                                        value="Show Grades"/>
                              </xml>)}/>
@@ -129,16 +129,16 @@ functor AllStudents(M : sig
             <dyn signal={expV <- signal expC;
                                    return (if expV then <xml>
                                      <button onclick={fn _ => set expC False}>
-                                       <span class="glyphicon glyphicon-collapse-up"/>
+                                       <span class="glyphicon glyphicon-caret-up"/>
                                      </button>
                                    </xml> else <xml>
                                      <button onclick={fn _ => set expC True}>
-                                       <span class="glyphicon glyphicon-collapse-down"/>
+                                       <span class="glyphicon glyphicon-caret-down"/>
                                      </button>
                                    </xml>)}/>{[lab]}
             <dyn signal={expV <- signal expA;
                          return (if expV then <xml>
-                           <button class="btn"
+                           <button class="btn btn-secondary"
                                    onclick={fn _ => set expA False}
                                    value="Hide Averages"/>
                            <table class="bs-table table-striped">
@@ -151,7 +151,7 @@ functor AllStudents(M : sig
                                             <xml><tr> <td>{[student]}</td> <td>{[grade]}</td> </tr></xml>) avg}
                            </table>
                          </xml> else <xml>
-                           <button class="btn"
+                           <button class="btn btn-secondary"
                                    onclick={fn _ => set expA True}
                                    value="Show Averages"/>
                          </xml>)}/>
