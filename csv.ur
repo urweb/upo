@@ -156,13 +156,10 @@ fun importTableWithHeader [fs] [fsC] [cs] [fs ~ fsC]
                                     else
                                         pos) fl headers positions
 
-                           fun splitHeader posn line positions =
-                               case String.split line sep of
-                                   None => processHeader posn line positions
-                                 | Some (header, rest) => splitHeader (posn+1) rest (processHeader posn header positions)
-
-                           val positions = splitHeader 0 line (@map0 [fn _ => option int]
-                                                                (fn [t::_] => None) fl)
+                           val positions = List.foldli processHeader
+                                                       (@map0 [fn _ => option int]
+                                                         (fn [t::_] => None) fl)
+                                                       (List.rev (splitLine sep line))
                            val positions = @map2 [fn _ => string] [fn _ => option int] [fn _ => int]
                                             (fn [t] (header : string) (posno : option int) =>
                                                 case posno of
