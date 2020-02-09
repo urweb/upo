@@ -97,6 +97,14 @@ functor Make(M : THEME) : sig
                  -> transaction page
     (* Tabs labeled with [None] are hidden in this rendering. *)
 
+    (* Like the last one, but with a chance to supply extra content for the
+     * top-right toolbar *)
+    val tabbedWithToolbar : ts ::: {Type} -> folder ts
+                            -> string                                     (* title *)
+                            -> xbody                                      (* toolbar *)
+                            -> $(map (fn a => option string * t a) ts)    (* content *)
+                            -> transaction page
+
     (* Less dynamic version of [tabbed] *)
     val tabbedStatic : ts ::: {Unit} -> folder ts
                        -> string

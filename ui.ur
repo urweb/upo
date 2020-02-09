@@ -91,7 +91,7 @@ functor Make(M : THEME) = struct
       </head>
     </xml>
 
-    fun themed_body url titl onl mid nid ms tabs bod = <xml>
+    fun themed_body url titl onl mid nid ms tbar tabs bod = <xml>
       <body onload={onl}>
         <div class="modal" id={mid}>
           <dyn signal={signal ms}/>
@@ -109,6 +109,7 @@ functor Make(M : THEME) = struct
                   {tabs}
                 </ul>
               </div>
+              {tbar}
             </nav>
           </header>
 
@@ -119,9 +120,9 @@ functor Make(M : THEME) = struct
       </body>
     </xml>
 
-    fun themed url titl onl mid nid ms tabs bod = <xml>
+    fun themed url titl onl mid nid ms tbar tabs bod = <xml>
       {themed_head titl}
-      {themed_body url titl onl mid nid ms tabs bod}
+      {themed_body url titl onl mid nid ms tbar tabs bod}
     </xml>
 
     fun simple [a] titl (t : t a) =
@@ -134,6 +135,7 @@ functor Make(M : THEME) = struct
                        titl
                        (t.Onload state)
                        mid nid ms
+                       <xml/>
                        <xml/>
                        (t.Render {ModalId = mid, ModalSpot = ms} state))
 
@@ -180,7 +182,7 @@ functor Make(M : THEME) = struct
           </body>
         </xml>
 
-    fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => option string * t a) ts)) =
+    fun tabbedWithToolbar [ts] (fl : folder ts) (titl : string) (tbar : xbody) (ts : $(map (fn a => option string * t a) ts)) =
         url <- currentUrl;
         nid <- fresh;
         mid <- fresh;
@@ -206,6 +208,7 @@ functor Make(M : THEME) = struct
                          (fn [nm ::_] [t ::_] (_, r) => r.Onload)
                          fl ts state)
                        mid nid ms
+                       tbar
                        ((@foldR2 [fn a => option string * t a] [ident]
                           [fn _ => xbody * int]
                          (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (labl : option string, r) st (bod, n) =>
@@ -234,6 +237,9 @@ functor Make(M : THEME) = struct
                                                  (<xml/>, size-1) fl ts state).1}/>
                          </xml>)
 
+    fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => option string * t a) ts)) =
+        @tabbedWithToolbar fl titl <xml></xml> ts
+
     fun tabbedStatic [ts] (fl : folder ts) titl (ts : $(mapU (string * bool * url) ts)) bod =
         url <- currentUrl;
         nid <- fresh;
@@ -245,6 +251,7 @@ functor Make(M : THEME) = struct
                        titl
                        (return ())
                        mid nid ms
+                       <xml/>
                        (@mapUX_rev [string * bool * url] [body]
                          (fn [nm ::_] [r ::_] [[nm] ~ r] (labl, ct, url) => <xml>
                            <li class={if ct then
