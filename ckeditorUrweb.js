@@ -1,4 +1,4 @@
-window.CKEDITOR_BASEPATH = 'https://cdn.ckeditor.com/4.5.5/';
+window.CKEDITOR_BASEPATH = 'https://cdn.ckeditor.com/4.13.1/';
 
 CKEDITOR.stylesSet.add( 'upo_styles', [
     { name: 'Typewriter', element: 'tt' }
