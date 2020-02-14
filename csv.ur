@@ -322,6 +322,9 @@ functor ImportWithHeader1(M : sig
 
                               type refreshed
                               val refreshed : Ui.t refreshed
+
+                              val label : option string
+                              val showTextarea : bool
                           end) = struct
 
     open M
@@ -371,7 +374,7 @@ functor ImportWithHeader1(M : sig
         refreshed.Onload sub
 
     fun render ctx a = <xml>
-      Upload CSV file:
+      Upload {[Option.get "CSV file" label]}:
       <active code={AjaxUpload.render {SubmitLabel = Some "Submit",
                                        OnBegin = set a.UploadStatus Uploading,
                                        OnSuccess = fn h =>
@@ -386,29 +389,31 @@ functor ImportWithHeader1(M : sig
                              | Uploaded => <xml>Import complete.</xml>
                              | UploadFailed => <xml>Import failed!</xml>)}/>
       <hr/>
-                                
-      <p><i>Or</i> copy and paste the CSV data here, with a header line that includes at least the following field names:
-        {case @foldR [fn _ => string] [fn _ => option xbody]
-               (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (label : string) (ob : option xbody) =>
-                   Some (case ob of
-                             None => <xml><i>{[label]}</i></xml>
-                           | Some ob => <xml><i>{[label]}</i>, {ob}</xml>))
-               None fl headers of
-             None => <xml></xml>
-           | Some ob => ob}</p>
 
-        <ctextarea source={a.PasteHere} cols={20} class="form-control"/>
+      {if showTextarea then <xml>
+        <p><i>Or</i> copy and paste the CSV data here, with a header line that includes at least the following field names:
+          {case @foldR [fn _ => string] [fn _ => option xbody]
+                 (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (label : string) (ob : option xbody) =>
+                     Some (case ob of
+                               None => <xml><i>{[label]}</i></xml>
+                             | Some ob => <xml><i>{[label]}</i>, {ob}</xml>))
+                 None fl headers of
+               None => <xml></xml>
+             | Some ob => ob}</p>
+
+          <ctextarea source={a.PasteHere} cols={20} class="form-control"/>
+
+          <button value="Import"
+                  class="btn btn-primary"
+                  onclick={fn _ =>
+                              csv <- get a.PasteHere;
+                              rpc (import csv);
+                              refresh a;                            
+                              set a.PasteHere ""}/>
+
+        <hr/>
+      </xml> else <xml></xml>}
         
-        <button value="Import"
-                class="btn btn-primary"
-                onclick={fn _ =>
-                            csv <- get a.PasteHere;
-                            rpc (import csv);
-                            refresh a;                            
-                            set a.PasteHere ""}/>
-
-      <hr/>
-
       <dyn signal={sub <- signal a.Subwidget;
                    return (refreshed.Render ctx sub)}/>
     </xml>

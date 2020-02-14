@@ -95,6 +95,10 @@ functor ImportWithHeader1(M : sig
 
                               type refreshed
                               val refreshed : Ui.t refreshed
+
+                              val label : option string (* describes the full we ask to have uploaded *)
+                              val showTextarea : bool   (* in addition to normal file upload,
+                                                         * also allow copying and pasting CSV text? *)
                           end) : Ui.S0
 
 (* And we can also generate CSV data: *)
