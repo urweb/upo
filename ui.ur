@@ -2,7 +2,8 @@ open Bootstrap4
 
 type context = {
      ModalId : id,
-     ModalSpot : source xbody
+     ModalSpot : source xbody,
+     Tab : option {Count : int, Current : source int}
 }
 
 type t a = {
@@ -137,7 +138,7 @@ functor Make(M : THEME) = struct
                        mid nid ms
                        <xml/>
                        <xml/>
-                       (t.Render {ModalId = mid, ModalSpot = ms} state))
+                       (t.Render {ModalId = mid, ModalSpot = ms, Tab = None} state))
 
     fun embeddable [a] (t : t a) =
         mid <- fresh;
@@ -156,7 +157,7 @@ functor Make(M : THEME) = struct
               <dyn signal={signal ms}/>
             </div>
 
-            {t.Render {ModalId = mid, ModalSpot = ms} state}
+            {t.Render {ModalId = mid, ModalSpot = ms, Tab = None} state}
           </body>
         </xml>
 
@@ -178,11 +179,11 @@ functor Make(M : THEME) = struct
               <dyn signal={signal ms}/>
             </div>
 
-            {t.Render {ModalId = mid, ModalSpot = ms} state}
+            {t.Render {ModalId = mid, ModalSpot = ms, Tab = None} state}
           </body>
         </xml>
 
-    fun tabbedWithToolbar [ts] (fl : folder ts) (titl : string) (tbar : xbody) (ts : $(map (fn a => option string * t a) ts)) =
+    fun tabbedWithToolbar [ts] (fl : folder ts) (titl : string) (tbar : xbody) (ts : $(map (fn a => option string * t a) ts)) (below : context -> xbody) =
         url <- currentUrl;
         nid <- fresh;
         mid <- fresh;
@@ -201,6 +202,8 @@ functor Make(M : THEME) = struct
                                                    None => chosen
                                                  | Some _ => cur))
                                           (size-1, size) fl ts).2;
+        ctx <- return {ModalId = mid, ModalSpot = ms,
+                       Tab = Some {Count = size, Current = curTab}};
 
         return (themed url
                        titl
@@ -231,21 +234,22 @@ functor Make(M : THEME) = struct
                                         return (@foldR2 [fn a => option string * t a] [ident] [fn _ => xbody * int]
                                                  (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_, t) st (acc, n) =>
                                                      (if ct = n then
-                                                          t.Render {ModalId = mid, ModalSpot = ms} st
+                                                          t.Render ctx st
                                                       else
                                                           acc, n-1))
                                                  (<xml/>, size-1) fl ts state).1}/>
+                           {below ctx}
                          </xml>)
 
     fun tabbed [ts] (fl : folder ts) titl (ts : $(map (fn a => option string * t a) ts)) =
-        @tabbedWithToolbar fl titl <xml></xml> ts
+        @tabbedWithToolbar fl titl <xml></xml> ts (fn _ => <xml></xml>)
 
     fun tabbedStatic [ts] (fl : folder ts) titl (ts : $(mapU (string * bool * url) ts)) bod =
         url <- currentUrl;
         nid <- fresh;
         mid <- fresh;
         ms <- source <xml/>;
-        bod <- bod {ModalId = mid, ModalSpot = ms};
+        bod <- bod {ModalId = mid, ModalSpot = ms, Tab = None};
 
         return (themed url
                        titl
@@ -287,7 +291,7 @@ functor Make(M : THEME) = struct
 
             {List.mapX (fn (x, t) => <xml>
               <div style="page-break-after: right">
-                {(f x).Render {ModalId = mid, ModalSpot = ms} t}
+                {(f x).Render {ModalId = mid, ModalSpot = ms, Tab = None} t}
               </div>
             </xml>) ts}
           </body>
@@ -374,3 +378,20 @@ val h4 bod = const <xml><h4>{bod}</h4></xml>
 val hr = const <xml><hr/></xml>
 
 fun when b lab = if b then Some lab else None
+
+fun nextTab ctx =
+    case ctx.Tab of
+        None => return ()
+      | Some r =>
+        if r.Count <= 0 then
+            return ()
+        else
+            cur <- get r.Current;
+            set r.Current ((cur + 1) % r.Count)
+
+fun inFinalTab ctx =
+    case ctx.Tab of
+        None => return True
+      | Some r =>
+        cur <- signal r.Current;
+        return (r.Count = 0 || cur = r.Count - 1)

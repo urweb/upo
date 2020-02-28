@@ -103,6 +103,7 @@ functor Make(M : THEME) : sig
                             -> string                                     (* title *)
                             -> xbody                                      (* toolbar *)
                             -> $(map (fn a => option string * t a) ts)    (* content *)
+                            -> (context -> xbody)                         (* extra content to show below current tab *)
                             -> transaction page
 
     (* Less dynamic version of [tabbed] *)
@@ -157,3 +158,9 @@ val simpleModal : xbody                (* main content *)
 
 (* Useful with tabbed pages: generate an optional text label based on a Boolean condition. *)
 val when : bool -> string -> option string
+
+(* If this UI has tabs, advance to the next one (wrapping around back to the beginning if we are already at the last one). *)
+val nextTab : context -> transaction unit
+
+(* Check if we would trigger that wraparound behavior. *)
+val inFinalTab : context -> signal bool
