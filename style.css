@@ -211,14 +211,14 @@ table.MeetingGrid_table_fixedheader>tbody>tr>td {
 }
 
 /* Tooltip container */
-.MeetingGrid_tooltip {
+.Tooltip_tooltip {
   position: relative;
   display: inline-block;
   border-bottom: 1px dotted black;
 }
 
 /* Tooltip text */
-.MeetingGrid_tooltip .MeetingGrid_tooltiptext {
+.Tooltip_tooltip .Tooltip_tooltiptext {
   visibility: hidden;
   width: 300px;
   background-color: black;
@@ -232,6 +232,6 @@ table.MeetingGrid_table_fixedheader>tbody>tr>td {
 }
 
 /* Show the tooltip text when you mouse over the tooltip container */
-.MeetingGrid_tooltip:hover .MeetingGrid_tooltiptext {
+.Tooltip_tooltip:hover .Tooltip_tooltiptext {
   visibility: visible;
 }

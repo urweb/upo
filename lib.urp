@@ -19,6 +19,7 @@ $/string
 $/monad
 $/option
 $/datetime
+tooltip
 row
 record
 variant

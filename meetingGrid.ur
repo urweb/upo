@@ -6,10 +6,8 @@ style meeting_conflict
 style meeting_movable
 
 open Bootstrap4
-
-style tooltip
-style tooltiptext
-
+open Tooltip
+     
 functor Make(M : sig
                  con homeKey1 :: Name
                  type homeKeyT
