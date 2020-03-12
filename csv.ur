@@ -5,14 +5,14 @@ fun splitLine sep line =
                 None => error <xml>Quoted CSV field value is missing a closing double quote.</xml>
               | Some (chars, line') =>
                 if String.length line' > 0 && String.sub line' 0 = #"\"" then
-                    readStringLiteral (String.suffix line' 1) (acc ^ "\"")
+                    readStringLiteral (String.suffix line' 1) (acc ^ chars ^ "\"")
                 else
                     (acc ^ chars, line')
     
         fun fields line justReadSeparator justReadQuoted acc =
             case String.msplit {Haystack = line, Needle = String.str sep ^ "\""} of
                 None =>
-                if line = "" && not justReadSeparator then
+                if String.all Char.isSpace line && not justReadSeparator then
                     acc
                 else
                     line :: acc
@@ -37,7 +37,7 @@ fun splitLine sep line =
                         let
                             val (lit, line') = readStringLiteral line' ""
                         in
-                            fields line' True True (lit :: acc)
+                            fields line' False True (lit :: acc)
                         end
               | Some _ => error <xml>CSV: impossible return from <tt>String.msplit</tt>!</xml>
     in
@@ -105,9 +105,9 @@ fun parseLine_simple [fs] (injs : $(map sql_injectable fs)) (reads : $(map read 
     let
         val (fields', acc) =
             @foldR [read] [fn r => list string * $r]
-             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : read t) (fields, r) =>
-                 case fields of
-                     [] => error <xml>Not enough fields in CSV line</xml>
+             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : read t) (fields', r) =>
+                 case fields' of
+                     [] => error <xml>Not enough fields in CSV line ({[fields]})</xml>
                    | token :: fields' =>
                      (fields', {nm = readError (String.trim token)} ++ r))
              (fields, {}) fl reads
