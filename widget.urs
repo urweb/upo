@@ -11,6 +11,7 @@ val configure : value ::: Type -> state ::: Type -> config ::: Type -> t value s
 val create : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> config -> transaction state
 val initialize : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> config -> value -> transaction state
 val reset : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> transaction unit
+val setValue : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> value -> transaction unit
 val reconfigure : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> config -> transaction unit
 val asWidget : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> option id (* Use this ID if you can, to help group with labels. *) -> xbody
 val asWidget_simple : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> option id -> xbody (* Alternative version, currently only used to show a textbox instead of a dropdown *)
@@ -22,6 +23,7 @@ val make : value ::: Type -> state ::: Type -> config ::: Type
                 Create : config -> transaction state,
                 Initialize : config -> value -> transaction state,
                 Reset : state -> transaction unit,
+                Set : state -> value -> transaction unit,
                 Reconfigure : state -> config -> transaction unit,
                 AsWidget : state -> option id -> xbody,
                 AsWidgetSimple : state -> option id -> xbody,

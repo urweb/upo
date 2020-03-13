@@ -3,6 +3,7 @@ con t (value :: Type) (state :: Type) (config :: Type) =
         Create : config -> transaction state,
         Initialize : config -> value -> transaction state,
         Reset : state -> transaction unit,
+        Set : state -> value -> transaction unit,
         Reconfigure : state -> config -> transaction unit,
         AsWidget : state -> option id -> xbody,
         AsWidgetSimple : state -> option id -> xbody,
@@ -15,6 +16,7 @@ fun configure [value] [state] [config] (t : t value state config) = t.Configure
 fun create [value] [state] [config] (t : t value state config) = t.Create
 fun initialize [value] [state] [config] (t : t value state config) = t.Initialize
 fun reset [value] [state] [config] (t : t value state config) = t.Reset
+fun setValue [value] [state] [config] (t : t value state config) = t.Set
 fun reconfigure [value] [state] [config] (t : t value state config) = t.Reconfigure
 fun asWidget [value] [state] [config] (t : t value state config) = t.AsWidget
 fun asWidget_simple [value] [state] [config] (t : t value state config) = t.AsWidgetSimple
@@ -28,6 +30,7 @@ val textbox = { Configure = return (),
                 Create = fn () => source "",
                 Initialize = fn () => source,
                 Reset = fn s => set s "",
+                Set = fn s v => set s v,
                 Reconfigure = fn _ () => return (),
                 AsWidget = fn s ido =>
                               case ido of
@@ -44,6 +47,7 @@ val opt_textbox = { Configure = return (),
                     Create = fn () => source "",
                     Initialize = fn () o => source (Option.get "" o),
                     Reset = fn s => set s "",
+                    Set = fn s v => set s (Option.get "" v),
                     Reconfigure = fn _ () => return (),
                     AsWidget = fn s ido =>
                                   case ido of
@@ -66,6 +70,7 @@ val checkbox = { Configure = return (),
                  Create = fn () => source False,
                  Initialize = fn () => source,
                  Reset = fn s => set s False,
+                 Set = fn s v => set s v,
                  Reconfigure = fn _ () => return (),
                  AsWidget = fn s ido =>
                                case ido of
@@ -82,6 +87,7 @@ val intbox = { Configure = return (),
                Create = fn () => source "",
                Initialize = fn () n => source (show n),
                Reset = fn s => set s "",
+               Set = fn s v => set s (show v),
                Reconfigure = fn _ () => return (),
                AsWidget = fn s ido =>
                              case ido of
@@ -98,6 +104,7 @@ val timebox = { Configure = t <- now; return (show t),
                 Create = fn t => s <- source ""; return (t, s),
                 Initialize = fn t n => s <- source (show n); return (t, s),
                 Reset = fn (_, s) => set s "",
+                Set = fn (_, s) v => set s (show v),
                 Reconfigure = fn _ _ => return (),
                 AsWidget = fn (t, s) ido =>
                               case ido of
@@ -114,6 +121,7 @@ val urlbox = { Configure = return (),
                Create = fn () => source "",
                Initialize = fn () => source,
                Reset = fn s => set s "",
+               Set = fn s v => set s v,
                Reconfigure = fn _ () => return (),
                AsWidget = fn s ido =>
                              case ido of
@@ -187,6 +195,7 @@ val htmlbox = { Configure = return (),
                 Create = fn () => ed "",
                 Initialize = fn () => ed,
                 Reset = fn me => Ckeditor.setContent me "",
+                Set = fn me v => Ckeditor.setContent me v,
                 Reconfigure = fn _ () => return (),
                 AsWidget = fn me _ => Ckeditor.show me,
                 AsWidgetSimple = fn me _ => Ckeditor.show me,
@@ -208,6 +217,7 @@ fun choicebox [a ::: Type] (_ : show a) (_ : read a) (choice : a) (choices : lis
                       s <- source (show v);
                       return {Choices = choice :: choices, Source = s},
       Reset = fn me => set me.Source (show choice),
+      Set = fn me v => set me.Source (show v),
       Reconfigure = fn _ () => return (),
       AsWidget = fn me id =>
                     let
@@ -253,6 +263,7 @@ fun foreignbox [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : sql_quer
                       s <- source (show v);
                       return {Choices = ls, Source = s},
       Reset = fn me => set me.Source "",
+      Set = fn me v => set me.Source (show v),
       Reconfigure = fn me ls => set me.Choices ls,
       AsWidget = fn me id =>
                     let
@@ -292,6 +303,7 @@ fun foreignbox_default [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : 
                       s <- source (show v);
                       return {Choices = ls, Source = s},
       Reset = fn me => set me.Source "",
+      Set = fn me v => set me.Source (show v),
       Reconfigure = fn me ls => set me.Choices ls,
       AsWidget = fn me id =>
                     let
@@ -358,6 +370,7 @@ functor Fuzzybox(M : sig
                           st <- source (Initialized v);
                           return {Choices = ls, Source = s, Stage = st},
           Reset = fn me => set me.Source "",
+          Set = fn me v => set me.Source v; set me.Stage (Initialized v),
           Reconfigure = fn me ls =>
                            set me.Choices ls;
                            st <- get me.Stage;
