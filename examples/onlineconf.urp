@@ -1,0 +1,7 @@
+database dbname=onlineconf
+sql onlineconf.sql
+library ../default
+rewrite all Onlineconf/*
+safeGetDefault
+
+onlineconf
