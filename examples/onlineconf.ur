@@ -29,9 +29,9 @@ table slot : { Begin : time,
 
 structure Slots = FillTimeRange.Make(struct
                                          val slot = slot
-                                         val initial = readError "2020-4-1 0:00:00"
-                                         val final = readError "2020-4-3 11:59:59"
-                                         val duration = 1800
+                                         val initial = readError "2020-4-1 12:00:00"
+                                         val final = readError "2020-4-1 17:00:00"
+                                         val duration = 3600
                                      end)
              
 table preference : { User : string,
@@ -42,6 +42,20 @@ table preference : { User : string,
   CONSTRAINT User FOREIGN KEY User REFERENCES user(Username) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT Slot FOREIGN KEY Slot REFERENCES slot(Begin),
   CONSTRAINT Preferred CHECK NOT (Preferred AND NOT Available)
+
+table talk : { Paper : string,
+               Speaker : string,
+               Moderator : string }
+  PRIMARY KEY Paper,
+  CONSTRAINT Paper FOREIGN KEY Paper REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT Speaker FOREIGN KEY Speaker REFERENCES user(Username) ON UPDATE CASCADE,
+  CONSTRAINT Moderator FOREIGN KEY Moderator REFERENCES user(Username) ON UPDATE CASCADE
+
+table talkTime : { Paper : string,
+                   Begin : time }
+  PRIMARY KEY Paper,
+  CONSTRAINT Paper FOREIGN KEY Paper REFERENCES talk(Paper) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT Begin FOREIGN KEY Begin REFERENCES slot(Begin)
       
 open Explorer
 
@@ -58,6 +72,7 @@ structure Exp = Make(struct
                                      |> one [#Category] [#Category] category "Categories" (return <xml></xml>) (Default (WHERE TRUE))
                                      |> one [#Paper] [#Title] paper "Papers" (return <xml></xml>) (Default (WHERE TRUE))
                                      |> one [#Slot] [#Begin] slot "Time slots" (return <xml></xml>) (Default (WHERE TRUE))
+                                     |> one [#Talk] [#Paper] talk "Talks" (return <xml></xml>) (Default (WHERE TRUE))
 
                                      |> text [#User] [#Username] "Name"
                                      |> text [#User] [#EmailAddress] "E-mail address"
@@ -70,6 +85,10 @@ structure Exp = Make(struct
 
                                      |> text [#Slot] [#Begin] "Begins"
                                      |> text [#Slot] [#End] "Ends"
+
+                                     |> foreign [#Talk] [#Paper] [#Paper] [#Title] "Paper" "Talks"
+                                     |> foreign [#Talk] [#Speaker] [#User] [#Username] "Speaker" "Speaker for"
+                                     |> foreign [#Talk] [#Moderator] [#User] [#Username] "Moderator" "Moderator for"
 
                          fun authorize _ = return True
 
@@ -91,6 +110,27 @@ structure Prefs = Preferences.Make(struct
                                        val whoami = whoami
                                    end)
 
+structure SlotPref = ChoicesFromPreferences.Make(struct
+                                                     con choice = #Begin
+                                                     val choice = slot
+
+                                                     con user = #User
+                                                     con slot = #Slot
+                                                     con available = #Available
+                                                     con preferred = #Preferred
+                                                     val pref = preference
+
+                                                     con item = #Paper
+                                                     con users = [Speaker, Moderator]
+                                                     val item = talk
+                                                     val labels = {Speaker = "Speaker",
+                                                                   Moderator = "Moderator"}
+
+                                                     val itemChoice = talkTime
+
+                                                     val authorize = return True
+                                                 end)
+
 val explore = Exp.index (make [#Category] ())
 
 fun login {Nam = s} =
@@ -106,6 +146,10 @@ fun login {Nam = s} =
     setCookie userC {Value = s, Expires = None, Secure = False};
     redirect (url (main ()))
 
+and logout () =
+    clearCookie userC;
+    redirect (url (main ()))
+    
 and main () =
     u <- whoami;
     case u of
@@ -121,4 +165,6 @@ and main () =
       | Some u =>
         Theme.tabbed "OnlineConf"
         ((Some "Explore", Ui.h4 <xml><a link={explore}>Begin exploring!</a></xml>),
-         (Some "Availability", Prefs.ui u))
+         (Some "Availability", Prefs.ui u),
+         (Some "Talk times", SlotPref.ui),
+         (Some "Log out", Ui.h4 <xml><a link={logout ()}>Log out</a></xml>))
