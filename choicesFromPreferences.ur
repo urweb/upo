@@ -13,13 +13,10 @@ functor Make(M : sig
 
                  con user :: Name
                  con slot :: Name
-                 con available :: Name
                  con preferred :: Name
                  constraint [user] ~ [slot]
-                 constraint [user, slot] ~ [available]
-                 constraint [user, slot, available] ~ [preferred]
-                 table pref : {user : string, slot : choiceT,
-                               available : bool, preferred : bool}
+                 constraint [user, slot] ~ [preferred]
+                 table pref : {user : string, slot : choiceT, preferred : bool}
 
                  con item :: Name
                  type itemT
@@ -32,7 +29,7 @@ functor Make(M : sig
                  val fl : folder users
                  val show_itemT : show itemT
                  val eq_itemT : eq itemT
-                 val sql_injectable_prim : sql_injectable_prim itemT
+                 val inj_itemT : sql_injectable_prim itemT
                  val labels : $(mapU string users)
 
                  con itemChoice :: Name
@@ -127,7 +124,6 @@ functor Make(M : sig
                               ON {@multijoin [#Pref] [user]
                                   [#Item] [users] ! ! ! ! fl}
                               LEFT JOIN itemChoice ON itemChoice.{item} = item.{item}
-                            WHERE pref.{available}
                             ORDER BY item.{item} DESC, pref.{preferred}, pref.{slot} DESC)
                            items [];
             choices <- List.mapQueryM (SELECT choice.{choice}, COUNT(itemChoice.{itemChoice}) AS Count
@@ -219,7 +215,7 @@ functor Make(M : sig
                                                                         ^ (if chosen = 0 then
                                                                                ""
                                                                            else
-                                                                               " [already chosen for " ^ show chosen ^ "]"))) i.Choices;
+                                                                               " [chosen for " ^ show chosen ^ "]"))) i.Choices;
                                            return <xml>
                                              <cselect source={i.Choice}
                                                       onchange={old <- get i.StashedChoice;
@@ -233,22 +229,18 @@ functor Make(M : sig
                                                                    | Some old =>
                                                                      List.app (fn (ch, c) =>
                                                                                   if ch = old then
-                                                                                      debug "Found";
                                                                                       n <- get c;
                                                                                       set c (n - 1)
                                                                                   else
-                                                                                      debug "Unfound";
                                                                                       return ()) a.Choices);
                                                                 (case new of
                                                                      None => return ()
                                                                    | Some new =>
                                                                      List.app (fn (ch, c) =>
                                                                                   if ch = new then
-                                                                                      debug "Found'";
                                                                                       n <- get c;
                                                                                       set c (n + 1)
                                                                                   else
-                                                                                      debug "Unfound'";
                                                                                       return ()) a.Choices)}>
                                                <coption value="">unchosen</coption>
                                                {List.mapX (fn (ch, s) => <xml><coption value={show ch}>{[s]}</coption></xml>) chs}

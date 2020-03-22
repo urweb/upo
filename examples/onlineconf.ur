@@ -36,25 +36,37 @@ structure Slots = FillTimeRange.Make(struct
              
 table preference : { User : string,
                      Slot : time,
-                     Available : bool,
                      Preferred : bool }
   PRIMARY KEY (User, Slot),
   CONSTRAINT User FOREIGN KEY User REFERENCES user(Username) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT Slot FOREIGN KEY Slot REFERENCES slot(Begin),
-  CONSTRAINT Preferred CHECK NOT (Preferred AND NOT Available)
+  CONSTRAINT Slot FOREIGN KEY Slot REFERENCES slot(Begin)
 
-table talk : { Paper : string,
+table speakingInterest : { Title : string,
+                           User : string,
+                           Preferred : bool }
+  PRIMARY KEY (Title, User),
+  CONSTRAINT Paper FOREIGN KEY Title REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT User FOREIGN KEY User REFERENCES user(Username) ON UPDATE CASCADE ON DELETE CASCADE
+
+table moderatingInterest : { Title : string,
+                             User : string,
+                             Preferred : bool }
+  PRIMARY KEY (Title, User),
+  CONSTRAINT Paper FOREIGN KEY Title REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT User FOREIGN KEY User REFERENCES user(Username) ON UPDATE CASCADE ON DELETE CASCADE
+  
+table talk : { Title : string,
                Speaker : string,
                Moderator : string }
-  PRIMARY KEY Paper,
-  CONSTRAINT Paper FOREIGN KEY Paper REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
+  PRIMARY KEY Title,
+  CONSTRAINT Paper FOREIGN KEY Title REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT Speaker FOREIGN KEY Speaker REFERENCES user(Username) ON UPDATE CASCADE,
   CONSTRAINT Moderator FOREIGN KEY Moderator REFERENCES user(Username) ON UPDATE CASCADE
 
-table talkTime : { Paper : string,
+table talkTime : { Title : string,
                    Begin : time }
-  PRIMARY KEY Paper,
-  CONSTRAINT Paper FOREIGN KEY Paper REFERENCES talk(Paper) ON UPDATE CASCADE ON DELETE CASCADE,
+  PRIMARY KEY Title,
+  CONSTRAINT Paper FOREIGN KEY Title REFERENCES talk(Title) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT Begin FOREIGN KEY Begin REFERENCES slot(Begin)
       
 open Explorer
@@ -72,7 +84,7 @@ structure Exp = Make(struct
                                      |> one [#Category] [#Category] category "Categories" (return <xml></xml>) (Default (WHERE TRUE))
                                      |> one [#Paper] [#Title] paper "Papers" (return <xml></xml>) (Default (WHERE TRUE))
                                      |> one [#Slot] [#Begin] slot "Time slots" (return <xml></xml>) (Default (WHERE TRUE))
-                                     |> one [#Talk] [#Paper] talk "Talks" (return <xml></xml>) (Default (WHERE TRUE))
+                                     |> one [#Talk] [#Title] talk "Talks" (return <xml></xml>) (Default (WHERE TRUE))
 
                                      |> text [#User] [#Username] "Name"
                                      |> text [#User] [#EmailAddress] "E-mail address"
@@ -86,9 +98,10 @@ structure Exp = Make(struct
                                      |> text [#Slot] [#Begin] "Begins"
                                      |> text [#Slot] [#End] "Ends"
 
-                                     |> foreign [#Talk] [#Paper] [#Paper] [#Title] "Paper" "Talks"
+                                     |> foreign [#Talk] [#Title] [#Paper] [#Title] "Paper" "Talks"
                                      |> foreign [#Talk] [#Speaker] [#User] [#Username] "Speaker" "Speaker for"
                                      |> foreign [#Talk] [#Moderator] [#User] [#Username] "Moderator" "Moderator for"
+                                     |> manyToMany [#Talk] [#Title] [#Title] [#Slot] [#Begin] [#Begin] talkTime "Times" "Talks" {}
 
                          fun authorize _ = return True
 
@@ -103,7 +116,6 @@ structure Prefs = Preferences.Make(struct
 
                                        con user = #User
                                        con slot = #Slot
-                                       con available = #Available
                                        con preferred = #Preferred
                                        val pref = preference
 
@@ -116,11 +128,10 @@ structure SlotPref = ChoicesFromPreferences.Make(struct
 
                                                      con user = #User
                                                      con slot = #Slot
-                                                     con available = #Available
                                                      con preferred = #Preferred
                                                      val pref = preference
 
-                                                     con item = #Paper
+                                                     con item = #Title
                                                      con users = [Speaker, Moderator]
                                                      val item = talk
                                                      val labels = {Speaker = "Speaker",
@@ -130,6 +141,47 @@ structure SlotPref = ChoicesFromPreferences.Make(struct
 
                                                      val authorize = return True
                                                  end)
+
+structure SpeakerInterest = Preferences.Make(struct
+                                                 con choice = #Title
+                                                 val choice = paper
+
+                                                 con user = #User
+                                                 con slot = #Title
+                                                 con preferred = #Preferred
+                                                 val pref = speakingInterest
+
+                                                 val whoami = whoami
+                                             end)
+
+structure ModeratorInterest = Preferences.Make(struct
+                                                   con choice = #Title
+                                                   val choice = paper
+
+                                                   con user = #User
+                                                   con slot = #Title
+                                                   con preferred = #Preferred
+                                                   val pref = moderatingInterest
+
+                                                   val whoami = whoami
+                                               end)
+
+structure AssignTalks = UsersFromPreferences.Make(struct
+                                                      con choice = #Title
+                                                      val choice = paper
+
+                                                      con user = #User
+                                                      con slot = #Title
+                                                      con preferred = #Preferred
+                                                      val prefs = {Speaker = speakingInterest,
+                                                                   Moderator = moderatingInterest}
+
+                                                      val assignment = talk
+                                                      val labels = {Speaker = "Speaker",
+                                                                    Moderator = "Moderator"}
+
+                                                      val whoami = whoami
+                                                  end)
 
 val explore = Exp.index (make [#Category] ())
 
@@ -166,5 +218,8 @@ and main () =
         Theme.tabbed "OnlineConf"
         ((Some "Explore", Ui.h4 <xml><a link={explore}>Begin exploring!</a></xml>),
          (Some "Availability", Prefs.ui u),
+         (Some "Speaker interest", SpeakerInterest.ui u),
+         (Some "Moderator interest", ModeratorInterest.ui u),
+         (Some "Assign talks", AssignTalks.ui),
          (Some "Talk times", SlotPref.ui),
          (Some "Log out", Ui.h4 <xml><a link={logout ()}>Log out</a></xml>))

@@ -12,13 +12,10 @@ functor Make(M : sig
 
                  con user :: Name
                  con slot :: Name
-                 con available :: Name
                  con preferred :: Name
                  constraint [user] ~ [slot]
-                 constraint [user, slot] ~ [available]
-                 constraint [user, slot, available] ~ [preferred]
-                 table pref : {user : string, slot : choiceT,
-                               available : bool, preferred : bool}
+                 constraint [user, slot] ~ [preferred]
+                 table pref : {user : string, slot : choiceT, preferred : bool}
                  
                  val whoami : transaction (option string)
              end) : Ui.S where type input = string

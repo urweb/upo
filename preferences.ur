@@ -12,13 +12,10 @@ functor Make(M : sig
 
                  con user :: Name
                  con slot :: Name
-                 con available :: Name
                  con preferred :: Name
                  constraint [user] ~ [slot]
-                 constraint [user, slot] ~ [available]
-                 constraint [user, slot, available] ~ [preferred]
-                 table pref : {user : string, slot : choiceT,
-                               available : bool, preferred : bool}
+                 constraint [user, slot] ~ [preferred]
+                 table pref : {user : string, slot : choiceT, preferred : bool}
                  
                  val whoami : transaction (option string)
              end) = struct
@@ -28,7 +25,7 @@ functor Make(M : sig
     type a = list (choiceT * source string)
 
     fun create u =
-        List.mapQueryM (SELECT choice.{choice}, pref.{available}, pref.{preferred}
+        List.mapQueryM (SELECT choice.{choice}, pref.{preferred}
                         FROM choice LEFT JOIN pref
                           ON pref.{slot} = choice.{choice}
                             AND pref.{user} = {[u]}
@@ -36,7 +33,7 @@ functor Make(M : sig
                        (fn r =>
                            s <- (if r.Pref.preferred = Some True then
                                      source "Preferred"
-                                 else if r.Pref.available = Some True then
+                                 else if r.Pref.preferred = Some False then
                                      source "Available"
                                  else
                                      source "Unavailable");
@@ -52,8 +49,11 @@ functor Make(M : sig
             dml (DELETE FROM pref
                  WHERE T.{user} = {[u]});
             List.app (fn (c, a, p) =>
-                         dml (INSERT INTO pref({user}, {slot}, {available}, {preferred})
-                              VALUES ({[u]}, {[c]}, {[a]}, {[p]}))) cs
+                         if a then
+                             dml (INSERT INTO pref({user}, {slot}, {preferred})
+                                  VALUES ({[u]}, {[c]}, {[p]}))
+                         else
+                             return ()) cs
 
     fun render _ cs = <xml>
       <button class="btn btn-primary"

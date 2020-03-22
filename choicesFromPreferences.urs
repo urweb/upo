@@ -1,5 +1,6 @@
 (* Building on a process where users indicate preferences (perhaps using the
- * [Preferences] concept), finalize assignment of users to items. *)
+ * [Preferences] concept), finalize assignment of choices compatible with
+ * preferences. *)
 
 functor Make(M : sig
                  (* Choices are what the users indicate preferences for. *)
@@ -16,13 +17,10 @@ functor Make(M : sig
                  (* Preferences are per-user. *)
                  con user :: Name
                  con slot :: Name
-                 con available :: Name
                  con preferred :: Name
                  constraint [user] ~ [slot]
-                 constraint [user, slot] ~ [available]
-                 constraint [user, slot, available] ~ [preferred]
-                 table pref : {user : string, slot : choiceT,
-                               available : bool, preferred : bool}
+                 constraint [user, slot] ~ [preferred]
+                 table pref : {user : string, slot : choiceT, preferred : bool}
 
                  (* Items are the ones we must assign choices to, based on user preferences. *)
                  con item :: Name
@@ -37,7 +35,7 @@ functor Make(M : sig
                  val fl : folder users
                  val show_itemT : show itemT
                  val eq_itemT : eq itemT
-                 val sql_injectable_prim : sql_injectable_prim itemT
+                 val inj_itemT : sql_injectable_prim itemT
                  val labels : $(mapU string users)
 
                  (* This relation links items to their choices. *)
