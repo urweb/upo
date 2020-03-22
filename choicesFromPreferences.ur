@@ -51,8 +51,7 @@ functor Make(M : sig
                                             Available : int,
                                             NowChosen : source int
                                             (* How many times is it used so far? *)},
-                            Choice : source string,
-                            StashedChoice : source (option choiceT)}}
+                            Choice : option choiceT}}
 
     (* Helper function to build an SQL expression indicating that one column
      * equals at least one of another sets of columns *)
@@ -79,8 +78,7 @@ functor Make(M : sig
 
     type a0 = list {Item : itemT,
                     Users : $(mapU string users),
-                    Choice : source string,
-                    StashedChoice : source (option choiceT),
+                    Choice : option choiceT,
                     Choices : list {Choice : choiceT,
                                     Available : int,
                                     Preferred : int}}
@@ -88,53 +86,41 @@ functor Make(M : sig
     val create =
         let
             fun items r (cs : a0) =
-                case cs of
-                    [] =>
-                    ch <- source (case r.ItemChoice.itemChoice of
-                                      None => ""
-                                    | Some v => show v);
-                    sch <- source r.ItemChoice.itemChoice;
-                    return ({Item = r.Item.item,
+                return (case cs of
+                            [] =>
+                            {Item = r.Item.item,
                              Users = r.Item -- item,
-                             Choice = ch,
-                             StashedChoice = sch,
+                             Choice = r.ItemChoice.itemChoice,
                              Choices = {Choice = r.Pref.slot,
                                         Available = 1,
-                                        Preferred = if r.Pref.preferred then 1 else 0} :: []} :: [])
+                                        Preferred = if r.Pref.preferred then 1 else 0} :: []} :: []
                   | c :: cs' =>
                     if c.Item = r.Item.item then
-                        return ({Item = c.Item,
-                                 Users = r.Item -- item,
-                                 Choice = c.Choice,
-                                 StashedChoice = c.StashedChoice,
-                                 Choices = case c.Choices of
-                                               [] => error <xml>Accumulator has choice-free item!</xml>
-                                             | ch :: chs =>
-                                               if ch.Choice = r.Pref.slot then
-                                                   {Choice = ch.Choice,
-                                                    Available = ch.Available + 1,
-                                                    Preferred = if r.Pref.preferred then
-                                                                    ch.Preferred + 1
-                                                                else
-                                                                    ch.Preferred} :: chs
-                                               else
-                                                   {Choice = r.Pref.slot,
-                                                    Available = 1,
-                                                    Preferred = if r.Pref.preferred then 1 else 0}
-                                                       :: c.Choices} :: cs')
-                    else
-                        ch <- source (case r.ItemChoice.itemChoice of
-                                          None => ""
-                                        | Some v => show v);
-                        sch <- source r.ItemChoice.itemChoice;
-                        return ({Item = r.Item.item,
-                                 Users = r.Item -- item,
-                                 Choice = ch,
-                                 StashedChoice = sch,
-                                 Choices = {Choice = r.Pref.slot,
+                        {Item = c.Item,
+                         Users = r.Item -- item,
+                         Choice = c.Choice,
+                         Choices = case c.Choices of
+                                       [] => error <xml>Accumulator has choice-free item!</xml>
+                                     | ch :: chs =>
+                                       if ch.Choice = r.Pref.slot then
+                                           {Choice = ch.Choice,
+                                            Available = ch.Available + 1,
+                                            Preferred = if r.Pref.preferred then
+                                                            ch.Preferred + 1
+                                                        else
+                                                            ch.Preferred} :: chs
+                                       else
+                                           {Choice = r.Pref.slot,
                                             Available = 1,
-                                            Preferred = if r.Pref.preferred then 1 else 0} :: []} :: cs)
-                    
+                                            Preferred = if r.Pref.preferred then 1 else 0}
+                                               :: c.Choices} :: cs'
+                    else
+                        {Item = r.Item.item,
+                         Users = r.Item -- item,
+                         Choice = r.ItemChoice.itemChoice,
+                         Choices = {Choice = r.Pref.slot,
+                                    Available = 1,
+                                    Preferred = if r.Pref.preferred then 1 else 0} :: []} :: cs)
         in
             items <- query (SELECT item.{item}, item.{{mapU string users}}, itemChoice.{itemChoice}, pref.{slot}, pref.{preferred}
                             FROM item JOIN pref
@@ -187,82 +173,90 @@ functor Make(M : sig
                                         VALUES ({[i]}, {[c]}))) cs
 
     fun render _ a = <xml>
-      <button class="btn btn-primary"
-              onclick={fn _ =>
-                          cs <- List.mapPartialM (fn i =>
-                                                     c <- get i.Choice;
-                                                     return (if c = "" then
-                                                                 None
-                                                             else
-                                                                 Some (i.Item, readError c)))
-                                                 a.Items;
-                          rpc (save cs)}>
-        Save
-      </button>
-        
-      <table class="bs-table table-striped">
-        <tr>
-          <th/>
-          {@mapUX [string] [tr]
-           (fn [nm ::_] [r ::_] [[nm] ~ r] l => <xml><th>{[l]}</th></xml>)
-           fl labels}
-          <th>Choice</th>
-        </tr>
+      <active code={items <- List.mapM (fn i =>
+                                           s <- source (case i.Choice of
+                                                            None => ""
+                                                          | Some v => show v);
+                                           st <- source i.Choice;
+                                           return (i -- #Choice ++ {Choice = s, StashedChoice = st})) a.Items;
+                    return <xml>
+                      <button class="btn btn-primary"
+                              onclick={fn _ =>
+                                          cs <- List.mapPartialM (fn i =>
+                                                                     c <- get i.Choice;
+                                                                     return (if c = "" then
+                                                                                 None
+                                                                             else
+                                                                                 Some (i.Item, readError c)))
+                                                                 items;
+                                          rpc (save cs)}>
+                        Save
+                      </button>
 
-        {List.mapX (fn i => <xml><tr>
-          <td>{[i.Item]}</td>
-          {@mapUX [string] [tr]
-            (fn [nm ::_] [r ::_] [[nm] ~ r] l => <xml><td>{[l]}</td></xml>)
-            fl i.Users}
-          <td><dyn signal={chs <- List.mapM (fn ch =>
-                                                chosen <- signal ch.NowChosen;
-                                                return (ch.Choice,
-                                                        show ch.Choice
-                                                        ^ stars ch.Preferred
-                                                        ^ (if ch.Available < numUsers then
-                                                               " (" ^ show (numUsers - ch.Available) ^ " unavailable!)"
-                                                           else
-                                                               "")
-                                                        ^ (if chosen = 0 then
-                                                               ""
-                                                           else
-                                                               " [already chosen for " ^ show chosen ^ "]"))) i.Choices;
-                           return <xml>
-                             <cselect source={i.Choice}
-                                      onchange={old <- get i.StashedChoice;
-                                                new <- get i.Choice;
-                                                new <- return (case new of
-                                                                   "" => None
-                                                                 | _ => Some (readError new));
-                                                set i.StashedChoice new;
-                                                (case old of
-                                                     None => return ()
-                                                   | Some old =>
-                                                     List.app (fn (ch, c) =>
-                                                                  if ch = old then
-                                                                      debug "Found";
-                                                                      n <- get c;
-                                                                      set c (n - 1)
-                                                                  else
-                                                                      debug "Unfound";
-                                                                      return ()) a.Choices);
-                                                (case new of
-                                                     None => return ()
-                                                   | Some new =>
-                                                     List.app (fn (ch, c) =>
-                                                                  if ch = new then
-                                                                      debug "Found'";
-                                                                      n <- get c;
-                                                                      set c (n + 1)
-                                                                  else
-                                                                      debug "Unfound'";
-                                                                      return ()) a.Choices)}>
-                               <coption value="">unchosen</coption>
-                               {List.mapX (fn (ch, s) => <xml><coption value={show ch}>{[s]}</coption></xml>) chs}
-                             </cselect>
-                           </xml>}/></td>
-        </tr></xml>) a.Items}
-      </table>
+                      <table class="bs-table table-striped">
+                        <tr>
+                          <th/>
+                          {@mapUX [string] [tr]
+                           (fn [nm ::_] [r ::_] [[nm] ~ r] l => <xml><th>{[l]}</th></xml>)
+                           fl labels}
+                          <th>Choice</th>
+                        </tr>
+
+                        {List.mapX (fn i => <xml><tr>
+                          <td>{[i.Item]}</td>
+                          {@mapUX [string] [tr]
+                            (fn [nm ::_] [r ::_] [[nm] ~ r] l => <xml><td>{[l]}</td></xml>)
+                            fl i.Users}
+                          <td><dyn signal={chs <- List.mapM (fn ch =>
+                                                                chosen <- signal ch.NowChosen;
+                                                                return (ch.Choice,
+                                                                        show ch.Choice
+                                                                        ^ stars ch.Preferred
+                                                                        ^ (if ch.Available < numUsers then
+                                                                               " (" ^ show (numUsers - ch.Available) ^ " unavailable!)"
+                                                                           else
+                                                                               "")
+                                                                        ^ (if chosen = 0 then
+                                                                               ""
+                                                                           else
+                                                                               " [already chosen for " ^ show chosen ^ "]"))) i.Choices;
+                                           return <xml>
+                                             <cselect source={i.Choice}
+                                                      onchange={old <- get i.StashedChoice;
+                                                                new <- get i.Choice;
+                                                                new <- return (case new of
+                                                                                   "" => None
+                                                                                 | _ => Some (readError new));
+                                                                set i.StashedChoice new;
+                                                                (case old of
+                                                                     None => return ()
+                                                                   | Some old =>
+                                                                     List.app (fn (ch, c) =>
+                                                                                  if ch = old then
+                                                                                      debug "Found";
+                                                                                      n <- get c;
+                                                                                      set c (n - 1)
+                                                                                  else
+                                                                                      debug "Unfound";
+                                                                                      return ()) a.Choices);
+                                                                (case new of
+                                                                     None => return ()
+                                                                   | Some new =>
+                                                                     List.app (fn (ch, c) =>
+                                                                                  if ch = new then
+                                                                                      debug "Found'";
+                                                                                      n <- get c;
+                                                                                      set c (n + 1)
+                                                                                  else
+                                                                                      debug "Unfound'";
+                                                                                      return ()) a.Choices)}>
+                                               <coption value="">unchosen</coption>
+                                               {List.mapX (fn (ch, s) => <xml><coption value={show ch}>{[s]}</coption></xml>) chs}
+                                             </cselect>
+                                           </xml>}/></td>
+                        </tr></xml>) items}
+                      </table>
+                    </xml>}/>
     </xml>
 
     val ui = {Create = create,
