@@ -78,18 +78,18 @@ structure Exp = Make(struct
                          val hiddenTabs = {}
                      end)
 
-structure Prefs = TimePreferences.Make(struct
-                                           con choice = #Begin
-                                           val choice = slot
+structure Prefs = Preferences.Make(struct
+                                       con choice = #Begin
+                                       val choice = slot
 
-                                           con user = #User
-                                           con slot = #Slot
-                                           con available = #Available
-                                           con preferred = #Preferred
-                                           val pref = preference
+                                       con user = #User
+                                       con slot = #Slot
+                                       con available = #Available
+                                       con preferred = #Preferred
+                                       val pref = preference
 
-                                           val whoami = whoami
-                                       end)
+                                       val whoami = whoami
+                                   end)
 
 val explore = Exp.index (make [#Category] ())
 

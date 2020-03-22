@@ -1,4 +1,4 @@
-(* Choose which times a user is available for something. *)
+(* Let a user indicate preferences for each of a set of options. *)
 
 functor Make(M : sig
                  con choice :: Name
