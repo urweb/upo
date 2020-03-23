@@ -1,6 +1,7 @@
 database dbname=onlineconf
 sql onlineconf.sql
 library ../default
+library $/world
 rewrite all Onlineconf/*
 safeGetDefault
 

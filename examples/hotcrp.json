@@ -1,0 +1,57 @@
+[
+    {
+        "pid": 1,
+        "title": "Monads on Steroids",
+        "status": "accepted",
+        "authors": [
+            {
+                "email": "adamc@csail.mit.edu",
+                "first": "Adam",
+                "last": "Chlipala",
+                "affiliation": "MIT",
+                "contact": true
+            },
+            {
+                "email": "george@washington.gov",
+                "first": "George",
+                "last": "Washington",
+                "contact": true
+            }
+        ],
+        "abstract": "We introduce monads... on steroids!"
+    },
+    {
+        "pid": 2,
+        "title": "Farewell Address",
+        "status": "accepted",
+        "authors": [
+            {
+                "email": "george@washington.gov",
+                "first": "George",
+                "last": "Washington",
+                "contact": true
+            }
+        ],
+        "abstract": "Beware faction!"
+    },
+    {
+        "pid": 3,
+        "title": "Dependent Types in an Aquatic Environment",
+        "status": "accepted",
+        "authors": [
+            {
+                "email": "oliver@poorhouse.org",
+                "first": "Oliver",
+                "last": "Twist",
+                "contact": true
+            },
+            {
+                "email": "charles@dickens.org",
+                "first": "Charles",
+                "last": "Dickens",
+                "contact": true
+            }
+        ],
+        "abstract": "This idea is all wet."
+    }
+]

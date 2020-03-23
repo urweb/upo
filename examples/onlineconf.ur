@@ -1,11 +1,8 @@
+open Bootstrap4
 structure Theme = Ui.Make(Default)
 
-table user : { Username : string,
-               EmailAddress : string }
+table user : { Username : string }
   PRIMARY KEY Username
-
-table category : { Category : string }
-  PRIMARY KEY Category
 
 table paper : { Title : string }
   PRIMARY KEY Title
@@ -17,26 +14,20 @@ table author : { Paper : string,
   CONSTRAINT Paper FOREIGN KEY Paper REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT User FOREIGN KEY User REFERENCES user(Username) ON UPDATE CASCADE
 
-table paperCategory : { Paper : string,
-                        Category : string }
-  PRIMARY KEY (Paper, Category),
-  CONSTRAINT Paper FOREIGN KEY Paper REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT Category FOREIGN KEY Category REFERENCES category(Category) ON UPDATE CASCADE ON DELETE CASCADE
-
 table slot : { Begin : time,
                End : time }
   PRIMARY KEY Begin
 
 structure Slots = FillTimeRange.Make(struct
                                          val slot = slot
-                                         val initial = readError "2020-4-1 12:00:00"
-                                         val final = readError "2020-4-1 17:00:00"
+                                         val initial = readError "2020-3-23 12:00:00"
+                                         val final = readError "2020-3-23 17:00:00"
                                          val duration = 3600
                                      end)
              
-table preference : { User : string,
-                     Slot : time,
-                     Preferred : bool }
+table timePreference : { User : string,
+                         Slot : time,
+                         Preferred : bool }
   PRIMARY KEY (User, Slot),
   CONSTRAINT User FOREIGN KEY User REFERENCES user(Username) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT Slot FOREIGN KEY Slot REFERENCES slot(Begin)
@@ -48,20 +39,11 @@ table speakingInterest : { Title : string,
   CONSTRAINT Paper FOREIGN KEY Title REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT User FOREIGN KEY User REFERENCES user(Username) ON UPDATE CASCADE ON DELETE CASCADE
 
-table moderatingInterest : { Title : string,
-                             User : string,
-                             Preferred : bool }
-  PRIMARY KEY (Title, User),
-  CONSTRAINT Paper FOREIGN KEY Title REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT User FOREIGN KEY User REFERENCES user(Username) ON UPDATE CASCADE ON DELETE CASCADE
-  
 table talk : { Title : string,
-               Speaker : string,
-               Moderator : string }
+               Speaker : string }
   PRIMARY KEY Title,
   CONSTRAINT Paper FOREIGN KEY Title REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT Speaker FOREIGN KEY Speaker REFERENCES user(Username) ON UPDATE CASCADE,
-  CONSTRAINT Moderator FOREIGN KEY Moderator REFERENCES user(Username) ON UPDATE CASCADE
+  CONSTRAINT Speaker FOREIGN KEY Speaker REFERENCES user(Username) ON UPDATE CASCADE
 
 table talkTime : { Title : string,
                    Begin : time }
@@ -81,26 +63,20 @@ structure Exp = Make(struct
 
                          val t = none
                                      |> one [#User] [#Username] user "Users" (return <xml></xml>) (Default (WHERE TRUE))
-                                     |> one [#Category] [#Category] category "Categories" (return <xml></xml>) (Default (WHERE TRUE))
                                      |> one [#Paper] [#Title] paper "Papers" (return <xml></xml>) (Default (WHERE TRUE))
                                      |> one [#Slot] [#Begin] slot "Time slots" (return <xml></xml>) (Default (WHERE TRUE))
                                      |> one [#Talk] [#Title] talk "Talks" (return <xml></xml>) (Default (WHERE TRUE))
 
                                      |> text [#User] [#Username] "Name"
-                                     |> text [#User] [#EmailAddress] "E-mail address"
-
-                                     |> text [#Category] [#Category] "Name"
 
                                      |> text [#Paper] [#Title] "Title"
                                      |> manyToManyOrdered [#Paper] [#Title] [#Paper] [#User] [#Username] [#User] author "Authors" "Papers" {}
-                                     |> manyToMany [#Paper] [#Title] [#Paper] [#Category] [#Category] [#Category] paperCategory "Categories" "Papers" {}
 
                                      |> text [#Slot] [#Begin] "Begins"
                                      |> text [#Slot] [#End] "Ends"
 
                                      |> foreign [#Talk] [#Title] [#Paper] [#Title] "Paper" "Talks"
                                      |> foreign [#Talk] [#Speaker] [#User] [#Username] "Speaker" "Speaker for"
-                                     |> foreign [#Talk] [#Moderator] [#User] [#Username] "Moderator" "Moderator for"
                                      |> manyToMany [#Talk] [#Title] [#Title] [#Slot] [#Begin] [#Begin] talkTime "Times" "Talks" {}
 
                          fun authorize _ = return True
@@ -109,38 +85,6 @@ structure Exp = Make(struct
                          val postTabs = {}
                          val hiddenTabs = {}
                      end)
-
-structure Prefs = Preferences.Make(struct
-                                       con choice = #Begin
-                                       val choice = slot
-
-                                       con user = #User
-                                       con slot = #Slot
-                                       con preferred = #Preferred
-                                       val pref = preference
-
-                                       val whoami = whoami
-                                   end)
-
-structure SlotPref = ChoicesFromPreferences.Make(struct
-                                                     con choice = #Begin
-                                                     val choice = slot
-
-                                                     con user = #User
-                                                     con slot = #Slot
-                                                     con preferred = #Preferred
-                                                     val pref = preference
-
-                                                     con item = #Title
-                                                     con users = [Speaker, Moderator]
-                                                     val item = talk
-                                                     val labels = {Speaker = "Speaker",
-                                                                   Moderator = "Moderator"}
-
-                                                     val itemChoice = talkTime
-
-                                                     val authorize = return True
-                                                 end)
 
 structure SpeakerInterest = Preferences.Make(struct
                                                  con choice = #Title
@@ -154,18 +98,6 @@ structure SpeakerInterest = Preferences.Make(struct
                                                  val whoami = whoami
                                              end)
 
-structure ModeratorInterest = Preferences.Make(struct
-                                                   con choice = #Title
-                                                   val choice = paper
-
-                                                   con user = #User
-                                                   con slot = #Title
-                                                   con preferred = #Preferred
-                                                   val pref = moderatingInterest
-
-                                                   val whoami = whoami
-                                               end)
-
 structure AssignTalks = UsersFromPreferences.Make(struct
                                                       con choice = #Title
                                                       val choice = paper
@@ -173,18 +105,95 @@ structure AssignTalks = UsersFromPreferences.Make(struct
                                                       con user = #User
                                                       con slot = #Title
                                                       con preferred = #Preferred
-                                                      val prefs = {Speaker = speakingInterest,
-                                                                   Moderator = moderatingInterest}
+                                                      val prefs = {Speaker = speakingInterest}
 
                                                       val assignment = talk
-                                                      val labels = {Speaker = "Speaker",
-                                                                    Moderator = "Moderator"}
+                                                      val labels = {Speaker = "Speaker"}
 
                                                       val whoami = whoami
                                                   end)
+                
+structure UsersEnterAvailability = Preferences.Make(struct
+                                                        con choice = #Begin
+                                                        val choice = slot
 
-val explore = Exp.index (make [#Category] ())
+                                                        con user = #User
+                                                        con slot = #Slot
+                                                        con preferred = #Preferred
+                                                        val pref = timePreference
 
+                                                        val whoami = whoami
+                                                    end)
+
+structure AssignTalkTimes = ChoicesFromPreferences.Make(struct
+                                                            con choice = #Begin
+                                                            val choice = slot
+
+                                                            con user = #User
+                                                            con slot = #Slot
+                                                            con preferred = #Preferred
+                                                            val pref = timePreference
+
+                                                            con item = #Title
+                                                            con users = [Speaker]
+                                                            val item = talk
+                                                            val labels = {Speaker = "Speaker"}
+
+                                                            val itemChoice = talkTime
+
+                                                            val authorize = return True
+                                                        end)
+
+structure HotcrpImport : Ui.S0 = struct
+    type a = source string
+
+    val create = source ""
+    fun onload _ = return ()
+
+    fun import s =
+        List.app (fn p : Hotcrp.paper =>
+                     ex <- oneRowE1 (SELECT COUNT( * ) > 0
+                                     FROM paper
+                                     WHERE paper.Title = {[p.Title]});
+                     if ex then
+                         return ()
+                     else
+                         dml (INSERT INTO paper(Title)
+                              VALUES ({[p.Title]}));
+                         List.appi (fn i a =>
+                                      let
+                                          val name = case (a.First, a.Last) of
+                                                         (Some f, None) => f
+                                                       | (None, Some l) => l
+                                                       | (Some f, Some l) => f ^ " " ^ l
+                                                       | (None, None) => "Anonymous"
+                                      in
+                                          ex <- oneRowE1 (SELECT COUNT( * ) > 0
+                                                          FROM user
+                                                          WHERE user.Username = {[name]});
+                                          (if ex then
+                                               return ()
+                                           else
+                                               dml (INSERT INTO user(Username)
+                                                    VALUES ({[name]})));
+                                          dml (INSERT INTO author(Paper, User, SeqNum)
+                                               VALUES ({[p.Title]}, {[name]}, {[i]}))
+                                      end) (Option.get [] p.Authors))
+                 (Json.fromJson s)
+                   
+    fun render _ s = <xml>
+      <ctextarea source={s} class="form-control"/>
+      <button class="btn btn-primary"
+              onclick={fn _ => s <- get s; rpc (import s)}>
+        Import
+      </button>
+    </xml>
+
+    val ui = {Create = create,
+              Onload = onload,
+              Render = render}
+end
+                            
 fun login {Nam = s} =
     ex <- oneRowE1 (SELECT COUNT( * ) > 0
                     FROM user
@@ -192,8 +201,8 @@ fun login {Nam = s} =
     (if ex then
          return ()
      else
-         dml (INSERT INTO user(Username, EmailAddress)
-              VALUES ({[s]}, "")));
+         dml (INSERT INTO user(Username)
+              VALUES ({[s]})));
     
     setCookie userC {Value = s, Expires = None, Secure = False};
     redirect (url (main ()))
@@ -216,10 +225,9 @@ and main () =
                 </xml>)
       | Some u =>
         Theme.tabbed "OnlineConf"
-        ((Some "Explore", Ui.h4 <xml><a link={explore}>Begin exploring!</a></xml>),
-         (Some "Availability", Prefs.ui u),
+        ((Some "HotCRP import", HotcrpImport.ui),
          (Some "Speaker interest", SpeakerInterest.ui u),
-         (Some "Moderator interest", ModeratorInterest.ui u),
          (Some "Assign talks", AssignTalks.ui),
-         (Some "Talk times", SlotPref.ui),
+         (Some "Availability", UsersEnterAvailability.ui u),
+         (Some "Talk times", AssignTalkTimes.ui),
          (Some "Log out", Ui.h4 <xml><a link={logout ()}>Log out</a></xml>))
