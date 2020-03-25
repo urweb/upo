@@ -18,6 +18,7 @@ functor Make(M : sig
                  table pref : {user : string, slot : choiceT, preferred : bool}
                  
                  val whoami : transaction (option string)
+                 val eligible : string -> sql_exp [Choice = [choice = choiceT] ++ choiceR] [] [] bool
              end) = struct
     open M
 
@@ -29,6 +30,7 @@ functor Make(M : sig
                         FROM choice LEFT JOIN pref
                           ON pref.{slot} = choice.{choice}
                             AND pref.{user} = {[u]}
+                        WHERE {sql_exp_weaken (eligible u)}
                         ORDER BY choice.{choice})
                        (fn r =>
                            s <- (if r.Pref.preferred = Some True then
@@ -49,6 +51,10 @@ functor Make(M : sig
             dml (DELETE FROM pref
                  WHERE T.{user} = {[u]});
             List.app (fn (c, a, p) =>
+                         allowed <- oneRowE1 (SELECT COUNT( * ) > 0
+                                              FROM choice
+                                              WHERE choice.{choice} = {[c]}
+                                                AND {eligible u});
                          if a then
                              dml (INSERT INTO pref({user}, {slot}, {preferred})
                                   VALUES ({[u]}, {[c]}, {[p]}))

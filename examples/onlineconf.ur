@@ -85,6 +85,10 @@ structure SpeakerInterest = Preferences.Make(struct
                                                  val pref = speakingInterest
 
                                                  val whoami = whoami
+                                                 fun eligible u = (WHERE (SELECT COUNT( * ) > 0
+                                                                          FROM author
+                                                                          WHERE author.Paper = Choice.Title
+                                                                            AND author.User = {[u]}) = {[Some True]})
                                              end)
 
 structure AssignTalks = UsersFromPreferences.Make(struct
@@ -111,6 +115,7 @@ structure UsersEnterAvailability = Preferences.Make(struct
                                                         val pref = timePreference
 
                                                         val whoami = whoami
+                                                        fun eligible _ = (WHERE TRUE)
                                                     end)
 
 structure AssignTalkTimes = ChoicesFromPreferences.Make(struct

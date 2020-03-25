@@ -18,4 +18,5 @@ functor Make(M : sig
                  table pref : {user : string, slot : choiceT, preferred : bool}
                  
                  val whoami : transaction (option string)
+                 val eligible : string -> sql_exp [Choice = [choice = choiceT] ++ choiceR] [] [] bool
              end) : Ui.S where type input = string
