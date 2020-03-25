@@ -4,8 +4,16 @@ structure Theme = Ui.Make(Default)
 table user : { Username : string }
   PRIMARY KEY Username
 
-table paper : { Title : string }
-  PRIMARY KEY Title
+table slot : { Begin : time,
+               End : time }
+  PRIMARY KEY Begin
+
+table paper : { Title : string,
+                Speaker : option string,
+                TalkBegins : option time }
+  PRIMARY KEY Title,
+  CONSTRAINT Speaker FOREIGN KEY Speaker REFERENCES user(Username) ON UPDATE CASCADE,
+  CONSTRAINT TalkBegins FOREIGN KEY TalkBegins REFERENCES slot(Begin)
 
 table author : { Paper : string,
                  User : string,
@@ -13,10 +21,6 @@ table author : { Paper : string,
   PRIMARY KEY (Paper, User),
   CONSTRAINT Paper FOREIGN KEY Paper REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT User FOREIGN KEY User REFERENCES user(Username) ON UPDATE CASCADE
-
-table slot : { Begin : time,
-               End : time }
-  PRIMARY KEY Begin
 
 structure Slots = FillTimeRange.Make(struct
                                          val slot = slot
@@ -38,18 +42,6 @@ table speakingInterest : { Title : string,
   PRIMARY KEY (Title, User),
   CONSTRAINT Paper FOREIGN KEY Title REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT User FOREIGN KEY User REFERENCES user(Username) ON UPDATE CASCADE ON DELETE CASCADE
-
-table talk : { Title : string,
-               Speaker : string }
-  PRIMARY KEY Title,
-  CONSTRAINT Paper FOREIGN KEY Title REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT Speaker FOREIGN KEY Speaker REFERENCES user(Username) ON UPDATE CASCADE
-
-table talkTime : { Title : string,
-                   Begin : time }
-  PRIMARY KEY Title,
-  CONSTRAINT Paper FOREIGN KEY Title REFERENCES talk(Title) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT Begin FOREIGN KEY Begin REFERENCES slot(Begin)
       
 open Explorer
 
@@ -65,19 +57,16 @@ structure Exp = Make(struct
                                      |> one [#User] [#Username] user "Users" (return <xml></xml>) (Default (WHERE TRUE))
                                      |> one [#Paper] [#Title] paper "Papers" (return <xml></xml>) (Default (WHERE TRUE))
                                      |> one [#Slot] [#Begin] slot "Time slots" (return <xml></xml>) (Default (WHERE TRUE))
-                                     |> one [#Talk] [#Title] talk "Talks" (return <xml></xml>) (Default (WHERE TRUE))
 
                                      |> text [#User] [#Username] "Name"
 
                                      |> text [#Paper] [#Title] "Title"
                                      |> manyToManyOrdered [#Paper] [#Title] [#Paper] [#User] [#Username] [#User] author "Authors" "Papers" {}
+                                     |> foreign [#Paper] [#Speaker] [#User] [#Username] "Speaker" "Speaker for"
+                                     |> foreign [#Paper] [#TalkBegins] [#Slot] [#Begin] "Talk begins" "Talks"
 
                                      |> text [#Slot] [#Begin] "Begins"
                                      |> text [#Slot] [#End] "Ends"
-
-                                     |> foreign [#Talk] [#Title] [#Paper] [#Title] "Paper" "Talks"
-                                     |> foreign [#Talk] [#Speaker] [#User] [#Username] "Speaker" "Speaker for"
-                                     |> manyToMany [#Talk] [#Title] [#Title] [#Slot] [#Begin] [#Begin] talkTime "Times" "Talks" {}
 
                          fun authorize _ = return True
 
@@ -100,15 +89,14 @@ structure SpeakerInterest = Preferences.Make(struct
 
 structure AssignTalks = UsersFromPreferences.Make(struct
                                                       con choice = #Title
+                                                      con choiceR = [TalkBegins = _]
                                                       val choice = paper
-
+                                                      val labels = {Speaker = "Speaker"}
+                                                                   
                                                       con user = #User
                                                       con slot = #Title
                                                       con preferred = #Preferred
                                                       val prefs = {Speaker = speakingInterest}
-
-                                                      val assignment = talk
-                                                      val labels = {Speaker = "Speaker"}
 
                                                       val whoami = whoami
                                                   end)
@@ -136,10 +124,8 @@ structure AssignTalkTimes = ChoicesFromPreferences.Make(struct
 
                                                             con item = #Title
                                                             con users = [Speaker]
-                                                            val item = talk
+                                                            val item = paper
                                                             val labels = {Speaker = "Speaker"}
-
-                                                            val itemChoice = talkTime
 
                                                             val authorize = return True
                                                         end)
@@ -158,8 +144,8 @@ structure HotcrpImport : Ui.S0 = struct
                      if ex then
                          return ()
                      else
-                         dml (INSERT INTO paper(Title)
-                              VALUES ({[p.Title]}));
+                         dml (INSERT INTO paper(Title, Speaker, TalkBegins)
+                              VALUES ({[p.Title]}, NULL, NULL));
                          List.appi (fn i a =>
                                       let
                                           val name = case (a.First, a.Last) of
@@ -188,6 +174,28 @@ structure HotcrpImport : Ui.S0 = struct
         Import
       </button>
     </xml>
+
+    val ui = {Create = create,
+              Onload = onload,
+              Render = render}
+end
+
+fun info title =
+    Theme.simple "Paper" (Exp.ui (make [#Paper] title))
+                                 
+structure PaperList : Ui.S0 = struct
+    type a = list string
+
+    val create = List.mapQuery (SELECT paper.Title
+                                FROM paper
+                                ORDER BY paper.Title)
+                               (fn {Paper = {Title = s}} => s)
+
+    fun onload _ = return ()
+
+    fun render _ ls = <xml><ul class="list-group">
+      {List.mapX (fn s => <xml><li class="list-group-item"><a link={info s}>{[s]}</a></li></xml>) ls}
+    </ul></xml>
 
     val ui = {Create = create,
               Onload = onload,
@@ -230,4 +238,5 @@ and main () =
          (Some "Assign talks", AssignTalks.ui),
          (Some "Availability", UsersEnterAvailability.ui u),
          (Some "Talk times", AssignTalkTimes.ui),
+         (Some "Paper list", PaperList.ui),
          (Some "Log out", Ui.h4 <xml><a link={logout ()}>Log out</a></xml>))

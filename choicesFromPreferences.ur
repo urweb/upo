@@ -20,21 +20,20 @@ functor Make(M : sig
 
                  con item :: Name
                  type itemT
+                 con ichoice :: Name
                  con users :: {Unit}
-                 con itemR :: {Type}
-                 constraint [item] ~ users
-                 constraint [item] ~ itemR
+                 con itemR :: {(Type * Type)}
+                 constraint [item] ~ [ichoice]
+                 constraint [item, ichoice] ~ users
+                 constraint [item, ichoice] ~ itemR
                  constraint users ~ itemR
-                 table item : ([item = itemT] ++ mapU string users ++ itemR)
+                 table item : ([item = itemT, ichoice = option choiceT] ++ mapU (option string) users ++ map fst itemR)
                  val fl : folder users
                  val show_itemT : show itemT
                  val eq_itemT : eq itemT
                  val inj_itemT : sql_injectable_prim itemT
+                 val nullify_itemR : $(map (fn p => nullify p.1 p.2) itemR)
                  val labels : $(mapU string users)
-
-                 con itemChoice :: Name
-                 constraint [itemChoice] ~ [item]
-                 table itemChoice : {item : itemT, itemChoice : choiceT}
 
                  val authorize : transaction bool
              end) = struct
@@ -42,7 +41,7 @@ functor Make(M : sig
 
     type a = {Choices : list (choiceT * source int),
               Items : list {Item : itemT,
-                            Users : $(mapU string users),
+                            Users : $(mapU (option string) users),
                             Choices : list {Choice : choiceT,
                                             Preferred : int,
                                             Available : int,
@@ -56,25 +55,25 @@ functor Make(M : sig
                   [agg ::: {{Type}}] [exps ::: {Type}] [t ::: Type]
                   [t1 :: Name] [col :: Name] [t2 :: Name] [cols :: {Unit}]
                   [[col] ~ r1] [cols ~ r2] [[t1] ~ [t2]] [[t1, t2] ~ r]
-                  (fl : folder cols)
+                  (fl : folder cols) (_ : sql_injectable_prim t)
         : sql_exp ([t1 = [col = t] ++ r1,
-                    t2 = mapU t cols ++ r2] ++ r) agg exps bool =
+                    t2 = mapU (option t) cols ++ r2] ++ r) agg exps bool =
           @fold [fn cols => others :: {Unit} -> [cols ~ others] => [cols ++ others ~ r2]
                             => sql_exp ([t1 = [col = t] ++ r1,
-                                         t2 = mapU t (cols ++ others) ++ r2]
+                                         t2 = mapU (option t) (cols ++ others) ++ r2]
                                             ++ r) agg exps bool]
           (fn [nm ::_] [u ::_] [rest ::_] [[nm] ~ rest]
               (acc : others :: {Unit} -> [rest ~ others] => [rest ++ others ~ r2]
                      => sql_exp ([t1 = [col = t] ++ r1,
-                                  t2 = mapU t (rest ++ others) ++ r2]
+                                  t2 = mapU (option t) (rest ++ others) ++ r2]
                                      ++ r) agg exps bool)
               [others :: {Unit}] [[nm = u] ++ rest ~ others] [[nm = u] ++ rest ++ others ~ r2] =>
               (WHERE {acc [[nm = u] ++ others]}
-                 OR {{t1}}.{col} = {{t2}}.{nm}))
+                 OR {sql_nullable (SQL {{t1}}.{col})} = {{t2}}.{nm}))
           (fn [others ::_] [[] ~ others] [others ~ r2] => (WHERE FALSE)) fl [[]] ! !
 
     type a0 = list {Item : itemT,
-                    Users : $(mapU string users),
+                    Users : $(mapU (option string) users),
                     Choice : option choiceT,
                     Choices : list {Choice : choiceT,
                                     Available : int,
@@ -86,15 +85,15 @@ functor Make(M : sig
                 return (case cs of
                             [] =>
                             {Item = r.Item.item,
-                             Users = r.Item -- item,
-                             Choice = r.ItemChoice.itemChoice,
+                             Users = r.Item -- item -- ichoice,
+                             Choice = r.Item.ichoice,
                              Choices = {Choice = r.Pref.slot,
                                         Available = 1,
                                         Preferred = if r.Pref.preferred then 1 else 0} :: []} :: []
                   | c :: cs' =>
                     if c.Item = r.Item.item then
                         {Item = c.Item,
-                         Users = r.Item -- item,
+                         Users = r.Item -- item -- ichoice,
                          Choice = c.Choice,
                          Choices = case c.Choices of
                                        [] => error <xml>Accumulator has choice-free item!</xml>
@@ -113,22 +112,29 @@ functor Make(M : sig
                                                :: c.Choices} :: cs'
                     else
                         {Item = r.Item.item,
-                         Users = r.Item -- item,
-                         Choice = r.ItemChoice.itemChoice,
+                         Users = r.Item -- item -- ichoice,
+                         Choice = r.Item.ichoice,
                          Choices = {Choice = r.Pref.slot,
                                     Available = 1,
                                     Preferred = if r.Pref.preferred then 1 else 0} :: []} :: cs)
         in
-            items <- query (SELECT item.{item}, item.{{mapU string users}}, itemChoice.{itemChoice}, pref.{slot}, pref.{preferred}
+            items <- query (SELECT item.{item}, item.{{mapU (option string) users}}, item.{ichoice}, pref.{slot}, pref.{preferred}
                             FROM item JOIN pref
                               ON {@multijoin [#Pref] [user]
-                                  [#Item] [users] ! ! ! ! fl}
-                              LEFT JOIN itemChoice ON itemChoice.{item} = item.{item}
+                                  [#Item] [users] ! ! ! ! fl _}
                             ORDER BY item.{item} DESC, pref.{preferred}, pref.{slot} DESC)
                            items [];
-            choices <- List.mapQueryM (SELECT choice.{choice}, COUNT(itemChoice.{itemChoice}) AS Count
-                                       FROM choice LEFT JOIN itemChoice
-                                         ON itemChoice.{itemChoice} = choice.{choice}
+            choices <- List.mapQueryM (SELECT choice.{choice}, COUNT(item.{item}) AS Count
+                                       FROM {{@@sql_left_join [[]] [[Choice = _]]
+                                         [[Item = [item = (itemT, option itemT), ichoice = (option choiceT, option choiceT)]
+                                                  ++ mapU (option string, option string) users ++ itemR]]
+                                         ! ! !
+                                         {Item = nullify_itemR
+                                                 ++ @map0 [fn _ => nullify (option string) (option string)]
+                                                    (fn [u ::_] => _) fl
+                                                 ++ _}
+                                         (FROM choice) (FROM item)
+                                         (WHERE item.{ichoice} = {sql_nullable (SQL choice.{choice})})}}
                                        GROUP BY choice.{choice})
                        (fn r =>
                            c <- source r.Count;
@@ -164,9 +170,9 @@ functor Make(M : sig
         if not auth then
             error <xml>Access denied</xml>
         else
-            dml (DELETE FROM itemChoice WHERE TRUE);
-            List.app (fn (i, c) => dml (INSERT INTO itemChoice({item}, {itemChoice})
-                                        VALUES ({[i]}, {[c]}))) cs
+            List.app (fn (i, c) => dml (UPDATE item
+                                        SET {ichoice} = {[c]}
+                                        WHERE T.{item} = {[i]})) cs
 
     fun render _ a = <xml>
       <active code={items <- List.mapM (fn i =>
@@ -200,7 +206,7 @@ functor Make(M : sig
 
                         {List.mapX (fn i => <xml><tr>
                           <td>{[i.Item]}</td>
-                          {@mapUX [string] [tr]
+                          {@mapUX [option string] [tr]
                             (fn [nm ::_] [r ::_] [[nm] ~ r] l => <xml><td>{[l]}</td></xml>)
                             fl i.Users}
                           <td><dyn signal={chs <- List.mapM (fn ch =>

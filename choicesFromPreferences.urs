@@ -25,23 +25,21 @@ functor Make(M : sig
                  (* Items are the ones we must assign choices to, based on user preferences. *)
                  con item :: Name
                  type itemT
+                 con ichoice :: Name (* field name recording eventual choice *)
                  con users :: {Unit} (* These are the named users whose
                                       * preferences we should consider. *)
-                 con itemR :: {Type}
-                 constraint [item] ~ users
-                 constraint [item] ~ itemR
+                 con itemR :: {(Type * Type)}
+                 constraint [item] ~ [ichoice]
+                 constraint [item, ichoice] ~ users
+                 constraint [item, ichoice] ~ itemR
                  constraint users ~ itemR
-                 table item : ([item = itemT] ++ mapU string users ++ itemR)
+                 table item : ([item = itemT, ichoice = option choiceT] ++ mapU (option string) users ++ map fst itemR)
                  val fl : folder users
                  val show_itemT : show itemT
                  val eq_itemT : eq itemT
                  val inj_itemT : sql_injectable_prim itemT
+                 val nullify_itemR : $(map (fn p => nullify p.1 p.2) itemR)
                  val labels : $(mapU string users)
-
-                 (* This relation links items to their choices. *)
-                 con itemChoice :: Name
-                 constraint [itemChoice] ~ [item]
-                 table itemChoice : {item : itemT, itemChoice : choiceT}
 
                  (* Is this user allowed to perform assignments? *)
                  val authorize : transaction bool

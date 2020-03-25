@@ -369,12 +369,25 @@ fun htmlbox [full ::: {Type}]
                                                 (wsv, aux, err) <- old.tname.ReadWidgets ws;
                                                 return ({col = v} ++ wsv, aux, err)}}
 
-type foreign1 t key colT = list colT * t
-type foreign2 t key colT = source string * t
-type foreign3 t key colT = list key * t
+type foreignize (t1 :: Type) (t2 :: Type) = {
+     Nullable : bool,
+     Inject : t2 -> t1,
+     Unject : t1 -> option t2
+}
+
+val foreignize_same [t] = {Nullable = False,
+                           Inject = fn x => x,
+                           Unject = Some}
+val foreignize_nullable [t] = {Nullable = True,
+                               Inject = Some,
+                               Unject = fn x => x}
+    
+type foreign1 t key fcolT = list fcolT * t
+type foreign2 t key fcolT = source string * t
+type foreign3 t key fcolT = list key * t
 
 fun foreign [full ::: {Type}]
-            [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type]
+            [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type] [fcolT ::: Type]
             [cols ::: {Type}] [colsDone ::: {Type}] [cstrs ::: {{Unit}}]
             [impl1 ::: Type] [impl2 ::: Type] [impl3 ::: Type]
             [ftname :: Name] [fcol :: Name]
@@ -384,10 +397,12 @@ fun foreign [full ::: {Type}]
             [[col] ~ cols] [[col] ~ colsDone] [[tname] ~ old]
             [[fcol] ~ fcols] [[ftname] ~ old]
             [[tname] ~ [ftname]] [[tname, ftname] ~ full]
-            (lab : string) (clab : string) (_ : show colT) (_ : read colT) (_ : sql_injectable colT)
-            (old : t ([tname = key, ftname = colT] ++ full)
+            (lab : string) (clab : string) (fize : foreignize colT fcolT)
+            (_ : show colT) (_ : read colT) (_ : sql_injectable colT)
+            (_ : show fcolT) (_ : read fcolT) (_ : sql_injectable fcolT)
+            (old : t ([tname = key, ftname = fcolT] ++ full)
                      ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2, impl3),
-                       ftname = (colT, [fcol = colT] ++ fcols, fcolsDone, fcstrs, fimpl1, fimpl2, fimpl3)] ++ old)) =
+                       ftname = (fcolT, [fcol = fcolT] ++ fcols, fcolsDone, fcstrs, fimpl1, fimpl2, fimpl3)] ++ old)) =
     old -- tname -- ftname
         ++ {tname = old.tname
                         -- #Config -- #Render -- #FreshWidgets -- #WidgetsFrom -- #RenderWidgets -- #ReadWidgets
@@ -407,7 +422,9 @@ fun foreign [full ::: {Type}]
                                           {old.tname.Render entry aux r}
                                           <tr>
                                             <th class="col-sm-2">{[lab]}</th>
-                                            <td>{entry (make [ftname] r.col) (show r.col)}</td>
+                                            <td>{case fize.Unject r.col of
+                                                     None => <xml>&mdash;</xml>
+                                                   | Some v => entry (make [ftname] v) (show v)}</td>
                                           </tr>
                                         </xml>,
                             FreshWidgets = fn (_, cfg) =>
@@ -424,6 +441,10 @@ fun foreign [full ::: {Type}]
                                                  <div class="form-group">
                                                    <label class="control-label">{[lab]}</label>
                                                    <cselect class="form-control" source={s}>
+                                                     {if fize.Nullable then
+                                                          <xml><coption/></xml>
+                                                      else
+                                                          <xml></xml>}
                                                      {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
                                                    </cselect>
                                                  </div>
@@ -440,22 +461,22 @@ fun foreign [full ::: {Type}]
                                            let
                                                val tab = old.tname.Table
                                            in
-                                               keys <- old.tname.List (WHERE tab.{col} = {[fkey]});
+                                               keys <- old.tname.List (WHERE tab.{col} = {[fize.Inject fkey]});
                                                aux <- old.ftname.Auxiliary fkey row;
                                                return (keys, aux)
                                            end,
-                           Render = fn entry (children, aux) r =>
-                                       let
-                                           val _ : show key = old.tname.Show
-                                       in
-                                           <xml>
-                                             {old.ftname.Render entry aux r}
-                                             <tr>
-                                               <th class="col-sm-2">{[clab]}</th>
-                                               <td>{List.mapX (fn key => <xml>{entry (make [tname] key) (show key)}<br/></xml>) children}</td>
-                                             </tr>
-                                           </xml>
-                                       end,
+                            Render = fn entry (children, aux) r =>
+                                        let
+                                            val _ : show key = old.tname.Show
+                                        in
+                                            <xml>
+                                              {old.ftname.Render entry aux r}
+                                              <tr>
+                                                <th class="col-sm-2">{[clab]}</th>
+                                                <td>{List.mapX (fn key => <xml>{entry (make [tname] key) (show key)}<br/></xml>) children}</td>
+                                              </tr>
+                                            </xml>
+                                        end,
                             ReadWidgets = fn w =>
                                              (v, aux, err) <- old.ftname.ReadWidgets w;
                                              return (v, ([], aux), err),

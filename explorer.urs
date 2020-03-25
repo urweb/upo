@@ -129,12 +129,16 @@ val htmlbox : full ::: {Type}
               -> t full ([tname = (key, [col = string] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)
               -> t full ([tname = (key, [col = string] ++ cols, [col = string] ++ colsDone, cstrs, htmlbox1 impl1, htmlbox2 impl2, htmlbox3 impl3)] ++ old)
 
+class foreignize :: Type -> Type -> Type
+val foreignize_same : t ::: Type -> foreignize t t
+val foreignize_nullable : t ::: Type -> foreignize (option t) t
+
 con foreign1 :: Type -> Type -> Type -> Type
 con foreign2 :: Type -> Type -> Type -> Type
 con foreign3 :: Type -> Type -> Type -> Type
 
 val foreign : full ::: {Type}
-              -> tname :: Name -> key ::: Type -> col :: Name -> colT ::: Type
+              -> tname :: Name -> key ::: Type -> col :: Name -> colT ::: Type -> fcolT ::: Type
               -> cols ::: {Type} -> colsDone ::: {Type} -> cstrs ::: {{Unit}}
               -> impl1 ::: Type -> impl2 ::: Type -> impl3 ::: Type
               -> ftname :: Name -> fcol :: Name
@@ -146,15 +150,19 @@ val foreign : full ::: {Type}
               => [[tname] ~ [ftname]] => [[tname, ftname] ~ full]
               => string
               -> string
+              -> foreignize colT fcolT
               -> show colT
               -> read colT
               -> sql_injectable colT
-              -> t ([tname = key, ftname = colT] ++ full)
+              -> show fcolT
+              -> read fcolT
+              -> sql_injectable fcolT
+              -> t ([tname = key, ftname = fcolT] ++ full)
                    ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2, impl3),
-                     ftname = (colT, [fcol = colT] ++ fcols, fcolsDone, fcstrs, fimpl1, fimpl2, fimpl3)] ++ old)
-              -> t ([tname = key, ftname = colT] ++ full)
-                   ([tname = (key, [col = colT] ++ cols, [col = colT] ++ colsDone, cstrs, foreign1 impl1 key colT, foreign2 impl2 key colT, impl3),
-                     ftname = (colT, [fcol = colT] ++ fcols, fcolsDone, fcstrs, fimpl1, fimpl2, foreign3 fimpl3 key colT)] ++ old)
+                     ftname = (fcolT, [fcol = fcolT] ++ fcols, fcolsDone, fcstrs, fimpl1, fimpl2, fimpl3)] ++ old)
+              -> t ([tname = key, ftname = fcolT] ++ full)
+                   ([tname = (key, [col = colT] ++ cols, [col = colT] ++ colsDone, cstrs, foreign1 impl1 key fcolT, foreign2 impl2 key fcolT, impl3),
+                     ftname = (fcolT, [fcol = fcolT] ++ fcols, fcolsDone, fcstrs, fimpl1, fimpl2, foreign3 fimpl3 key fcolT)] ++ old)
 
 con manyToMany11 :: Type -> Type -> Type -> {(Type * Type * Type)} -> Type
 con manyToMany12 :: Type -> Type -> Type -> {(Type * Type * Type)} -> Type
