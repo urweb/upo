@@ -120,28 +120,18 @@ functor Make(M : sig
             List.app (fn (c, us) =>
                          @@Sql.easy_update'' [[choice = choiceT]] [map (fn _ => option string) users] [_] [choiceR] ! !
                            _ (@map0 [fn _ => sql_injectable (option string)] (fn [u ::_] => _) (@@Folder.mp [fn _ => option string] [_] fl))
-                           _ (@Folder.mp fl) choice {choice = c}
-                           (@mp [fn _ => string] [fn _ => option string] (fn [u] => Some) fl us)) cs
+                           _ (@Folder.mp fl) choice {choice = c} us) cs
 
     fun render _ a = <xml>
       <button class="btn btn-primary"
               onclick={fn _ =>
-                          cs <- List.mapPartialM (fn c =>
-                                                     us <- @Monad.foldR _ [fn _ => {Available : _, Selected : source string, Stashed : source (option string)}]
-                                                            [fn r => option $(map (fn _ => string) r)]
-                                                            (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] {Stashed = stashed, ...} acc =>
-                                                                case acc of
-                                                                    None => return None
-                                                                  | Some acc =>
-                                                                    stashed <- get stashed;
-                                                                    case stashed of
-                                                                        None => return None
-                                                                      | Some stashed => return (Some ({nm = stashed} ++ acc)))
-                                                            (Some {}) fl c.Users;
-                                                     return (case us of
-                                                                 None => None
-                                                               | Some us => Some (c.Choice, us)))
-                                                 a.Choices;
+                          cs <- List.mapM (fn c =>
+                                              us <- @Monad.mapR _ [fn _ => {Available : _, Selected : source string, Stashed : source (option string)}]
+                                                     [fn _ => option string]
+                                                     (fn [nm ::_] [t ::_] {Stashed = stashed, ...} => get stashed)
+                                                     fl c.Users;
+                                              return (c.Choice, us))
+                                          a.Choices;
                           rpc (save cs)}>
         Save
       </button>
