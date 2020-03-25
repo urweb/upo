@@ -4,5 +4,7 @@ library ../default
 library $/world
 rewrite all Onlineconf/*
 safeGetDefault
+allow url https://*
 
+onlineconfSecret
 onlineconf

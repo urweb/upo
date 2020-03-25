@@ -160,6 +160,18 @@ fun text [full ::: {Type}]
                                              (wsv, aux, err) <- old.tname.ReadWidgets ws;
                                              return ({col = readError v} ++ wsv, aux, err)}}
 
+fun ignored [full ::: {Type}]
+            [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type]
+            [cols ::: {Type}] [colsDone ::: {Type}] [cstrs ::: {{Unit}}]
+            [impl1 ::: Type] [impl2 ::: Type] [impl3 ::: Type] [old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}]
+            [[col] ~ cols] [[col] ~ colsDone] [[tname] ~ old]
+            (old : t full ([tname = (key, [col = option colT] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)) =
+    old -- tname
+        ++ {tname = old.tname -- #ReadWidgets
+                              ++ {ReadWidgets = fn ws =>
+                                                   (wsv, aux, err) <- old.tname.ReadWidgets ws;
+                                                   return ({col = None} ++ wsv, aux, err)}}
+
 fun hyperref [full ::: {Type}]
              [tname :: Name] [key ::: Type] [col :: Name] [colT ::: Type]
              [cols ::: {Type}] [colsDone ::: {Type}] [cstrs ::: {{Unit}}]

@@ -1,6 +1,9 @@
+(* Create onlineconfSecret.ur with Zoom parameters, plus start time! *)
+
 open Bootstrap4
 structure Theme = Ui.Make(Default)
-
+structure Z = Zoom.Make(Zoom.TwoLegged(OnlineconfSecret))
+                  
 table user : { Username : string }
   PRIMARY KEY Username
 
@@ -11,7 +14,11 @@ table slot : { Begin : time,
 table paper : { Title : string,
                 Abstract : string,
                 Speaker : option string,
-                TalkBegins : option time }
+                TalkBegins : option time,
+                ZoomMeetingId : option string,
+                StartUrl : option string,
+                JoinUrl : option string,
+                ShareUrl : option string }
   PRIMARY KEY Title,
   CONSTRAINT Speaker FOREIGN KEY Speaker REFERENCES user(Username) ON UPDATE CASCADE,
   CONSTRAINT TalkBegins FOREIGN KEY TalkBegins REFERENCES slot(Begin)
@@ -25,8 +32,8 @@ table author : { Paper : string,
 
 structure Slots = FillTimeRange.Make(struct
                                          val slot = slot
-                                         val initial = readError "2020-3-23 12:00:00"
-                                         val final = readError "2020-3-23 17:00:00"
+                                         val initial = OnlineconfSecret.start
+                                         val final = addSeconds OnlineconfSecret.start (5 * 3600)
                                          val duration = 3600
                                      end)
              
@@ -66,6 +73,10 @@ structure Exp = Make(struct
                                      |> foreign [#Paper] [#Speaker] [#User] [#Username] "Speaker" "Speaker for"
                                      |> foreign [#Paper] [#TalkBegins] [#Slot] [#Begin] "Talk begins" "Talks"
                                      |> text [#Paper] [#Abstract] "Abstract"
+                                     |> ignored [#Paper] [#ZoomMeetingId]
+                                     |> ignored [#Paper] [#StartUrl]
+                                     |> ignored [#Paper] [#JoinUrl]
+                                     |> ignored [#Paper] [#ShareUrl]
 
                                      |> text [#Slot] [#Begin] "Begins"
                                      |> text [#Slot] [#End] "Ends"
@@ -150,8 +161,10 @@ structure HotcrpImport : Ui.S0 = struct
                      if ex then
                          return ()
                      else
-                         dml (INSERT INTO paper(Title, Abstract, Speaker, TalkBegins)
-                              VALUES ({[p.Title]}, {[p.Abstract]}, NULL, NULL));
+                         dml (INSERT INTO paper(Title, Abstract, Speaker, TalkBegins,
+                                  ZoomMeetingId, StartUrl, JoinUrl, ShareUrl)
+                              VALUES ({[p.Title]}, {[p.Abstract]}, NULL, NULL,
+                                  NULL, NULL, NULL, NULL));
                          List.appi (fn i a =>
                                       let
                                           val name = case (a.First, a.Last) of
@@ -190,24 +203,91 @@ fun info title =
     Theme.simple "Paper" (Exp.ui (make [#Paper] title))
                                  
 structure PaperList : Ui.S0 = struct
-    type a = list string
+    type a = _
 
-    val create = List.mapQuery (SELECT paper.Title
-                                FROM paper
-                                ORDER BY paper.Title)
-                               (fn {Paper = {Title = s}} => s)
+    val create =
+        ls <- List.mapQuery (SELECT paper.Title, paper.TalkBegins, paper.StartUrl, paper.JoinUrl, paper.ShareUrl, paper.Speaker
+                             FROM paper
+                             WHERE NOT (paper.TalkBegins IS NULL)
+                             ORDER BY paper.TalkBegins)
+                            (fn {Paper = r} => r);
+        u <- whoami;
+        tm <- now;
+        return (tm, u, ls)
 
     fun onload _ = return ()
 
-    fun render _ ls = <xml><ul class="list-group">
-      {List.mapX (fn s => <xml><li class="list-group-item"><a link={info s}>{[s]}</a></li></xml>) ls}
-    </ul></xml>
+    fun render _ (tm, u, ls) = <xml>
+      {List.mapX (fn r => <xml>
+        <div class="card">
+          <div class="card-header"><h3>
+            {case r.ShareUrl of
+                 Some share => <xml><a href={bless share}
+                                       class="btn btn-primary btn-lg glyphicon glyphicon-film"/></xml>
+               | None =>
+                 case r.TalkBegins of
+                     None => error <xml>Impossible empty talk-start time!</xml>
+                   | Some begins =>
+                     if begins > addSeconds tm (15 * 60) then
+                         <xml></xml>
+                     else if r.Speaker = u then
+                         case r.StartUrl of
+                             None => <xml></xml>
+                           | Some start => <xml><a href={bless start}
+                                                   class="btn btn-primary btn-lg glyphicon glyphicon-play-circle-o"/></xml>
+                     else
+                         case r.JoinUrl of
+                             None => <xml></xml>
+                           | Some join => <xml><a href={bless join}
+                                                  class="btn btn-primary btn-lg glyphicon glyphicon-video-camera"/></xml>}
+            {[r.Title]}
+          </h3></div>
+          <div class="card-body">
+            <i>Begins:</i> {[r.TalkBegins]}
+          </div>
+        </div>
+      </xml>) ls}
+    </xml>
 
     val ui = {Create = create,
               Onload = onload,
               Render = render}
 end
-                            
+
+val maybeCreateOneChannel =
+    tm <- now;
+    create_threshold <- return (addSeconds tm (24 * 60 * 60));
+    next <- oneOrNoRows1 (SELECT paper.Title, paper.TalkBegins
+                          FROM paper
+                          WHERE NOT (paper.TalkBegins IS NULL)
+                            AND paper.ZoomMeetingId IS NULL
+                            AND paper.TalkBegins < {[Some create_threshold]}
+                          ORDER BY paper.TalkBegins);
+    case next of
+        None => return ()
+      | Some next =>
+        m <- Z.Meetings.create ({Topic = "Onlineconf: " ^ next.Title,
+                                 Typ = Zoom.Scheduled,
+                                 StartTime = next.TalkBegins}
+                                    ++ Api.optionals {Duration = 60,
+                                                      Settings = Api.optionals {AutoRecording = Zoom.Cloud}});
+        dml (UPDATE paper
+             SET ZoomMeetingId = {[m.Uuid]}, StartUrl = {[m.StartUrl]}, JoinUrl = {[m.JoinUrl]}
+             WHERE Title = {[next.Title]})
+
+val checkForFinishedRecordings =
+    rs <- Z.CloudRecordings.list;
+    List.app (fn r =>
+                 case List.search (fn f =>
+                                      case f.Status of
+                                          Some Zoom.Completed => f.MeetingId
+                                        | _ => None) (Option.get [] r.RecordingFiles) of
+                     None => return ()
+                   | Some id =>
+                     dml (UPDATE paper
+                          SET ShareUrl = {[r.ShareUrl]}
+                          WHERE ZoomMeetingId = {[Some id]})) rs
+    
 fun login {Nam = s} =
     ex <- oneRowE1 (SELECT COUNT( * ) > 0
                     FROM user
@@ -245,4 +325,15 @@ and main () =
          (Some "Availability", UsersEnterAvailability.ui u),
          (Some "Talk times", AssignTalkTimes.ui),
          (Some "Paper list", PaperList.ui),
+         (Some "Provision next",
+          Ui.const <xml>
+            <button class="btn btn-primary"
+                    onclick={fn _ => rpc maybeCreateOneChannel}>
+              Maybe create a channel
+            </button>
+            <button class="btn btn-primary"
+                    onclick={fn _ => rpc checkForFinishedRecordings}>
+              Check for finished recordings
+            </button>
+          </xml>),
          (Some "Log out", Ui.h4 <xml><a link={logout ()}>Log out</a></xml>))
