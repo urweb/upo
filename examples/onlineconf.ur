@@ -9,6 +9,7 @@ table slot : { Begin : time,
   PRIMARY KEY Begin
 
 table paper : { Title : string,
+                Abstract : string,
                 Speaker : option string,
                 TalkBegins : option time }
   PRIMARY KEY Title,
@@ -64,6 +65,7 @@ structure Exp = Make(struct
                                      |> manyToManyOrdered [#Paper] [#Title] [#Paper] [#User] [#Username] [#User] author "Authors" "Papers" {}
                                      |> foreign [#Paper] [#Speaker] [#User] [#Username] "Speaker" "Speaker for"
                                      |> foreign [#Paper] [#TalkBegins] [#Slot] [#Begin] "Talk begins" "Talks"
+                                     |> text [#Paper] [#Abstract] "Abstract"
 
                                      |> text [#Slot] [#Begin] "Begins"
                                      |> text [#Slot] [#End] "Ends"
@@ -93,7 +95,6 @@ structure SpeakerInterest = Preferences.Make(struct
 
 structure AssignTalks = UsersFromPreferences.Make(struct
                                                       con choice = #Title
-                                                      con choiceR = [TalkBegins = _]
                                                       val choice = paper
                                                       val labels = {Speaker = "Speaker"}
                                                                    
@@ -149,8 +150,8 @@ structure HotcrpImport : Ui.S0 = struct
                      if ex then
                          return ()
                      else
-                         dml (INSERT INTO paper(Title, Speaker, TalkBegins)
-                              VALUES ({[p.Title]}, NULL, NULL));
+                         dml (INSERT INTO paper(Title, Abstract, Speaker, TalkBegins)
+                              VALUES ({[p.Title]}, {[p.Abstract]}, NULL, NULL));
                          List.appi (fn i a =>
                                       let
                                           val name = case (a.First, a.Last) of
