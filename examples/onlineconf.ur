@@ -202,57 +202,38 @@ end
 fun info title =
     Theme.simple "Paper" (Exp.ui (make [#Paper] title))
                                  
-structure PaperList : Ui.S0 = struct
-    type a = _
+structure PaperList = SmartList.Make(struct
+                                         con sortBy = #TalkBegins
+                                         val tab = paper
+                                         val wher = (WHERE NOT (tab.TalkBegins IS NULL))
 
-    val create =
-        ls <- List.mapQuery (SELECT paper.Title, paper.TalkBegins, paper.StartUrl, paper.JoinUrl, paper.ShareUrl, paper.Speaker
-                             FROM paper
-                             WHERE NOT (paper.TalkBegins IS NULL)
-                             ORDER BY paper.TalkBegins)
-                            (fn {Paper = r} => r);
-        u <- whoami;
-        tm <- now;
-        return (tm, u, ls)
-
-    fun onload _ = return ()
-
-    fun render _ (tm, u, ls) = <xml>
-      {List.mapX (fn r => <xml>
-        <div class="card">
-          <div class="card-header"><h3>
-            {case r.ShareUrl of
-                 Some share => <xml><a href={bless share}
-                                       class="btn btn-primary btn-lg glyphicon glyphicon-film"/></xml>
-               | None =>
-                 case r.TalkBegins of
-                     None => error <xml>Impossible empty talk-start time!</xml>
-                   | Some begins =>
-                     if begins > addSeconds tm (15 * 60) then
-                         <xml></xml>
-                     else if r.Speaker = u then
-                         case r.StartUrl of
-                             None => <xml></xml>
-                           | Some start => <xml><a href={bless start}
-                                                   class="btn btn-primary btn-lg glyphicon glyphicon-play-circle-o"/></xml>
-                     else
-                         case r.JoinUrl of
-                             None => <xml></xml>
-                           | Some join => <xml><a href={bless join}
-                                                  class="btn btn-primary btn-lg glyphicon glyphicon-video-camera"/></xml>}
-            {[r.Title]}
-          </h3></div>
-          <div class="card-body">
-            <i>Begins:</i> {[r.TalkBegins]}
-          </div>
-        </div>
-      </xml>) ls}
-    </xml>
-
-    val ui = {Create = create,
-              Onload = onload,
-              Render = render}
-end
+                                         val t = SmartList.iconButtonInHeader
+                                                     whoami
+                                                     (fn u tm {TalkBegins = begins,
+                                                               Speaker = speaker,
+                                                               StartUrl = start,
+                                                               JoinUrl = join,
+                                                               ShareUrl = share} =>
+                                                         case share of
+                                                             Some share => Some (glyphicon_film, bless share)
+                                                           | None =>
+                                                             case begins of
+                                                                 None => None
+                                                               | Some begins =>
+                                                                 if begins > addSeconds tm (15 * 60) then
+                                                                     None
+                                                                 else if speaker = u then
+                                                                     case start of
+                                                                         None => None
+                                                                       | Some start => Some (glyphicon_play_circle_o, bless start)
+                                                                 else
+                                                                     case join of
+                                                                         None => None
+                                                                       | Some join => Some (glyphicon_video_camera, bless join))
+                                                 |> SmartList.compose (SmartList.columnInHeader [#Title])
+                                                 |> SmartList.compose (SmartList.columnInBody [#TalkBegins] "Begins")
+                                                 |> SmartList.compose (SmartList.orderedLinked [#Title] [#Paper] [#User] author "Authors")
+                                     end)
 
 val maybeCreateOneChannel =
     tm <- now;
