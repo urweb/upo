@@ -3,10 +3,21 @@
 open Bootstrap4
 structure Theme = Ui.Make(Default)
 structure Z = Zoom.Make(Zoom.TwoLegged(OnlineconfSecret))
-                  
-table user : { Username : string }
-  PRIMARY KEY Username
 
+table user : { Username : string,
+               Email : string }
+  PRIMARY KEY Username,
+  CONSTRAINT Email UNIQUE Email
+
+task initialize = fn () =>
+                     ex <- oneRowE1 (SELECT COUNT( * ) > 0
+                                     FROM user);
+                     if ex then
+                         return ()
+                     else
+                         dml (INSERT INTO user(Username, Email)
+                              VALUES ('Adam Chlipala', 'adam.chlipala@gmail.com'))
+  
 table slot : { Begin : time,
                End : time }
   PRIMARY KEY Begin
@@ -62,8 +73,20 @@ table chat : { Title : string,
       
 open Explorer
 
-cookie userC : string
-val whoami = getCookie userC
+structure Auth = Google.ThreeLegged(struct
+                                        open OnlineconfSecret
+                                        val https = False
+                                        val scopes = Google.Scope.empty
+                                    end)
+structure G = Google.Make(Auth)
+
+val whoami =
+    addro <- G.emailAddress;
+    case addro of
+        None => return None
+      | Some addr => oneOrNoRowsE1 (SELECT (user.Username)
+                                    FROM user
+                                    WHERE user.Email = {[addr]})
 
 structure Exp = Make(struct
                          structure Theme = Default
@@ -76,6 +99,7 @@ structure Exp = Make(struct
                                      |> one [#Slot] [#Begin] slot "Time slots" (return <xml></xml>) (Default (WHERE TRUE))
 
                                      |> text [#User] [#Username] "Name"
+                                     |> text [#User] [#Email] "Google E-mail"
 
                                      |> text [#Paper] [#Title] "Title"
                                      |> manyToManyOrdered [#Paper] [#Title] [#Paper] [#User] [#Username] [#User] author "Authors" "Papers" {}
@@ -175,21 +199,21 @@ structure HotcrpImport : Ui.S0 = struct
                               VALUES ({[p.Title]}, {[p.Abstract]}, NULL, NULL,
                                   NULL, NULL, NULL, NULL));
                          List.appi (fn i a =>
-                                      let
+                                       let
                                           val name = case (a.First, a.Last) of
                                                          (Some f, None) => f
                                                        | (None, Some l) => l
                                                        | (Some f, Some l) => f ^ " " ^ l
                                                        | (None, None) => "Anonymous"
-                                      in
+                                       in
                                           ex <- oneRowE1 (SELECT COUNT( * ) > 0
                                                           FROM user
                                                           WHERE user.Username = {[name]});
                                           (if ex then
                                                return ()
                                            else
-                                               dml (INSERT INTO user(Username)
-                                                    VALUES ({[name]})));
+                                               dml (INSERT INTO user(Username, Email)
+                                                    VALUES ({[name]}, {[a.Email]})));
                                           dml (INSERT INTO author(Paper, User, SeqNum)
                                                VALUES ({[p.Title]}, {[name]}, {[i]}))
                                       end) (Option.get [] p.Authors))
@@ -331,21 +355,11 @@ val updateChatStatuses =
                  SET Active = FALSE
                  WHERE ZoomMeetingId = {[id]}))
 
-fun login {Nam = s} =
-    ex <- oneRowE1 (SELECT COUNT( * ) > 0
-                    FROM user
-                    WHERE user.Username = {[s]});
-    (if ex then
-         return ()
-     else
-         dml (INSERT INTO user(Username)
-              VALUES ({[s]})));
-    
-    setCookie userC {Value = s, Expires = None, Secure = False};
-    redirect (url (main ()))
+fun login () =
+    Auth.authorize {ReturnTo = url (main ())}
 
 and logout () =
-    clearCookie userC;
+    Auth.logout;
     redirect (url (main ()))
     
 and main () =
@@ -356,8 +370,7 @@ and main () =
                   <h3>Better log in!</h3>
 
                   <form>
-                    <textbox{#Nam}/>
-                    <submit action={login} value="Log in"/>
+                    <submit class="btn btn-primary" action={login} value="Log in at Google"/>
                   </form>
                 </xml>)
       | Some u =>
@@ -385,4 +398,8 @@ and main () =
               Update chat statuses
             </button>
           </xml>),
-         (Some "Log out", Ui.h4 <xml><a link={logout ()}>Log out</a></xml>))
+         (Some "Log out", Ui.h4 <xml>
+           <form>
+             <submit class="btn btn-primary" action={logout} value="Log out"/>
+           </form>
+         </xml>))

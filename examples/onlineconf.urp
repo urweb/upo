@@ -4,7 +4,9 @@ library ../default
 library $/world
 rewrite all Onlineconf/*
 safeGetDefault
+prefix http://localhost:8080/
 allow url https://*
+allow url http://localhost:8080/*
 
 onlineconfSecret
 onlineconf
