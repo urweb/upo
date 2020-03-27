@@ -2,11 +2,13 @@ database dbname=onlineconf
 sql onlineconf.sql
 library ../default
 library $/world
+library $/mail
 rewrite all Onlineconf/*
 safeGetDefault
 prefix http://localhost:8080/
 allow url https://*
 allow url http://localhost:8080/*
+allow url /*
 
 onlineconfSecret
 onlineconf

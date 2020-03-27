@@ -4,10 +4,22 @@ open Bootstrap4
 structure Theme = Ui.Make(Default)
 structure Z = Zoom.Make(Zoom.TwoLegged(OnlineconfSecret))
 
+fun sendEmail hs htmsg =
+    Mail.send "smtp://localhost" False None "" "" hs (Widget.textFromHtml (show htmsg)) (Some htmsg)
+fun headers0 () =
+    let
+        val hs = Mail.empty
+        val hs = Mail.from "OnlineConf <adam.chlipala@gmail.com>" hs
+    in
+        hs
+    end
+              
 table user : { Username : string,
-               Email : string }
+               Email : string,
+               ClaimCode : option int }
   PRIMARY KEY Username,
-  CONSTRAINT Email UNIQUE Email
+  CONSTRAINT Email UNIQUE Email,
+  CONSTRAINT ClaimCode UNIQUE ClaimCode
 
 task initialize = fn () =>
                      ex <- oneRowE1 (SELECT COUNT( * ) > 0
@@ -15,8 +27,8 @@ task initialize = fn () =>
                      if ex then
                          return ()
                      else
-                         dml (INSERT INTO user(Username, Email)
-                              VALUES ('Adam Chlipala', 'adam.chlipala@gmail.com'))
+                         dml (INSERT INTO user(Username, Email, ClaimCode)
+                              VALUES ('Adam Chlipala', 'adam.chlipala@gmail.com', NULL))
   
 table slot : { Begin : time,
                End : time }
@@ -100,6 +112,7 @@ structure Exp = Make(struct
 
                                      |> text [#User] [#Username] "Name"
                                      |> text [#User] [#Email] "Google E-mail"
+                                     |> ignored [#User] [#ClaimCode]
 
                                      |> text [#Paper] [#Title] "Title"
                                      |> manyToManyOrdered [#Paper] [#Title] [#Paper] [#User] [#Username] [#User] author "Authors" "Papers" {}
@@ -180,6 +193,55 @@ structure AssignTalkTimes = ChoicesFromPreferences.Make(struct
                                                             val authorize = return True
                                                         end)
 
+cookie claimCode : int
+                            
+val claimed =
+    code <- getCookie claimCode;
+    case code of
+        None => error <xml>Missing claim-code cookie</xml>
+      | Some code =>
+        ex <- oneRowE1 (SELECT COUNT( * ) > 0
+                        FROM user
+                        WHERE user.ClaimCode = {[Some code]});
+        if not ex then
+            error <xml>No such claim code</xml>
+        else
+            addro <- G.emailAddress;
+            case addro of
+                None => error <xml>Not actually logged into Google!</xml>
+              | Some addr =>
+                dml (UPDATE user
+                     SET Email = {[addr]}, ClaimCode = NULL
+                     WHERE ClaimCode = {[Some code]});
+                clearCookie claimCode;
+                redirect (bless "/main")
+    
+fun claim code =
+    ex <- oneRowE1 (SELECT COUNT( * ) > 0
+                    FROM user
+                    WHERE user.ClaimCode = {[Some code]});
+    if not ex then
+        error <xml>No such claim code</xml>
+    else
+        setCookie claimCode {Value = code, Expires = None, Secure = False};
+        Auth.authorize {ReturnTo = url claimed}
+
+fun addUser name email =
+    code <- rand;
+    dml (INSERT INTO user(Username, Email, ClaimCode)
+         VALUES ({[name]}, {[email]}, {[Some code]}));
+    let
+        val hs = headers0 ()
+        val hs = Mail.subject "Claim your OnlineConf account" hs
+        val hs = Mail.to email hs
+
+        val htmlm = <xml>
+          Hurry on up and <a href={url (claim code)}>claim your account</a>!
+        </xml>
+    in
+        sendEmail hs htmlm
+    end           
+        
 structure HotcrpImport : Ui.S0 = struct
     type a = source string
 
@@ -212,8 +274,7 @@ structure HotcrpImport : Ui.S0 = struct
                                           (if ex then
                                                return ()
                                            else
-                                               dml (INSERT INTO user(Username, Email)
-                                                    VALUES ({[name]}, {[a.Email]})));
+                                               addUser name a.Email);
                                           dml (INSERT INTO author(Paper, User, SeqNum)
                                                VALUES ({[p.Title]}, {[name]}, {[i]}))
                                       end) (Option.get [] p.Authors))
