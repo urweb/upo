@@ -59,8 +59,9 @@ val ignored : full ::: {Type}
               -> cols ::: {Type} -> colsDone ::: {Type} -> cstrs ::: {{Unit}}
               -> impl1 ::: Type -> impl2 ::: Type -> impl3 ::: Type -> old ::: {(Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)}
               -> [[col] ~ cols] => [[col] ~ colsDone] => [[tname] ~ old]
-              => t full ([tname = (key, [col = option colT] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)
-              -> t full ([tname = (key, [col = option colT] ++ cols, [col = option colT] ++ colsDone, cstrs, impl1, impl2, impl3)] ++ old)
+              => colT
+              -> t full ([tname = (key, [col = colT] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)
+              -> t full ([tname = (key, [col = colT] ++ cols, [col = colT] ++ colsDone, cstrs, impl1, impl2, impl3)] ++ old)
 
 con text1 :: Type -> Type
 con text2 :: Type -> Type

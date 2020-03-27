@@ -16,7 +16,8 @@ fun headers0 () =
               
 table user : { Username : string,
                Email : string,
-               ClaimCode : option int }
+               ClaimCode : option int,
+               Admin : bool }
   PRIMARY KEY Username,
   CONSTRAINT Email UNIQUE Email,
   CONSTRAINT ClaimCode UNIQUE ClaimCode
@@ -27,8 +28,8 @@ task initialize = fn () =>
                      if ex then
                          return ()
                      else
-                         dml (INSERT INTO user(Username, Email, ClaimCode)
-                              VALUES ('Adam Chlipala', 'adam.chlipala@gmail.com', NULL))
+                         dml (INSERT INTO user(Username, Email, ClaimCode, Admin)
+                              VALUES ('Adam Chlipala', 'adam.chlipala@gmail.com', NULL, TRUE))
   
 table slot : { Begin : time,
                End : time }
@@ -100,6 +101,44 @@ val whoami =
                                     FROM user
                                     WHERE user.Email = {[addr]})
 
+val amAdmin =
+    addro <- G.emailAddress;
+    case addro of
+        None => return False
+      | Some addr =>
+        r <- oneOrNoRowsE1 (SELECT (user.Admin)
+                            FROM user
+                            WHERE user.Email = {[addr]});
+        return (r = Some True)
+
+val requireAdmin =
+    b <- amAdmin;
+    if b then
+        return ()
+    else
+        error <xml>Access denied</xml>
+                     
+val whoamiAdmin =
+    addro <- G.emailAddress;
+    case addro of
+        None => return None
+      | Some addr =>
+        ro <- oneOrNoRows1 (SELECT user.Username, user.Admin
+                            FROM user
+                            WHERE user.Email = {[addr]});
+        case ro of
+            None => return None
+          | Some r =>
+            if r.Admin then
+                return (Some r.Username)
+            else
+                error <xml>Access denied</xml>
+
+fun authorize [a] [b] (act : Explorer.action a b) =
+    case act of
+        Explorer.Read _ => return True
+      | _ => amAdmin
+
 structure Exp = Make(struct
                          structure Theme = Default
 
@@ -111,23 +150,24 @@ structure Exp = Make(struct
                                      |> one [#Slot] [#Begin] slot "Time slots" (return <xml></xml>) (Default (WHERE TRUE))
 
                                      |> text [#User] [#Username] "Name"
-                                     |> text [#User] [#Email] "Google E-mail"
-                                     |> ignored [#User] [#ClaimCode]
+                                     |> ignored [#User] [#Email] "bogus@bogus.com"
+                                     |> ignored [#User] [#ClaimCode] None
+                                     |> ignored [#User] [#Admin] False
 
                                      |> text [#Paper] [#Title] "Title"
                                      |> manyToManyOrdered [#Paper] [#Title] [#Paper] [#User] [#Username] [#User] author "Authors" "Papers" {}
                                      |> foreign [#Paper] [#Speaker] [#User] [#Username] "Speaker" "Speaker for"
                                      |> foreign [#Paper] [#TalkBegins] [#Slot] [#Begin] "Talk begins" "Talks"
                                      |> text [#Paper] [#Abstract] "Abstract"
-                                     |> ignored [#Paper] [#ZoomMeetingId]
-                                     |> ignored [#Paper] [#StartUrl]
-                                     |> ignored [#Paper] [#JoinUrl]
-                                     |> ignored [#Paper] [#ShareUrl]
+                                     |> ignored [#Paper] [#ZoomMeetingId] None
+                                     |> ignored [#Paper] [#StartUrl] None
+                                     |> ignored [#Paper] [#JoinUrl] None
+                                     |> ignored [#Paper] [#ShareUrl] None
 
                                      |> text [#Slot] [#Begin] "Begins"
                                      |> text [#Slot] [#End] "Ends"
 
-                         fun authorize _ = return True
+                         val authorize = authorize
 
                          val preTabs = {}
                          val postTabs = {}
@@ -160,7 +200,7 @@ structure AssignTalks = UsersFromPreferences.Make(struct
                                                       con preferred = #Preferred
                                                       val prefs = {Speaker = speakingInterest}
 
-                                                      val whoami = whoami
+                                                      val whoami = whoamiAdmin
                                                   end)
                 
 structure UsersEnterAvailability = Preferences.Make(struct
@@ -190,7 +230,7 @@ structure AssignTalkTimes = ChoicesFromPreferences.Make(struct
                                                             val item = paper
                                                             val labels = {Speaker = "Speaker"}
 
-                                                            val authorize = return True
+                                                            val authorize = amAdmin
                                                         end)
 
 cookie claimCode : int
@@ -228,8 +268,8 @@ fun claim code =
 
 fun addUser name email =
     code <- rand;
-    dml (INSERT INTO user(Username, Email, ClaimCode)
-         VALUES ({[name]}, {[email]}, {[Some code]}));
+    dml (INSERT INTO user(Username, Email, ClaimCode, Admin)
+         VALUES ({[name]}, {[email]}, {[Some code]}, FALSE));
     let
         val hs = headers0 ()
         val hs = Mail.subject "Claim your OnlineConf account" hs
@@ -249,6 +289,7 @@ structure HotcrpImport : Ui.S0 = struct
     fun onload _ = return ()
 
     fun import s =
+        requireAdmin;
         List.app (fn p : Hotcrp.paper =>
                      ex <- oneRowE1 (SELECT COUNT( * ) > 0
                                      FROM paper
@@ -370,6 +411,7 @@ structure CreateChat = SmartInsert.Make(struct
                                         end)
 
 val maybeCreateOneChannel =
+    requireAdmin;
     tm <- now;
     create_threshold <- return (addSeconds tm (24 * 60 * 60));
     next <- oneOrNoRows1 (SELECT paper.Title, paper.TalkBegins
@@ -391,6 +433,7 @@ val maybeCreateOneChannel =
              WHERE Title = {[next.Title]})
 
 val checkForFinishedRecordings =
+    requireAdmin;
     rs <- Z.CloudRecordings.list;
     List.app (fn r =>
                  case List.search (fn f =>
@@ -404,6 +447,7 @@ val checkForFinishedRecordings =
                           WHERE ZoomMeetingId = {[Some id]})) rs
 
 val updateChatStatuses =
+    requireAdmin;
     queryI1 (SELECT chat.ZoomMeetingId
              FROM chat
              WHERE chat.Active)
@@ -436,14 +480,33 @@ and main () =
                 </xml>)
       | Some u =>
         Theme.tabbed "OnlineConf"
-        ((Some "HotCRP import", HotcrpImport.ui),
+        ((Some "Paper list", PaperList.ui),
          (Some "Speaker interest", SpeakerInterest.ui u),
-         (Some "Assign talks", AssignTalks.ui),
          (Some "Availability", UsersEnterAvailability.ui u),
-         (Some "Talk times", AssignTalkTimes.ui),
-         (Some "Paper list", PaperList.ui),
          (Some "Chat list", ChatList.ui),
          (Some "Create chat", CreateChat.ui),
+         (Some "Log out", Ui.h4 <xml>
+           <form>
+             <submit class="btn btn-primary" action={logout} value="Log out"/>
+           </form>
+         </xml>))
+
+and admin () =
+    u <- whoamiAdmin;
+    case u of
+        None => Theme.simple "OnlineConf Admin"
+                (Ui.const <xml>
+                  <h3>Better log in!</h3>
+
+                  <form>
+                    <submit class="btn btn-primary" action={login} value="Log in at Google"/>
+                  </form>
+                </xml>)
+      | Some u =>
+        Theme.tabbed "OnlineConf Admin"
+        ((Some "HotCRP import", HotcrpImport.ui),
+         (Some "Assign talks", AssignTalks.ui),
+         (Some "Assign talk times", AssignTalkTimes.ui),
          (Some "Provision next",
           Ui.const <xml>
             <button class="btn btn-primary"
