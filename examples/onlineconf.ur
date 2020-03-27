@@ -50,6 +50,15 @@ table speakingInterest : { Title : string,
   PRIMARY KEY (Title, User),
   CONSTRAINT Paper FOREIGN KEY Title REFERENCES paper(Title) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT User FOREIGN KEY User REFERENCES user(Username) ON UPDATE CASCADE ON DELETE CASCADE
+
+table chat : { Title : string,
+               Creator : string,
+               ZoomMeetingId : int,
+               StartUrl : string,
+               JoinUrl : string,
+               Active : bool }
+  PRIMARY KEY Title,
+  CONSTRAINT Creator FOREIGN KEY Creator REFERENCES user(Username) ON UPDATE CASCADE
       
 open Explorer
 
@@ -199,9 +208,6 @@ structure HotcrpImport : Ui.S0 = struct
               Render = render}
 end
 
-fun info title =
-    Theme.simple "Paper" (Exp.ui (make [#Paper] title))
-                                 
 structure PaperList = SmartList.Make(struct
                                          con sortBy = #TalkBegins
                                          val tab = paper
@@ -234,6 +240,49 @@ structure PaperList = SmartList.Make(struct
                                                  |> SmartList.compose (SmartList.columnInBody [#TalkBegins] "Begins")
                                                  |> SmartList.compose (SmartList.orderedLinked [#Title] [#Paper] [#User] author "Authors")
                                      end)
+
+structure ChatList = SmartList.Make(struct
+                                        con sortBy = #Title
+                                        val tab = chat
+                                        val wher = (WHERE tab.Active)
+
+                                        val t = SmartList.iconButtonInHeader
+                                                    whoami
+                                                    (fn u tm {Active = actv,
+                                                              Creator = creator,
+                                                              StartUrl = start,
+                                                              JoinUrl = join} =>
+                                                        if not actv then
+                                                            None
+                                                        else if Some creator = u then
+                                                            Some (glyphicon_play_circle_o, bless start)
+                                                        else
+                                                            Some (glyphicon_video_camera, bless join))
+                                                |> SmartList.compose (SmartList.columnInHeader [#Title])
+                                                |> SmartList.compose (SmartList.columnInBody [#Creator] "Creator")
+                                    end)
+
+structure CreateChat = SmartInsert.Make(struct
+                                            val tab = chat
+                                            val labels = {Title = "Title"}
+
+                                            fun custom r =
+                                                uo <- whoami;
+                                                case uo of
+                                                    None => error <xml>Must be logged in.</xml>
+                                                  | Some u =>
+                                                    m <- Z.Meetings.create ({Topic = r.Title,
+                                                                             Typ = Zoom.Instant}
+                                                                                ++ Api.optionals {});
+                                                    case (m.Id, m.StartUrl, m.JoinUrl) of
+                                                        (Some id, Some start, Some join) =>
+                                                        return {Creator = u,
+                                                                ZoomMeetingId = id,
+                                                                StartUrl = start,
+                                                                JoinUrl = join,
+                                                                Active = True}
+                                                      | _ => error <xml>Missing field in record for new Zoom meeting!</xml>
+                                        end)
 
 val maybeCreateOneChannel =
     tm <- now;
@@ -268,7 +317,20 @@ val checkForFinishedRecordings =
                      dml (UPDATE paper
                           SET ShareUrl = {[r.ShareUrl]}
                           WHERE ZoomMeetingId = {[Some id]})) rs
-    
+
+val updateChatStatuses =
+    queryI1 (SELECT chat.ZoomMeetingId
+             FROM chat
+             WHERE chat.Active)
+    (fn {ZoomMeetingId = id} =>
+        m <- Z.Meetings.get id;
+        if (case m of None => False | Some m => case m.Status of Some Zoom.Waiting => True | Some Zoom.Started => True | _ => False) then
+            return ()
+        else
+            dml (UPDATE chat
+                 SET Active = FALSE
+                 WHERE ZoomMeetingId = {[id]}))
+
 fun login {Nam = s} =
     ex <- oneRowE1 (SELECT COUNT( * ) > 0
                     FROM user
@@ -306,6 +368,8 @@ and main () =
          (Some "Availability", UsersEnterAvailability.ui u),
          (Some "Talk times", AssignTalkTimes.ui),
          (Some "Paper list", PaperList.ui),
+         (Some "Chat list", ChatList.ui),
+         (Some "Create chat", CreateChat.ui),
          (Some "Provision next",
           Ui.const <xml>
             <button class="btn btn-primary"
@@ -315,6 +379,10 @@ and main () =
             <button class="btn btn-primary"
                     onclick={fn _ => rpc checkForFinishedRecordings}>
               Check for finished recordings
+            </button>
+            <button class="btn btn-primary"
+                    onclick={fn _ => rpc updateChatStatuses}>
+              Update chat statuses
             </button>
           </xml>),
          (Some "Log out", Ui.h4 <xml><a link={logout ()}>Log out</a></xml>))
