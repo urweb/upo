@@ -15,3 +15,57 @@ Those are the basics!  The other modules of the library define more complex UI e
 ## Installation
 
 Two other Ur/Web libraries are required: [Bootstrap](https://github.com/urweb/bootstrap) and [AjaxUpload](https://github.com/urweb/ajaxUpload).
+Here is one sequence of commands to set up these and some dependencies used in certain examples (but not required for UPO itself).
+
+        # If you don't already have Ur/Web itself installed, run these steps.
+        # In general, a working version may be required, as UPO may use features
+        # beyond what the latest release supports.
+        git clone https://github.com/urweb/urweb.git
+        cd urweb
+        ./autogen.sh
+        ./configure
+        make
+        sudo make install
+        cd ..
+
+        # Library required for UPO
+        git clone https://github.com/urweb/ajaxUpload.git
+        cd ajaxUpload
+        ./autogen.sh
+        ./configure
+        make
+        sudo make install
+        cd ..
+
+        # _Optional_ library, used in some examples
+        git clone https://github.com/urweb/world.git
+        cd world
+        ./autogen.sh
+        ./configure
+        make
+        sudo make install
+        cd ..
+
+        # _Optional_ library, used in some examples
+        git clone https://github.com/urweb/email.git
+        cd email
+        ./autogen.sh
+        ./configure
+        make
+        sudo make install
+        cd ..
+
+        # Library required for UPO
+        git clone https://github.com/urweb/bootstrap.git
+        sudo ln -s `pwd`/bootstrap /usr/local/lib/urweb/ur/
+
+        # This library itself, for good measure
+        git clone https://github.com/achlipala/upo.git
+        sudo ln -s `pwd`/upo /usr/local/lib/urweb/ur/
+
+        # Building one example
+        cd upo/examples
+        urweb onlineconf
+        createdb onlineconf
+        psql -f onlineconf.sql onlineconf
+        ./onlineconf.exe
