@@ -60,7 +60,7 @@ Here is one sequence of commands to set up these and some dependencies used in c
         sudo ln -s `pwd`/bootstrap /usr/local/lib/urweb/ur/
 
         # This library itself, for good measure
-        git clone https://github.com/achlipala/upo.git
+        git clone https://github.com/urweb/upo.git
         sudo ln -s `pwd`/upo /usr/local/lib/urweb/ur/
 
         # Building one example
