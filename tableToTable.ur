@@ -122,7 +122,7 @@ functor Make(M : sig
                                  <p>Thanks for submitting the form.</p>
                                </xml>
                              | Pending ws => <xml><div>
-                                 <table class="bs-table table-striped">
+                                 <table class="bs-table">
                                    {@mapX3 [fn _ => string] [Widget.t'] [fst3] [tabl]
                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] lab w v => <xml><tr>
                                          <th>{[lab]}</th>

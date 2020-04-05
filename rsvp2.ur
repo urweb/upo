@@ -348,22 +348,24 @@ functor Make(M : sig
                                                     | _ => <xml>
                                                       <h3>{[awayLabel]} ({[List.length aws]})</h3>
 
-                                                      <table class="bs-table table-striped">
-                                                        <tr>
+                                                      <table class="bs-table">
+                                                        <thead><tr>
                                                           <th/>
                                                           {@mapX [fn _ => string] [tr]
                                                             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] label =>
                                                                 <xml><th>{[label]}</th></xml>)
                                                             awayShownDataFl awayShownDataLabels}
-                                                        </tr>
+                                                        </tr></thead>
 
-                                                        {List.mapX (fn aw => <xml><tr>
-                                                          <td>{[aw.Away]}</td>
-                                                          {@mapX2 [show] [ident] [tr]
-                                                            (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) =>
-                                                                <xml><td>{[x]}</td></xml>)
-                                                            awayShownDataFl awayShownDataShow aw.Data}
-                                                        </tr></xml>) aws}
+                                                        <tbody>
+                                                          {List.mapX (fn aw => <xml><tr>
+                                                            <td>{[aw.Away]}</td>
+                                                            {@mapX2 [show] [ident] [tr]
+                                                              (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) =>
+                                                                  <xml><td>{[x]}</td></xml>)
+                                                              awayShownDataFl awayShownDataShow aw.Data}
+                                                          </tr></xml>) aws}
+                                                        </tbody>
                                                       </table>
                                                     </xml>}
 
@@ -372,22 +374,24 @@ functor Make(M : sig
                                                     | _ => <xml>
                                                       <h3>{[homeLabel]} ({[List.length hos]})</h3>
 
-                                                      <table class="bs-table table-striped">
-                                                        <tr>
+                                                      <table class="bs-table">
+                                                        <thead><tr>
                                                           <th/>
                                                           {@mapX [fn _ => string] [tr]
                                                             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] label =>
                                                                 <xml><th>{[label]}</th></xml>)
                                                             homeShownDataFl homeShownDataLabels}
-                                                        </tr>
+                                                        </tr></thead>
 
-                                                        {List.mapX (fn ho => <xml><tr>
-                                                          <td>{[ho.Home]}</td>
-                                                          {@mapX2 [show] [ident] [tr]
-                                                            (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) =>
-                                                                <xml><td>{[x]}</td></xml>)
-                                                            homeShownDataFl homeShownDataShow ho.Data}
-                                                        </tr></xml>) hos}
+                                                        <tbody>
+                                                          {List.mapX (fn ho => <xml><tr>
+                                                            <td>{[ho.Home]}</td>
+                                                            {@mapX2 [show] [ident] [tr]
+                                                              (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) =>
+                                                                  <xml><td>{[x]}</td></xml>)
+                                                              homeShownDataFl homeShownDataShow ho.Data}
+                                                          </tr></xml>) hos}
+                                                        </tbody>
                                                       </table>
                                                     </xml>}
                                                </xml>}/>

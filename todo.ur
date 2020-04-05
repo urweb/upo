@@ -581,23 +581,25 @@ functor Make(M : sig
         fun onload _ = return ()
 
         fun render _ a = <xml>
-          <table class="bs-table table-striped">
-            <tr>
+          <table class="bs-table">
+            <thead><tr>
               <th>Task</th>
               <th>Due</th>
               <th>Assigned to</th>
               <th>Done?</th>
-            </tr>
+            </tr></thead>
 
-            {List.mapX (fn r : todo tags => <xml><tr>
-              <td>{@Record.select [tag] [ident] fl
-                    (fn [p] (t : tag p) (x : p) => t.Render x r.Assignee) t.Tags r.Tag}</td>
-              <td>{[r.Due]}</td>
-              <td>{[r.Assignee]}</td>
-              <td>{case r.Done of
-                       Some True => <xml><span class="glyphicon glyphicon-check"/></xml>
-                     | _ => <xml></xml>}</td>
-            </tr></xml>) a}
+            <tbody>
+              {List.mapX (fn r : todo tags => <xml><tr>
+                <td>{@Record.select [tag] [ident] fl
+                      (fn [p] (t : tag p) (x : p) => t.Render x r.Assignee) t.Tags r.Tag}</td>
+                <td>{[r.Due]}</td>
+                <td>{[r.Assignee]}</td>
+                <td>{case r.Done of
+                         Some True => <xml><span class="glyphicon glyphicon-check"/></xml>
+                       | _ => <xml></xml>}</td>
+              </tr></xml>) a}
+            </tbody>
           </table>
         </xml>
 
@@ -615,31 +617,33 @@ functor Make(M : sig
         fun onload _ = return ()
 
         fun render _ a = <xml>
-          <table class="bs-table table-striped">
-            <tr>
+          <table class="bs-table">
+            <thead><tr>
               <th>Task</th>
               <th>Due</th>
               <th>Done?</th>
-            </tr>
+            </tr></thead>
 
-            {List.mapX (fn r : todo tags => <xml><tr>
-              <td>{let
-                       val x = @Record.select [tag] [ident] fl
-                                (fn [p] (t : tag p) (x : p) => t.Render x r.Assignee) t.Tags r.Tag
-                   in
-                       if Option.isSome r.Assignee && r.Done <> Some True then
-                           <xml><b>{x}</b></xml>
-                       else
-                           x
-                   end}</td>
-              <td>{if Option.isSome r.Assignee && r.Done <> Some True then
-                       <xml><b>{[r.Due]}</b></xml>
-                   else
-                       <xml>{[r.Due]}</xml>}</td>
-              <td>{case r.Done of
-                       Some True => <xml><span class="glyphicon glyphicon-check"/></xml>
-                     | _ => <xml></xml>}</td>
-            </tr></xml>) a}
+            <tbody>
+              {List.mapX (fn r : todo tags => <xml><tr>
+                <td>{let
+                         val x = @Record.select [tag] [ident] fl
+                                  (fn [p] (t : tag p) (x : p) => t.Render x r.Assignee) t.Tags r.Tag
+                     in
+                         if Option.isSome r.Assignee && r.Done <> Some True then
+                             <xml><b>{x}</b></xml>
+                         else
+                             x
+                     end}</td>
+                <td>{if Option.isSome r.Assignee && r.Done <> Some True then
+                         <xml><b>{[r.Due]}</b></xml>
+                     else
+                         <xml>{[r.Due]}</xml>}</td>
+                <td>{case r.Done of
+                         Some True => <xml><span class="glyphicon glyphicon-check"/></xml>
+                       | _ => <xml></xml>}</td>
+              </tr></xml>) a}
+            </tbody>
           </table>
         </xml>
 

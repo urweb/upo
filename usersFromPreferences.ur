@@ -136,67 +136,69 @@ functor Make(M : sig
         Save
       </button>
       
-      <table class="bs-table table-striped">
-        <tr>
+      <table class="bs-table">
+        <thead><tr>
           <th/>
           {@mapX [fn _ => string] [tr]
             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] l => <xml><th>{[l]}</th></xml>)
             fl labels}
-        </tr>
+        </tr></thead>
 
-        {List.mapX (fn c => <xml><tr>
-          <td>{[c.Choice]}</td>
-          {@mapX2 [fn _ => {Available : list {User : string,
-                                              Preferred : bool,
-                                              NowChosen : source int},
-                            Selected : source string,
-                            Stashed : source (option string)}]
-            [fn _ => list (string * source int)] [tr]
-            (fn [nm ::_] [t ::_]  [r ::_] [[nm] ~ r] {Available = us, Selected = s, Stashed = stashed} counts => <xml><td>
-              <dyn signal={cs <- List.mapM (fn u =>
-                                               nc <- signal u.NowChosen;
-                                               return (u.User,
-                                                       u.User
-                                                       ^ (if u.Preferred then
-                                                              "*"
-                                                          else
-                                                              "")
-                                                       ^ (if nc > 0 then
-                                                              " [chosen for " ^ show nc ^ "]"
-                                                          else
-                                                              ""))) us;
-                           return <xml>
-                             <cselect source={s}
-                                      onchange={old <- get stashed;
-                                                new <- get s;
-                                                new <- return (case new of
-                                                                   "" => None
-                                                                 | _ => Some (readError new));
-                                                set stashed new;
-                                                (case old of
-                                                     None => return ()
-                                                   | Some old =>
-                                                     List.app (fn (u, c) =>
-                                                                  if u = old then
-                                                                      n <- get c;
-                                                                      set c (n - 1)
-                                                                  else
-                                                                      return ()) counts);
-                                                (case new of
-                                                     None => return ()
-                                                   | Some new =>
-                                                     List.app (fn (u, c) =>
-                                                                  if u = new then
-                                                                      n <- get c;
-                                                                      set c (n + 1)
-                                                                  else
-                                                                      return ()) counts)}>
-                               <coption value="">unchosen</coption>
-                               {List.mapX (fn (u, t) => <xml><coption value={u}>{[t]}</coption></xml>) cs}
-                             </cselect>
-                           </xml>}/>
-            </td></xml>) fl c.Users a.Users}
-        </tr></xml>) a.Choices}
+        <tbody>
+          {List.mapX (fn c => <xml><tr>
+            <td>{[c.Choice]}</td>
+            {@mapX2 [fn _ => {Available : list {User : string,
+                                                Preferred : bool,
+                                                NowChosen : source int},
+                              Selected : source string,
+                              Stashed : source (option string)}]
+              [fn _ => list (string * source int)] [tr]
+              (fn [nm ::_] [t ::_]  [r ::_] [[nm] ~ r] {Available = us, Selected = s, Stashed = stashed} counts => <xml><td>
+                <dyn signal={cs <- List.mapM (fn u =>
+                                                 nc <- signal u.NowChosen;
+                                                 return (u.User,
+                                                         u.User
+                                                         ^ (if u.Preferred then
+                                                                "*"
+                                                            else
+                                                                "")
+                                                         ^ (if nc > 0 then
+                                                                " [chosen for " ^ show nc ^ "]"
+                                                            else
+                                                                ""))) us;
+                             return <xml>
+                               <cselect source={s}
+                                        onchange={old <- get stashed;
+                                                  new <- get s;
+                                                  new <- return (case new of
+                                                                     "" => None
+                                                                   | _ => Some (readError new));
+                                                  set stashed new;
+                                                  (case old of
+                                                       None => return ()
+                                                     | Some old =>
+                                                       List.app (fn (u, c) =>
+                                                                    if u = old then
+                                                                        n <- get c;
+                                                                        set c (n - 1)
+                                                                    else
+                                                                        return ()) counts);
+                                                  (case new of
+                                                       None => return ()
+                                                     | Some new =>
+                                                       List.app (fn (u, c) =>
+                                                                    if u = new then
+                                                                        n <- get c;
+                                                                        set c (n + 1)
+                                                                    else
+                                                                        return ()) counts)}>
+                                 <coption value="">unchosen</coption>
+                                 {List.mapX (fn (u, t) => <xml><coption value={u}>{[t]}</coption></xml>) cs}
+                               </cselect>
+                             </xml>}/>
+              </td></xml>) fl c.Users a.Users}
+          </tr></xml>) a.Choices}
+        </tbody>
       </table>
     </xml>
 

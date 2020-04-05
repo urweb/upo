@@ -596,7 +596,7 @@ functor Make(M : sig
                     val colwidth = oneProperty noStyle (value (property "width") (atom colwidth))
                 in
             <xml>
-              <table class="bs-table table-striped table-fixedheader">
+              <table class="bs-table table-fixedheader">
                 <thead>
                   <tr>
                     <th style={colwidth}>&nbsp;</th>
@@ -918,26 +918,28 @@ functor Make(M : sig
             (* Note: with a new improvement to Ur/Web type inference, this annotation becomes necessary.
              * Should probably look further into why, some day. *)
             fun render (t : a) = <xml>
-              <table class="bs-table table-striped">
-                <tr>
+              <table class="bs-table">
+                <thead><tr>
                   <th>Time</th>
                   <th>Meeting</th>
-                </tr>
+                </tr></thead>
 
-                {List.mapX (fn (tm, slot) => <xml>
-                  <tr>
-                    <td>{[tm]}</td>
-                    <td>
-                      <dyn signal={case slot of
-                                       Fixed d => return <xml><i>{[d]}</i></xml>
-                                     | Meeting ths =>
-                                       ths <- signal ths;
-                                       return (case ths of
-                                                   [] => <xml>&mdash;</xml>
-                                                 | (th, off) :: ths => <xml>{[th]}{[off]}{List.mapX (fn (th, off) => <xml>, {[th]}{[off]}</xml>) ths}</xml>)}/>
-                                                                                                                                        </td>
-                  </tr>
-                </xml>) t.Meetings}
+                <tbody>
+                  {List.mapX (fn (tm, slot) => <xml>
+                    <tr>
+                      <td>{[tm]}</td>
+                      <td>
+                        <dyn signal={case slot of
+                                         Fixed d => return <xml><i>{[d]}</i></xml>
+                                       | Meeting ths =>
+                                         ths <- signal ths;
+                                         return (case ths of
+                                                     [] => <xml>&mdash;</xml>
+                                                   | (th, off) :: ths => <xml>{[th]}{[off]}{List.mapX (fn (th, off) => <xml>, {[th]}{[off]}</xml>) ths}</xml>)}/>
+                                                                                                                                          </td>
+                    </tr>
+                  </xml>) t.Meetings}
+                </tbody>
               </table>
             </xml>
 
@@ -1062,17 +1064,19 @@ functor Make(M : sig
                                        sql_asc}}})
 
             fun render (t : a) = <xml>
-              <table class="bs-table table-striped">
-                <tr><th/> <th>Already scheduled?</th></tr>
-                {List.mapX (fn them => <xml>
-                  <tr>
-                    <td>{[them.Preference]}</td>
-                    <td>{if them.AlreadyScheduled = Some True then
-                             <xml><span class="glyphicon glyphicon-check"/></xml>
-                         else
-                             <xml></xml>}</td>
-                  </tr>
-                </xml>) t}
+              <table class="bs-table">
+                <thead><tr><th/> <th>Already scheduled?</th></tr></thead>
+                <tbody>
+                  {List.mapX (fn them => <xml>
+                    <tr>
+                      <td>{[them.Preference]}</td>
+                      <td>{if them.AlreadyScheduled = Some True then
+                               <xml><span class="glyphicon glyphicon-check"/></xml>
+                           else
+                               <xml></xml>}</td>
+                    </tr>
+                  </xml>) t}
+                </tbody>
               </table>
             </xml>
 

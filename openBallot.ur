@@ -359,16 +359,18 @@ functor Make(M : sig
       </xml>
 
     fun render _ a = <xml>
-      <table class="bs-table table-striped">
-        <tr>
+      <table class="bs-table">
+        <thead><tr>
           <th/>
           <th>Choice</th>
           <th>Your Vote</th>
           <th>Votes</th>
-        </tr>
+        </tr></thead>
 
-        <dyn signal={choices <- signal a.Choices;
-                     return (List.mapX (oneChoice True alwaysShowVotes a) choices)}/>
+        <tbody>
+          <dyn signal={choices <- signal a.Choices;
+                       return (List.mapX (oneChoice True alwaysShowVotes a) choices)}/>
+        </tbody>
       </table>
 
       <dyn signal={choices <- signal a.Choices;
@@ -420,7 +422,7 @@ functor Make(M : sig
         val onload a = onload a.Base
 
         fun render _ a = <xml>
-          <table class="bs-table table-striped">
+          <table class="bs-table">
             <tr>
               <th/>
               <th>Your Vote</th>

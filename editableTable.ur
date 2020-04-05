@@ -164,73 +164,73 @@ functor Make(M : sig
         onModify r
 
     fun render ctx a = <xml>
-      <table class="bs-table table-striped">
-        <tr>
+      <table class="bs-table">
+        <thead><tr>
           <th/>
           {@mapX [fn _ => string] [tr]
             (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (s : string) => <xml><th>{[s]}</th></xml>)
             fl labels}
-        </tr>
+        </tr></thead>
 
-        <dyn signal={rs <- signal a.Rows;
-                     return (List.mapX (fn r => <xml><tr>
-                       <dyn signal={ed <- signal r.Editing;
-                                    return (case ed of
-                                                None => <xml>
+        <tbody>
+          <dyn signal={rs <- signal a.Rows;
+                       return (List.mapX (fn r => <xml><tr>
+                         <dyn signal={ed <- signal r.Editing;
+                                      return (case ed of
+                                                  None => <xml>
+                                                    <td>
+                                                      {if a.Perm.Delete then
+                                                           Ui.modalButton ctx (CLASS "btn btn-secondary")
+                                                                          <xml><span class="glyphicon glyphicon-remove"/></xml>
+                                                                          (return (Ui.modal
+                                                                                       (rpc (del r.Content))
+                                                                                       <xml>Are you sure you want to delete this row?</xml>
+                                                                                       <xml/>
+                                                                                       <xml>Yes!</xml>))
+                                                       else
+                                                           <xml/>}
+                                                      {if a.Perm.Modify then <xml>
+                                                           <button class="btn btn-secondary"
+                                                                   onclick={fn _ =>
+                                                                               fr <- initRow a.Config r.Content;
+                                                                               set r.Editing (Some fr)}>
+                                                             <span class="glyphicon glyphicon-pencil"/>
+                                                           </button>
+                                                       </xml> else
+                                                           <xml/>}
+                                                    </td>
+                                                    {@mapX2 [Widget.t'] [fst3] [_]
+                                                      (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
+                                                                   (w : Widget.t' p) (v : fst3 p) =>
+                                                          <xml><td>{@Widget.asValue w v}</td></xml>)
+                                                      fl widgets r.Content}
+                                                  </xml>
+                                                | Some ws => <xml>
                                                   <td>
-                                                    {if a.Perm.Delete then
-                                                         Ui.modalButton ctx (CLASS "btn btn-secondary")
-                                                                        <xml><span class="glyphicon glyphicon-remove"/></xml>
-                                                                        (return (Ui.modal
-                                                                                     (rpc (del r.Content))
-                                                                                     <xml>Are you sure you want to delete this row?</xml>
-                                                                                     <xml/>
-                                                                                     <xml>Yes!</xml>))
-                                                     else
-                                                         <xml/>}
-                                                    {if a.Perm.Modify then <xml>
-                                                         <button class="btn btn-secondary"
-                                                                 onclick={fn _ =>
-                                                                             fr <- initRow a.Config r.Content;
-                                                                             set r.Editing (Some fr)}>
-                                                           <span class="glyphicon glyphicon-pencil"/>
-                                                         </button>
-                                                     </xml> else
-                                                         <xml/>}
+                                                    <button class="btn btn-secondary"
+                                                            onclick={fn _ =>
+                                                                        vs <- rowOut ws;
+                                                                        set r.Editing None;
+                                                                        rpc (mod {Old = r.Content,
+                                                                                  New = vs})}>
+                                                      <span class="glyphicon glyphicon-check"/>
+                                                    </button>
+                                                    <button class="btn btn-secondary"
+                                                            onclick={fn _ => set r.Editing None}>
+                                                      <span class="glyphicon glyphicon-remove"/>
+                                                    </button>
                                                   </td>
-                                                  {@mapX2 [Widget.t'] [fst3] [_]
+                                                  {@mapX2 [Widget.t'] [snd3] [_]
                                                     (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
-                                                                 (w : Widget.t' p) (v : fst3 p) =>
-                                                        <xml><td>{@Widget.asValue w v}</td></xml>)
-                                                    fl widgets r.Content}
-                                                </xml>
-                                              | Some ws => <xml>
-                                                <td>
-                                                  <button class="btn btn-secondary"
-                                                          onclick={fn _ =>
-                                                                      vs <- rowOut ws;
-                                                                      set r.Editing None;
-                                                                      rpc (mod {Old = r.Content,
-                                                                                New = vs})}>
-                                                    <span class="glyphicon glyphicon-check"/>
-                                                  </button>
-                                                  <button class="btn btn-secondary"
-                                                          onclick={fn _ => set r.Editing None}>
-                                                    <span class="glyphicon glyphicon-remove"/>
-                                                  </button>
-                                                </td>
-                                                {@mapX2 [Widget.t'] [snd3] [_]
-                                                  (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
-                                                               (w : Widget.t' p) (v : snd3 p) =>
-                                                      <xml><td>{@Widget.asWidget w v None}</td></xml>)
-                                                  fl widgets ws}
-                                              </xml>)}/>
-                     </tr></xml>) rs)}/>
+                                                                 (w : Widget.t' p) (v : snd3 p) =>
+                                                        <xml><td>{@Widget.asWidget w v None}</td></xml>)
+                                                    fl widgets ws}
+                                                </xml>)}/>
+                       </tr></xml>) rs)}/>
+        </tbody>
         {if a.Perm.Add then
              <xml>
-               <tr/>
-
-               <tr>
+               <tfoot><tr>
                  <th><button value="Add:"
                              class="btn btn-primary"
                              onclick={fn _ =>
@@ -241,7 +241,7 @@ functor Make(M : sig
                    (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : snd3 p) =>
                        <xml><td>{@Widget.asWidget w v None}</td></xml>)
                    fl widgets a.ToAdd}
-               </tr>
+               </tr></tfoot>
              </xml>
          else
              <xml/>}

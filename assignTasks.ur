@@ -191,25 +191,27 @@ functor Make(M : sig
                                                               </xml>)}/>
                                    </xml>)}/>
 
-          <table class="bs-table table-striped">
-            <tr> <th>Task</th> <th>Assigned to</th> </tr>
+          <table class="bs-table">
+            <thead><tr> <th>Task</th> <th>Assigned to</th> </tr></thead>
 
-            <dyn signal={asbls <- signal a.Assignables;
-                         return (List.mapX (fn (k, u) => <xml>
-                           <tr>
-                             <td>{[k]}</td>
-                             <td><cselect source={u}
-                                          onchange={u <- get u;
-                                                    case u of
-                                                        "" => rpc (remove k)
-                                                      | _ => rpc (assign k u)}>
-                               <coption/>
-                               {List.mapX (fn usr => <xml><coption>{[usr]}</coption></xml>) (case a.Eligible of
-                                                                                                 [] => error <xml>AssignTasks: no eligibility categories</xml>
-                                                                                               | (_, ls) :: _ => ls)}
-                             </cselect></td>
-                           </tr>
-                         </xml>) asbls)}/>
+            <tbody>
+              <dyn signal={asbls <- signal a.Assignables;
+                           return (List.mapX (fn (k, u) => <xml>
+                             <tr>
+                               <td>{[k]}</td>
+                               <td><cselect source={u}
+                                            onchange={u <- get u;
+                                                      case u of
+                                                          "" => rpc (remove k)
+                                                        | _ => rpc (assign k u)}>
+                                 <coption/>
+                                 {List.mapX (fn usr => <xml><coption>{[usr]}</coption></xml>) (case a.Eligible of
+                                                                                                   [] => error <xml>AssignTasks: no eligibility categories</xml>
+                                                                                                 | (_, ls) :: _ => ls)}
+                               </cselect></td>
+                             </tr>
+                             </xml>) asbls)}/>
+            </tbody>
           </table>
         </xml>
 

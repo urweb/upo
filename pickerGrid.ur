@@ -92,8 +92,8 @@ functor Make(M : sig
             (fn r => send r.Channel rs)
 
     fun render _ a = <xml>
-      <table class="bs-table table-striped">
-        <tr>
+      <table class="bs-table">
+        <thead><tr>
           {extraTableHeaderContent}
           {@mapX [fn _ => string] [tr]
             (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (s : string) => <xml><th>{[s]}</th></xml>)
@@ -101,25 +101,27 @@ functor Make(M : sig
           {@mapX [fn _ => string] [tr]
             (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (s : string) => <xml><th>{[s]}</th></xml>)
             fld (labels --- (map (fn _ => string) static))}
-        </tr>
+        </tr></thead>
 
-        {List.mapX (fn rs => <xml>
-          <dyn signal={r <- signal rs;
-                       return <xml>
-                         <tr>
-                           {extraInitialColumns (r --- (map snd3 dynamic))}
-                           {@mapX2 [show] [ident] [tr]
-                            (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) =>
-                                <xml><td>{[x]}</td></xml>)
-                            fls shows (r --- (map snd3 dynamic))}
+        <tbody>
+          {List.mapX (fn rs => <xml>
+            <dyn signal={r <- signal rs;
+                         return <xml>
+                           <tr>
+                             {extraInitialColumns (r --- (map snd3 dynamic))}
+                             {@mapX2 [show] [ident] [tr]
+                              (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (x : t) =>
+                                  <xml><td>{[x]}</td></xml>)
+                              fls shows (r --- (map snd3 dynamic))}
 
-                           {@mapX2 [Widget.t'] [snd3] [_]
-                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (x : p.2) =>
-                                <xml><td>{@Widget.asWidget w x None}</td></xml>)
-                            fld widgets (r --- static)}
-                         </tr>
-                       </xml>}/>
-         </xml>) a.Rows}
+                             {@mapX2 [Widget.t'] [snd3] [_]
+                              (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (x : p.2) =>
+                                  <xml><td>{@Widget.asWidget w x None}</td></xml>)
+                              fld widgets (r --- static)}
+                           </tr>
+                         </xml>}/>
+           </xml>) a.Rows}
+        </tbody>
       </table>
 
       <button class="btn btn-primary"

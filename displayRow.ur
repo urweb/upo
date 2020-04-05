@@ -29,7 +29,7 @@ functor Make(M : sig
     fun onload _ = return ()
         
     fun render _ r = <xml>
-      <table class="bs-table table-striped">
+      <table class="bs-table">
         {@mapX3 [Widget.t'] [fn _ => string] [fst3] [_]
           (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
                        (w : Widget.t' p) (label : string) (v : p.1) =>

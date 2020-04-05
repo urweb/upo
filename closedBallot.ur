@@ -311,15 +311,17 @@ functor Make(M : sig
       </xml>
 
     fun render _ a = <xml>
-      <table class="bs-table table-striped">
-        <tr>
+      <table class="bs-table">
+        <thead><tr>
           <th/>
           <th>Choice</th>
           <th>Your Vote</th>
           <th>Total Votes</th>
-        </tr>
+        </tr></thead>
 
-        {List.mapX (oneChoice True a) a.Choices}
+        <tbody>
+          {List.mapX (oneChoice True a) a.Choices}
+        </tbody>
       </table>
 
       <dyn signal={(count, choices) <- List.foldlM (fn ch (count, choices) =>

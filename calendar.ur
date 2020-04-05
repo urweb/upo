@@ -683,7 +683,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                       </xml>
             in
               <xml><table class={calendar}>
-                <tr>
+                <thead><tr>
                   <th>Sunday</th>
                   <th>Monday</th>
                   <th>Tuesday</th>
@@ -691,9 +691,11 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                   <th>Thursday</th>
                   <th>Friday</th>
                   <th>Saturday</th>
-                </tr>
-                <dyn signal={days <- signal ds;
-                             return (render' days)}/>
+                </tr></thead>
+                <tbody>
+                  <dyn signal={days <- signal ds;
+                               return (render' days)}/>
+                </tbody>
               </table></xml>
             end
     in

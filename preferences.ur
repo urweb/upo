@@ -71,7 +71,7 @@ functor Make(M : sig
         Save preferences
       </button>
         
-      <table class="bs-table table-striped">
+      <table class="bs-table">
         {List.mapX (fn (c, s) => <xml><tr>
           <td>{[c]}</td>
           <td><cselect source={s}>

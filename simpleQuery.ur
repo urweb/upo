@@ -17,20 +17,22 @@ functor Make(M : sig
     fun onload _ = return ()
 
     fun render _ a = <xml>
-      <table class="bs-table table-striped">
-        <tr>
+      <table class="bs-table">
+        <thead><tr>
           {@mapX [fn _ => string] [tr]
             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] lab => <xml><th>{[lab]}</th></xml>)
             fl labels}
-        </tr>
+        </tr></thead>
 
-        {List.mapX (fn fs => <xml>
-          <tr>
-            {@mapX2 [show] [ident] [tr]
-              (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (v : t) => <xml><td>{[v]}</td></xml>)
-              fl show fs}
-          </tr>
-        </xml>) a}
+        <tbody>
+          {List.mapX (fn fs => <xml>
+            <tr>
+              {@mapX2 [show] [ident] [tr]
+                (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (_ : show t) (v : t) => <xml><td>{[v]}</td></xml>)
+                fl show fs}
+            </tr>
+          </xml>) a}
+        </tbody>
       </table>
     </xml>
 

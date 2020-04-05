@@ -637,68 +637,70 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                       </cselect> 
                                                     </div>
                                                     <table>
-                                                      <tr><td/>
+                                                      <thead><tr><td/>
                                                         {@mapX [fn _ => string] [tr]
                                                           (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) =>
                                                               <xml><th>{[label]}</th></xml>)
                                                           fl labels}
-                                                      <td/></tr>
-                                                      <dyn signal={slv <- signal sl;
-                                                                   return (List.mapX (fn (k2, vs, ws0) => <xml>
-                                                                     <dyn signal={vals <- signal vs;
-                                                                                  wids <- signal ws0;
-                                                                                  case wids of
-                                                                                      None => return <xml>
+                                                      <td/></tr></thead>
+                                                      <tbody>
+                                                        <dyn signal={slv <- signal sl;
+                                                                     return (List.mapX (fn (k2, vs, ws0) => <xml>
+                                                                       <dyn signal={vals <- signal vs;
+                                                                                    wids <- signal ws0;
+                                                                                    case wids of
+                                                                                        None => return <xml>
+                                                                                          <tr>
+                                                                                            <td>{[k2]}</td>
+                                                                                            {@mapX2 [Widget.t'] [fst3] [tr]
+                                                                                              (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                                                                                                  <xml><td>{[@Widget.asValue w v]}</td></xml>)
+                                                                                              fl ws vals}
+                                                                                            {if @Row.isEmpty fl then
+                                                                                                 <xml></xml>
+                                                                                             else <xml>
+                                                                                               <td><button class="btn btn-secondary"
+                                                                                                           onclick={fn _ =>
+                                                                                                                       wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                                (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                                    @Widget.initialize w cfg v)
+                                                                                                                                fl ws cfgs vals;
+                                                                                                                       set ws0 (Some wids)}>
+                                                                                                 <span class="glyphicon glyphicon-pencil"/>
+                                                                                               </button></td>
+                                                                                               <td><button class="btn btn-secondary"
+                                                                                                           onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
+                                                                                                 <span class="glyphicon glyphicon-remove"/>
+                                                                                               </button></td>
+                                                                                             </xml>}
+                                                                                          </tr>
+                                                                                        </xml>
+                                                                                      | Some wids => return <xml>
                                                                                         <tr>
                                                                                           <td>{[k2]}</td>
-                                                                                          {@mapX2 [Widget.t'] [fst3] [tr]
-                                                                                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
-                                                                                                <xml><td>{[@Widget.asValue w v]}</td></xml>)
-                                                                                            fl ws vals}
-                                                                                          {if @Row.isEmpty fl then
-                                                                                               <xml></xml>
-                                                                                           else <xml>
-                                                                                             <td><button class="btn btn-secondary"
-                                                                                                         onclick={fn _ =>
-                                                                                                                     wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
-                                                                                                                              (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
-                                                                                                                                  @Widget.initialize w cfg v)
-                                                                                                                              fl ws cfgs vals;
-                                                                                                                     set ws0 (Some wids)}>
-                                                                                               <span class="glyphicon glyphicon-pencil"/>
-                                                                                             </button></td>
-                                                                                             <td><button class="btn btn-secondary"
-                                                                                                         onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
-                                                                                               <span class="glyphicon glyphicon-remove"/>
-                                                                                             </button></td>
-                                                                                           </xml>}
+                                                                                          {@mapX2 [Widget.t'] [snd3] [tr]
+                                                                                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
+                                                                                                <xml><td>{@Widget.asWidget w s None}</td></xml>)
+                                                                                            fl ws wids}
+                                                                                          <td><button class="btn btn-secondary"
+                                                                                                      onclick={fn _ =>
+                                                                                                                  vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                                          (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                                              current (@Widget.value w s))
+                                                                                                                          fl ws wids;
+                                                                                                                  set vs vsv;
+                                                                                                                  set ws0 None}>
+                                                                                            <span class="glyphicon glyphicon-check"/>
+                                                                                          </button></td>
+                                                                                          <td><button class="btn btn-secondary"
+                                                                                                      onclick={fn _ => set ws0 None}>
+                                                                                            <span class="glyphicon glyphicon-remove"/>
+                                                                                          </button></td>
                                                                                         </tr>
-                                                                                      </xml>
-                                                                                    | Some wids => return <xml>
-                                                                                      <tr>
-                                                                                        <td>{[k2]}</td>
-                                                                                        {@mapX2 [Widget.t'] [snd3] [tr]
-                                                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
-                                                                                              <xml><td>{@Widget.asWidget w s None}</td></xml>)
-                                                                                          fl ws wids}
-                                                                                        <td><button class="btn btn-secondary"
-                                                                                                    onclick={fn _ =>
-                                                                                                                vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
-                                                                                                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
-                                                                                                                            current (@Widget.value w s))
-                                                                                                                        fl ws wids;
-                                                                                                                set vs vsv;
-                                                                                                                set ws0 None}>
-                                                                                          <span class="glyphicon glyphicon-check"/>
-                                                                                        </button></td>
-                                                                                        <td><button class="btn btn-secondary"
-                                                                                                    onclick={fn _ => set ws0 None}>
-                                                                                          <span class="glyphicon glyphicon-remove"/>
-                                                                                        </button></td>
-                                                                                      </tr>
-                                                                                    </xml>}/>
-                                                                   </xml>) slv)}/>
-                                                    </table>
+                                                                                      </xml>}/>
+                                                                     </xml>) slv)}/>
+                                                    </tbody>
+                                                  </table>
                                                 </div>
                                               </xml>,
                            ReadWidgets = fn (s, _, sl, changed, ws) =>
@@ -832,68 +834,70 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                       </cselect> 
                                                     </div>
                                                     <table>
-                                                      <tr><td/>
+                                                      <thead><tr><td/>
                                                         {@mapX [fn _ => string] [tr]
                                                           (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) =>
                                                               <xml><th>{[label]}</th></xml>)
                                                           fl labels}
-                                                      <td/></tr>
-                                                      <dyn signal={slv <- signal sl;
-                                                                   return (List.mapX (fn (k2, vs, ws0) => <xml>
-                                                                     <dyn signal={vals <- signal vs;
-                                                                                  wids <- signal ws0;
-                                                                                  case wids of
-                                                                                      None => return <xml>
+                                                      <td/></tr></thead>
+                                                      <tbody>
+                                                        <dyn signal={slv <- signal sl;
+                                                                     return (List.mapX (fn (k2, vs, ws0) => <xml>
+                                                                       <dyn signal={vals <- signal vs;
+                                                                                    wids <- signal ws0;
+                                                                                    case wids of
+                                                                                        None => return <xml>
+                                                                                          <tr>
+                                                                                            <td>{[k2]}</td>
+                                                                                            {@mapX2 [Widget.t'] [fst3] [tr]
+                                                                                              (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                                                                                                  <xml><td>{[@Widget.asValue w v]}</td></xml>)
+                                                                                              fl ws vals}
+                                                                                            {if @Row.isEmpty fl then
+                                                                                                 <xml></xml>
+                                                                                             else <xml>
+                                                                                               <td><button class="btn btn-secondary"
+                                                                                                           onclick={fn _ =>
+                                                                                                                       wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                                (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                                    @Widget.initialize w cfg v)
+                                                                                                                                fl ws cfgs vals;
+                                                                                                                       set ws0 (Some wids)}>
+                                                                                                 <span class="glyphicon glyphicon-pencil"/>
+                                                                                               </button></td>
+                                                                                               <td><button class="btn btn-secondary"
+                                                                                                           onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
+                                                                                                 <span class="glyphicon glyphicon-remove"/>
+                                                                                               </button></td>
+                                                                                             </xml>}
+                                                                                          </tr>
+                                                                                        </xml>
+                                                                                      | Some wids => return <xml>
                                                                                         <tr>
                                                                                           <td>{[k2]}</td>
-                                                                                          {@mapX2 [Widget.t'] [fst3] [tr]
-                                                                                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
-                                                                                                <xml><td>{[@Widget.asValue w v]}</td></xml>)
-                                                                                            fl ws vals}
-                                                                                          {if @Row.isEmpty fl then
-                                                                                               <xml></xml>
-                                                                                           else <xml>
-                                                                                             <td><button class="btn btn-secondary"
-                                                                                                         onclick={fn _ =>
-                                                                                                                     wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
-                                                                                                                              (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
-                                                                                                                                  @Widget.initialize w cfg v)
-                                                                                                                              fl ws cfgs vals;
-                                                                                                                     set ws0 (Some wids)}>
-                                                                                               <span class="glyphicon glyphicon-pencil"/>
-                                                                                             </button></td>
-                                                                                             <td><button class="btn btn-secondary"
-                                                                                                         onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
-                                                                                               <span class="glyphicon glyphicon-remove"/>
-                                                                                             </button></td>
-                                                                                           </xml>}
+                                                                                          {@mapX2 [Widget.t'] [snd3] [tr]
+                                                                                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
+                                                                                                <xml><td>{@Widget.asWidget w s None}</td></xml>)
+                                                                                            fl ws wids}
+                                                                                          <td><button class="btn btn-secondary"
+                                                                                                      onclick={fn _ =>
+                                                                                                                  vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                                          (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                                              current (@Widget.value w s))
+                                                                                                                          fl ws wids;
+                                                                                                                  set vs vsv;
+                                                                                                                  set ws0 None}>
+                                                                                            <span class="glyphicon glyphicon-check"/>
+                                                                                          </button></td>
+                                                                                          <td><button class="btn btn-secondary"
+                                                                                                      onclick={fn _ => set ws0 None}>
+                                                                                            <span class="glyphicon glyphicon-remove"/>
+                                                                                          </button></td>
                                                                                         </tr>
-                                                                                      </xml>
-                                                                                    | Some wids => return <xml>
-                                                                                      <tr>
-                                                                                        <td>{[k2]}</td>
-                                                                                        {@mapX2 [Widget.t'] [snd3] [tr]
-                                                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
-                                                                                              <xml><td>{@Widget.asWidget w s None}</td></xml>)
-                                                                                          fl ws wids}
-                                                                                        <td><button class="btn btn-secondary"
-                                                                                                    onclick={fn _ =>
-                                                                                                                vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
-                                                                                                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
-                                                                                                                            current (@Widget.value w s))
-                                                                                                                        fl ws wids;
-                                                                                                                set vs vsv;
-                                                                                                                set ws0 None}>
-                                                                                          <span class="glyphicon glyphicon-check"/>
-                                                                                        </button></td>
-                                                                                        <td><button class="btn btn-secondary"
-                                                                                                    onclick={fn _ => set ws0 None}>
-                                                                                          <span class="glyphicon glyphicon-remove"/>
-                                                                                        </button></td>
-                                                                                      </tr>
-                                                                                    </xml>}/>
-                                                                   </xml>) slv)}/>
-                                                    </table>
+                                                                                      </xml>}/>
+                                                                     </xml>) slv)}/>
+                                                    </tbody>
+                                                  </table>
                                                 </div>
                                               </xml>,
                            ReadWidgets = fn (s, _, sl, changed, ws) =>
@@ -1167,80 +1171,82 @@ functor ManyToManyWithFile(M : sig
                                                           </cselect> 
                                                         </div>
                                                         <table>
-                                                          <tr><td/>
+                                                          <thead><tr><td/>
                                                             {@mapX [fn _ => string] [tr]
                                                               (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) =>
                                                                   <xml><th>{[label]}</th></xml>)
                                                               fl labels}
                                                             <th>File</th>
-                                                          <td/></tr>
-                                                          <dyn signal={slv <- signal sl;
-                                                                       return (List.mapX (fn (k2, vs, ws0) => <xml>
-                                                                         <dyn signal={(vals, _) <- signal vs;
-                                                                                      wids <- signal ws0;
-                                                                                      case wids of
-                                                                                          None => return <xml>
+                                                          <td/></tr></thead>
+                                                          <tbody>
+                                                            <dyn signal={slv <- signal sl;
+                                                                         return (List.mapX (fn (k2, vs, ws0) => <xml>
+                                                                           <dyn signal={(vals, _) <- signal vs;
+                                                                                        wids <- signal ws0;
+                                                                                        case wids of
+                                                                                            None => return <xml>
+                                                                                              <tr>
+                                                                                                <td>{[k2]}</td>
+                                                                                                {@mapX2 [Widget.t'] [fst3] [tr]
+                                                                                                  (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                                                                                                      <xml><td>{[@Widget.asValue w v]}</td></xml>)
+                                                                                                  fl ws vals}
+                                                                                                <td>{case k1 of
+                                                                                                         None => <xml></xml>
+                                                                                                       | Some k1 => <xml><a link={download k1 k2}>File</a></xml>}</td>
+                                                                                                {if @Row.isEmpty fl then
+                                                                                                     <xml></xml>
+                                                                                                 else <xml>
+                                                                                                   <td><button class="btn btn-secondary"
+                                                                                                               onclick={fn _ =>
+                                                                                                                           wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                                    (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                                        @Widget.initialize w cfg v)
+                                                                                                                                    fl ws cfgs vals;
+                                                                                                                           upl <- source None;
+                                                                                                                           set ws0 (Some (wids, upl))}>
+                                                                                                     <span class="glyphicon glyphicon-pencil"/>
+                                                                                                   </button></td>
+                                                                                                   <td><button class="btn btn-secondary"
+                                                                                                               onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
+                                                                                                     <span class="glyphicon glyphicon-remove"/>
+                                                                                                   </button></td>
+                                                                                                 </xml>}
+                                                                                              </tr>
+                                                                                            </xml>
+                                                                                          | Some (wids, upl) => return <xml>
                                                                                             <tr>
                                                                                               <td>{[k2]}</td>
-                                                                                              {@mapX2 [Widget.t'] [fst3] [tr]
-                                                                                                (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
-                                                                                                    <xml><td>{[@Widget.asValue w v]}</td></xml>)
-                                                                                                fl ws vals}
-                                                                                              <td>{case k1 of
-                                                                                                       None => <xml></xml>
-                                                                                                     | Some k1 => <xml><a link={download k1 k2}>File</a></xml>}</td>
-                                                                                              {if @Row.isEmpty fl then
-                                                                                                   <xml></xml>
-                                                                                               else <xml>
-                                                                                                 <td><button class="btn btn-secondary"
-                                                                                                             onclick={fn _ =>
-                                                                                                                         wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
-                                                                                                                                  (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
-                                                                                                                                      @Widget.initialize w cfg v)
-                                                                                                                                  fl ws cfgs vals;
-                                                                                                                         upl <- source None;
-                                                                                                                         set ws0 (Some (wids, upl))}>
-                                                                                                   <span class="glyphicon glyphicon-pencil"/>
-                                                                                                 </button></td>
-                                                                                                 <td><button class="btn btn-secondary"
-                                                                                                             onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
-                                                                                                   <span class="glyphicon glyphicon-remove"/>
-                                                                                                 </button></td>
-                                                                                               </xml>}
+                                                                                              {@mapX2 [Widget.t'] [snd3] [tr]
+                                                                                                (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
+                                                                                                    <xml><td>{@Widget.asWidget w s None}</td></xml>)
+                                                                                                fl ws wids}
+                                                                                              <td>
+                                                                                                <active code={AjaxUpload.render {SubmitLabel = None,
+                                                                                                                                 OnBegin = return (),
+                                                                                                                                 OnSuccess = fn upload => set upl (Some upload),
+                                                                                                                                 OnError = error <xml>Error uploading file.  Maybe it has an unsupported type?</xml>}}/>
+                                                                                                                                                                                                                                                                                        </td>
+                                                                                              <td><button class="btn btn-secondary"
+                                                                                                          onclick={fn _ =>
+                                                                                                                      vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                                              (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                                                  current (@Widget.value w s))
+                                                                                                                              fl ws wids;
+                                                                                                                      uploadO <- get upl;
+                                                                                                                      set vs (vsv, uploadO);
+                                                                                                                      set ws0 None}>
+                                                                                                <span class="glyphicon glyphicon-check"/>
+                                                                                              </button></td>
+                                                                                              <td><button class="btn btn-secondary"
+                                                                                                          onclick={fn _ => set ws0 None}>
+                                                                                                <span class="glyphicon glyphicon-remove"/>
+                                                                                              </button></td>
                                                                                             </tr>
-                                                                                          </xml>
-                                                                                        | Some (wids, upl) => return <xml>
-                                                                                          <tr>
-                                                                                            <td>{[k2]}</td>
-                                                                                            {@mapX2 [Widget.t'] [snd3] [tr]
-                                                                                              (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
-                                                                                                  <xml><td>{@Widget.asWidget w s None}</td></xml>)
-                                                                                              fl ws wids}
-                                                                                            <td>
-                                                                                              <active code={AjaxUpload.render {SubmitLabel = None,
-                                                                                                                               OnBegin = return (),
-                                                                                                                               OnSuccess = fn upload => set upl (Some upload),
-                                                                                                                               OnError = error <xml>Error uploading file.  Maybe it has an unsupported type?</xml>}}/>
-                                                                                                                                                                                                                                                                                      </td>
-                                                                                            <td><button class="btn btn-secondary"
-                                                                                                        onclick={fn _ =>
-                                                                                                                    vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
-                                                                                                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
-                                                                                                                                current (@Widget.value w s))
-                                                                                                                            fl ws wids;
-                                                                                                                    uploadO <- get upl;
-                                                                                                                    set vs (vsv, uploadO);
-                                                                                                                    set ws0 None}>
-                                                                                              <span class="glyphicon glyphicon-check"/>
-                                                                                            </button></td>
-                                                                                            <td><button class="btn btn-secondary"
-                                                                                                        onclick={fn _ => set ws0 None}>
-                                                                                              <span class="glyphicon glyphicon-remove"/>
-                                                                                            </button></td>
-                                                                                          </tr>
-                                                                                        </xml>}/>
-                                                                       </xml>) slv)}/>
-                                                        </table>
+                                                                                          </xml>}/>
+                                                                         </xml>) slv)}/>
+                                                        </tbody>
+                                                      </table>
                                                     </div>
                                                   </xml>,
                                ReadWidgets = fn (s, _, _, sl, changed, ws) =>
@@ -1432,80 +1438,82 @@ functor ManyToManyWithFile(M : sig
                                                           </cselect> 
                                                         </div>
                                                         <table>
-                                                          <tr><td/>
+                                                          <thead><tr><td/>
                                                             {@mapX [fn _ => string] [tr]
                                                               (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) =>
                                                                   <xml><th>{[label]}</th></xml>)
                                                               fl labels}
                                                             <th>File</th>
-                                                          <td/></tr>
-                                                          <dyn signal={slv <- signal sl;
-                                                                       return (List.mapX (fn (k1, vs, ws0) => <xml>
-                                                                         <dyn signal={(vals, _) <- signal vs;
-                                                                                      wids <- signal ws0;
-                                                                                      case wids of
-                                                                                          None => return <xml>
+                                                          <td/></tr></thead>
+                                                          <tbody>
+                                                            <dyn signal={slv <- signal sl;
+                                                                         return (List.mapX (fn (k1, vs, ws0) => <xml>
+                                                                           <dyn signal={(vals, _) <- signal vs;
+                                                                                        wids <- signal ws0;
+                                                                                        case wids of
+                                                                                            None => return <xml>
+                                                                                              <tr>
+                                                                                                <td>{[k1]}</td>
+                                                                                                {@mapX2 [Widget.t'] [fst3] [tr]
+                                                                                                  (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                                                                                                      <xml><td>{[@Widget.asValue w v]}</td></xml>)
+                                                                                                  fl ws vals}
+                                                                                                <td>{case k2 of
+                                                                                                         None => <xml></xml>
+                                                                                                       | Some k2 => <xml><a link={download k1 k2}>File</a></xml>}</td>
+                                                                                                {if @Row.isEmpty fl then
+                                                                                                     <xml></xml>
+                                                                                                 else <xml>
+                                                                                                   <td><button class="btn btn-secondary"
+                                                                                                               onclick={fn _ =>
+                                                                                                                           wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                                    (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                                        @Widget.initialize w cfg v)
+                                                                                                                                    fl ws cfgs vals;
+                                                                                                                           upl <- source None;
+                                                                                                                           set ws0 (Some (wids, upl))}>
+                                                                                                     <span class="glyphicon glyphicon-pencil"/>
+                                                                                                   </button></td>
+                                                                                                   <td><button class="btn btn-secondary"
+                                                                                                               onclick={fn _ => set sl (List.filter (fn (k1', _, _) => k1' <> k1) slv)}>
+                                                                                                     <span class="glyphicon glyphicon-remove"/>
+                                                                                                   </button></td>
+                                                                                                 </xml>}
+                                                                                              </tr>
+                                                                                            </xml>
+                                                                                          | Some (wids, upl) => return <xml>
                                                                                             <tr>
                                                                                               <td>{[k1]}</td>
-                                                                                              {@mapX2 [Widget.t'] [fst3] [tr]
-                                                                                                (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
-                                                                                                    <xml><td>{[@Widget.asValue w v]}</td></xml>)
-                                                                                                fl ws vals}
-                                                                                              <td>{case k2 of
-                                                                                                       None => <xml></xml>
-                                                                                                     | Some k2 => <xml><a link={download k1 k2}>File</a></xml>}</td>
-                                                                                              {if @Row.isEmpty fl then
-                                                                                                   <xml></xml>
-                                                                                               else <xml>
-                                                                                                 <td><button class="btn btn-secondary"
-                                                                                                             onclick={fn _ =>
-                                                                                                                         wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
-                                                                                                                                  (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
-                                                                                                                                      @Widget.initialize w cfg v)
-                                                                                                                                  fl ws cfgs vals;
-                                                                                                                         upl <- source None;
-                                                                                                                         set ws0 (Some (wids, upl))}>
-                                                                                                   <span class="glyphicon glyphicon-pencil"/>
-                                                                                                 </button></td>
-                                                                                                 <td><button class="btn btn-secondary"
-                                                                                                             onclick={fn _ => set sl (List.filter (fn (k1', _, _) => k1' <> k1) slv)}>
-                                                                                                   <span class="glyphicon glyphicon-remove"/>
-                                                                                                 </button></td>
-                                                                                               </xml>}
+                                                                                              {@mapX2 [Widget.t'] [snd3] [tr]
+                                                                                                (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
+                                                                                                    <xml><td>{@Widget.asWidget w s None}</td></xml>)
+                                                                                                fl ws wids}
+                                                                                              <td>
+                                                                                                <active code={AjaxUpload.render {SubmitLabel = None,
+                                                                                                                                 OnBegin = return (),
+                                                                                                                                 OnSuccess = fn upload => set upl (Some upload),
+                                                                                                                                 OnError = error <xml>Error uploading file.  Maybe it has an unsupported type?</xml>}}/>
+                                                                                                                                                                                                                                                                                        </td>
+                                                                                              <td><button class="btn btn-secondary"
+                                                                                                          onclick={fn _ =>
+                                                                                                                      vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                                              (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                                                  current (@Widget.value w s))
+                                                                                                                              fl ws wids;
+                                                                                                                      uploadO <- get upl;
+                                                                                                                      set vs (vsv, uploadO);
+                                                                                                                      set ws0 None}>
+                                                                                                <span class="glyphicon glyphicon-check"/>
+                                                                                              </button></td>
+                                                                                              <td><button class="btn btn-secondary"
+                                                                                                          onclick={fn _ => set ws0 None}>
+                                                                                                <span class="glyphicon glyphicon-remove"/>
+                                                                                              </button></td>
                                                                                             </tr>
-                                                                                          </xml>
-                                                                                        | Some (wids, upl) => return <xml>
-                                                                                          <tr>
-                                                                                            <td>{[k1]}</td>
-                                                                                            {@mapX2 [Widget.t'] [snd3] [tr]
-                                                                                              (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
-                                                                                                  <xml><td>{@Widget.asWidget w s None}</td></xml>)
-                                                                                              fl ws wids}
-                                                                                            <td>
-                                                                                              <active code={AjaxUpload.render {SubmitLabel = None,
-                                                                                                                               OnBegin = return (),
-                                                                                                                               OnSuccess = fn upload => set upl (Some upload),
-                                                                                                                               OnError = error <xml>Error uploading file.  Maybe it has an unsupported type?</xml>}}/>
-                                                                                                                                                                                                                                                                                      </td>
-                                                                                            <td><button class="btn btn-secondary"
-                                                                                                        onclick={fn _ =>
-                                                                                                                    vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
-                                                                                                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
-                                                                                                                                current (@Widget.value w s))
-                                                                                                                            fl ws wids;
-                                                                                                                    uploadO <- get upl;
-                                                                                                                    set vs (vsv, uploadO);
-                                                                                                                    set ws0 None}>
-                                                                                              <span class="glyphicon glyphicon-check"/>
-                                                                                            </button></td>
-                                                                                            <td><button class="btn btn-secondary"
-                                                                                                        onclick={fn _ => set ws0 None}>
-                                                                                              <span class="glyphicon glyphicon-remove"/>
-                                                                                            </button></td>
-                                                                                          </tr>
-                                                                                        </xml>}/>
-                                                                       </xml>) slv)}/>
-                                                        </table>
+                                                                                          </xml>}/>
+                                                                         </xml>) slv)}/>
+                                                        </tbody>
+                                                      </table>
                                                     </div>
                                                   </xml>,
                                ReadWidgets = fn (s, _, _, sl, changed, ws) =>
@@ -1664,97 +1672,99 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                       </cselect> 
                                                     </div>
                                                     <table>
-                                                      <tr><td/>
+                                                      <thead><tr><td/>
                                                         {@mapX [fn _ => string] [tr]
                                                           (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) =>
                                                               <xml><th>{[label]}</th></xml>)
                                                           fl labels}
-                                                      <td/></tr>
-                                                      <dyn signal={slv <- signal sl;
-                                                                   len <- return (List.length slv);
-                                                                   return (List.mapXi (fn i (k2, vs, ws0) => <xml>
-                                                                     <dyn signal={vals <- signal vs;
-                                                                                  wids <- signal ws0;
-                                                                                  case wids of
-                                                                                      None => return <xml><tr>
-                                                                                        <td>{[k2]}</td>
-                                                                                        {@mapX2 [Widget.t'] [fst3] [tr]
-                                                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
-                                                                                              <xml><td>{[@Widget.asValue w v]}</td></xml>)
-                                                                                          fl ws vals}
-                                                                                        <td>{if i = 0 then
-                                                                                                 <xml></xml>
-                                                                                             else
-                                                                                                 <xml><button class="btn btn-secondary"
-                                                                                                              onclick={fn _ =>
-                                                                                                                          let
-                                                                                                                              val (before, after) = List.splitAt (i-1) slv
-                                                                                                                          in
-                                                                                                                              case after of
-                                                                                                                                  prev :: this :: after =>
-                                                                                                                                  set sl (List.append before (this :: prev :: after))
-                                                                                                                                | _ => error <xml>Explorer: impossible splitAt</xml>
-                                                                                                                          end}>
-                                                                                                   <span class="glyphicon glyphicon-arrow-up"/>
-                                                                                                 </button></xml>}</td>
-                                                                                        <td>{if i = len-1 then
-                                                                                                 <xml></xml>
-                                                                                             else
-                                                                                                 <xml><button class="btn btn-secondary"
-                                                                                                              onclick={fn _ =>
-                                                                                                                          let
-                                                                                                                              val (before, after) = List.splitAt i slv
-                                                                                                                          in
-                                                                                                                              case after of
-                                                                                                                                  this :: next :: after =>
-                                                                                                                                  set sl (List.append before (next :: this :: after))
-                                                                                                                                | _ => error <xml>Explorer: impossible splitAt</xml>
-                                                                                                                          end}>
-                                                                                                   <span class="glyphicon glyphicon-arrow-down"/>
-                                                                                        </button></xml>}</td>
-                                                                                        {if @Row.isEmpty fl then
-                                                                                             <xml></xml>
-                                                                                         else <xml>
-                                                                                           <td><button class="btn btn-secondary"
-                                                                                                       onclick={fn _ =>
-                                                                                                                   wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
-                                                                                                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
-                                                                                                                                @Widget.initialize w cfg v)
-                                                                                                                            fl ws cfgs vals;
-                                                                                                                   set ws0 (Some wids)}>
-                                                                                                         <span class="glyphicon glyphicon-pencil"/>
-                                                                                           </button></td>
-                                                                                           <td><button class="btn btn-secondary"
-                                                                                                       onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
-                                                                                             <span class="glyphicon glyphicon-remove"/>
-                                                                                           </button></td>
-                                                                                         </xml>}
-                                                                                      </tr></xml>
-                                                                                    | Some wids => return <xml>
-                                                                                      <tr>
-                                                                                        <td>{[k2]}</td>
-                                                                                        {@mapX2 [Widget.t'] [snd3] [tr]
-                                                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
-                                                                                              <xml><td>{@Widget.asWidget w s None}</td></xml>)
-                                                                                          fl ws wids}
-                                                                                        <td><button class="btn btn-secondary"
-                                                                                                    onclick={fn _ =>
-                                                                                                                vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
-                                                                                                                        (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
-                                                                                                                            current (@Widget.value w s))
-                                                                                                                        fl ws wids;
-                                                                                                                set vs vsv;
-                                                                                                                set ws0 None}>
-                                                                                          <span class="glyphicon glyphicon-check"/>
-                                                                                        </button></td>
-                                                                                        <td><button class="btn btn-secondary"
-                                                                                                    onclick={fn _ => set ws0 None}>
-                                                                                          <span class="glyphicon glyphicon-remove"/>
-                                                                                        </button></td>
-                                                                                      </tr>
-                                                                                    </xml>}/>
-                                                                   </xml>) slv)}/>
-                                                    </table>
+                                                      <td/></tr></thead>
+                                                      <tbody>
+                                                        <dyn signal={slv <- signal sl;
+                                                                     len <- return (List.length slv);
+                                                                     return (List.mapXi (fn i (k2, vs, ws0) => <xml>
+                                                                       <dyn signal={vals <- signal vs;
+                                                                                    wids <- signal ws0;
+                                                                                    case wids of
+                                                                                        None => return <xml><tr>
+                                                                                          <td>{[k2]}</td>
+                                                                                          {@mapX2 [Widget.t'] [fst3] [tr]
+                                                                                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                                                                                                <xml><td>{[@Widget.asValue w v]}</td></xml>)
+                                                                                            fl ws vals}
+                                                                                          <td>{if i = 0 then
+                                                                                                   <xml></xml>
+                                                                                               else
+                                                                                                   <xml><button class="btn btn-secondary"
+                                                                                                                onclick={fn _ =>
+                                                                                                                            let
+                                                                                                                                val (before, after) = List.splitAt (i-1) slv
+                                                                                                                            in
+                                                                                                                                case after of
+                                                                                                                                    prev :: this :: after =>
+                                                                                                                                    set sl (List.append before (this :: prev :: after))
+                                                                                                                                  | _ => error <xml>Explorer: impossible splitAt</xml>
+                                                                                                                            end}>
+                                                                                                     <span class="glyphicon glyphicon-arrow-up"/>
+                                                                                                   </button></xml>}</td>
+                                                                                          <td>{if i = len-1 then
+                                                                                                   <xml></xml>
+                                                                                               else
+                                                                                                   <xml><button class="btn btn-secondary"
+                                                                                                                onclick={fn _ =>
+                                                                                                                            let
+                                                                                                                                val (before, after) = List.splitAt i slv
+                                                                                                                            in
+                                                                                                                                case after of
+                                                                                                                                    this :: next :: after =>
+                                                                                                                                    set sl (List.append before (next :: this :: after))
+                                                                                                                                  | _ => error <xml>Explorer: impossible splitAt</xml>
+                                                                                                                            end}>
+                                                                                                     <span class="glyphicon glyphicon-arrow-down"/>
+                                                                                          </button></xml>}</td>
+                                                                                          {if @Row.isEmpty fl then
+                                                                                               <xml></xml>
+                                                                                           else <xml>
+                                                                                             <td><button class="btn btn-secondary"
+                                                                                                         onclick={fn _ =>
+                                                                                                                     wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                              (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                                  @Widget.initialize w cfg v)
+                                                                                                                              fl ws cfgs vals;
+                                                                                                                     set ws0 (Some wids)}>
+                                                                                                           <span class="glyphicon glyphicon-pencil"/>
+                                                                                             </button></td>
+                                                                                             <td><button class="btn btn-secondary"
+                                                                                                         onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
+                                                                                               <span class="glyphicon glyphicon-remove"/>
+                                                                                             </button></td>
+                                                                                           </xml>}
+                                                                                        </tr></xml>
+                                                                                      | Some wids => return <xml>
+                                                                                        <tr>
+                                                                                          <td>{[k2]}</td>
+                                                                                          {@mapX2 [Widget.t'] [snd3] [tr]
+                                                                                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
+                                                                                                <xml><td>{@Widget.asWidget w s None}</td></xml>)
+                                                                                            fl ws wids}
+                                                                                          <td><button class="btn btn-secondary"
+                                                                                                      onclick={fn _ =>
+                                                                                                                  vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                                          (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                                              current (@Widget.value w s))
+                                                                                                                          fl ws wids;
+                                                                                                                  set vs vsv;
+                                                                                                                  set ws0 None}>
+                                                                                            <span class="glyphicon glyphicon-check"/>
+                                                                                          </button></td>
+                                                                                          <td><button class="btn btn-secondary"
+                                                                                                      onclick={fn _ => set ws0 None}>
+                                                                                            <span class="glyphicon glyphicon-remove"/>
+                                                                                          </button></td>
+                                                                                        </tr>
+                                                                                      </xml>}/>
+                                                                     </xml>) slv)}/>
+                                                    </tbody>
+                                                  </table>
                                                 </div>
                                               </xml>,
                            ReadWidgets = fn (s, _, sl, changed, ws) =>
@@ -1890,68 +1900,70 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                       </cselect> 
                                                     </div>
                                                     <table>
-                                                      <tr><td/>
+                                                      <thead><tr><td/>
                                                         {@mapX [fn _ => string] [tr]
                                                           (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (label : string) =>
                                                               <xml><th>{[label]}</th></xml>)
                                                           fl labels}
-                                                      <td/></tr>
-                                                      <dyn signal={slv <- signal sl;
-                                                                   return (List.mapX (fn (k2, vs, ws0) => <xml>
-                                                                     <dyn signal={vals <- signal vs;
-                                                                                  wids <- signal ws0;
-                                                                                  case wids of
-                                                                                      None => return <xml>
+                                                      <td/></tr></thead>
+                                                      <tbody>
+                                                        <dyn signal={slv <- signal sl;
+                                                                     return (List.mapX (fn (k2, vs, ws0) => <xml>
+                                                                       <dyn signal={vals <- signal vs;
+                                                                                    wids <- signal ws0;
+                                                                                    case wids of
+                                                                                        None => return <xml>
+                                                                                          <tr>
+                                                                                            <td>{[k2]}</td>
+                                                                                            {@mapX2 [Widget.t'] [fst3] [tr]
+                                                                                              (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                                                                                                  <xml><td>{[@Widget.asValue w v]}</td></xml>)
+                                                                                              fl ws vals}
+                                                                                            <td><button class="btn btn-secondary"
+                                                                                                        onclick={fn _ =>
+                                                                                                                    wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
+                                                                                                                             (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
+                                                                                                                                 @Widget.initialize w cfg v)
+                                                                                                                             fl ws cfgs vals;
+                                                                                                                    set ws0 (Some wids)}>
+                                                                                              <span class="glyphicon glyphicon-pencil"/>
+                                                                                            </button></td>
+                                                                                            <td><button class="btn btn-secondary"
+                                                                                                        onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
+                                                                                              <span class="glyphicon glyphicon-remove"/>
+                                                                                            </button></td>
+                                                                                          </tr>
+                                                                                        </xml>
+                                                                                      | Some wids => return <xml>
                                                                                         <tr>
                                                                                           <td>{[k2]}</td>
-                                                                                          {@mapX2 [Widget.t'] [fst3] [tr]
-                                                                                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
-                                                                                                <xml><td>{[@Widget.asValue w v]}</td></xml>)
-                                                                                            fl ws vals}
-                                                                                          <td><button class="btn btn-secondary"
-                                                                                                      onclick={fn _ =>
-                                                                                                                  wids <- @Monad.mapR3 _ [Widget.t'] [thd3] [fst3] [snd3]
-                                                                                                                           (fn [nm ::_] [p ::_] (w : Widget.t' p) (cfg : p.3) (v : p.1) =>
-                                                                                                                               @Widget.initialize w cfg v)
-                                                                                                                           fl ws cfgs vals;
-                                                                                                                  set ws0 (Some wids)}>
-                                                                                            <span class="glyphicon glyphicon-pencil"/>
-                                                                                          </button></td>
-                                                                                          <td><button class="btn btn-secondary"
-                                                                                                      onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
-                                                                                            <span class="glyphicon glyphicon-remove"/>
-                                                                                          </button></td>
+                                                                                          {@mapX2 [Widget.t'] [snd3] [tr]
+                                                                                            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
+                                                                                                <xml><td>{@Widget.asWidget w s None}</td></xml>)
+                                                                                            fl ws wids}
+                                                                                          {if @Row.isEmpty fl then
+                                                                                               <xml></xml>
+                                                                                           else <xml>
+                                                                                             <td><button class="btn btn-secondary"
+                                                                                                         onclick={fn _ =>
+                                                                                                                     vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                                                                                                             (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
+                                                                                                                                 current (@Widget.value w s))
+                                                                                                                             fl ws wids;
+                                                                                                                     set vs vsv;
+                                                                                                                     set ws0 None}>
+                                                                                               <span class="glyphicon glyphicon-check"/>
+                                                                                             </button></td>
+                                                                                             <td><button class="btn btn-secondary"
+                                                                                                         onclick={fn _ => set ws0 None}>
+                                                                                               <span class="glyphicon glyphicon-remove"/>
+                                                                                             </button></td>
+                                                                                           </xml>}
                                                                                         </tr>
-                                                                                      </xml>
-                                                                                    | Some wids => return <xml>
-                                                                                      <tr>
-                                                                                        <td>{[k2]}</td>
-                                                                                        {@mapX2 [Widget.t'] [snd3] [tr]
-                                                                                          (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (s : p.2) =>
-                                                                                              <xml><td>{@Widget.asWidget w s None}</td></xml>)
-                                                                                          fl ws wids}
-                                                                                        {if @Row.isEmpty fl then
-                                                                                             <xml></xml>
-                                                                                         else <xml>
-                                                                                           <td><button class="btn btn-secondary"
-                                                                                                       onclick={fn _ =>
-                                                                                                                   vsv <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
-                                                                                                                           (fn [nm ::_] [p ::_] (w : Widget.t' p) (s : p.2) =>
-                                                                                                                               current (@Widget.value w s))
-                                                                                                                           fl ws wids;
-                                                                                                                   set vs vsv;
-                                                                                                                   set ws0 None}>
-                                                                                             <span class="glyphicon glyphicon-check"/>
-                                                                                           </button></td>
-                                                                                           <td><button class="btn btn-secondary"
-                                                                                                       onclick={fn _ => set ws0 None}>
-                                                                                             <span class="glyphicon glyphicon-remove"/>
-                                                                                           </button></td>
-                                                                                         </xml>}
-                                                                                      </tr>
-                                                                                    </xml>}/>
-                                                                   </xml>) slv)}/>
-                                                    </table>
+                                                                                      </xml>}/>
+                                                                     </xml>) slv)}/>
+                                                    </tbody>
+                                                  </table>
                                                 </div>
                                               </xml>,
                            ReadWidgets = fn (s, _, sl, changed, ws) =>
@@ -2192,7 +2204,7 @@ functor Make(M : sig
 
                 {extra}
 
-                <table class="bs-table table-striped">
+                <table class="bs-table">
                   <dyn signal={rows <- signal rows;
                                return (List.mapX (fn (k, bod) => <xml><tr><td><a link={entry (maker [fn p => p.1] k)}>{bod}</a></td></tr></xml>) rows)}/>
                 </table>
@@ -2361,7 +2373,7 @@ functor Make(M : sig
                                                 <xml/>}
                                            </p>
 
-                                         <table class="bs-table table-striped">
+                                         <table class="bs-table">
                                            {r.Render (fn key text => <xml><a link={entry key}>{[text]}</a></xml>) aux row}
                                          </table>
                                       </xml>)

@@ -106,39 +106,39 @@ functor Make(M : sig
                                                       New = new}) vs;
                           rpc (save vs)}/>
 
-      <table class="bs-table table-striped">
-        <tr>
+      <table class="bs-table">
+        <thead><tr>
           <th/>
           {@mapX [fn _ => string] [tr]
             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] lab =>
                 <xml><th>{[lab]}</th></xml>)
             allFl labels}
-        </tr>
+        </tr></thead>
 
-        <dyn signal={vs <- signal t.Rows;
-                     return (List.mapX (fn r => <xml>
-                       <tr>
-                         <td>
-                           {Ui.modalButton ctx (CLASS "btn btn-secondary")
-                                           <xml><span class="glyphicon glyphicon-remove"/></xml>
-                                           (return (Ui.modal
-                                                        (rpc (del r.OldKey);
-                                                         set t.Rows (List.filter (fn r' => r'.OldKey <> r.OldKey) vs))
-                                                        <xml>Are you sure you want to delete this row?</xml>
-                                                        <xml/>
-                                                        <xml>Yes!</xml>))}
-                         </td>
+        <tbody>
+          <dyn signal={vs <- signal t.Rows;
+                       return (List.mapX (fn r => <xml>
+                         <tr>
+                           <td>
+                             {Ui.modalButton ctx (CLASS "btn btn-secondary")
+                                             <xml><span class="glyphicon glyphicon-remove"/></xml>
+                                             (return (Ui.modal
+                                                          (rpc (del r.OldKey);
+                                                           set t.Rows (List.filter (fn r' => r'.OldKey <> r.OldKey) vs))
+                                                          <xml>Are you sure you want to delete this row?</xml>
+                                                          <xml/>
+                                                          <xml>Yes!</xml>))}
+                           </td>
 
-                         {@mapX [fn _ => source string] [tr]
-                           (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] src =>
-                               <xml><td><ctextbox class="form-control" source={src}/></td></xml>)
-                           allFl r.Cur}
-                         </tr>
-                     </xml>) vs)}/>
+                           {@mapX [fn _ => source string] [tr]
+                             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] src =>
+                                 <xml><td><ctextbox class="form-control" source={src}/></td></xml>)
+                             allFl r.Cur}
+                           </tr>
+                       </xml>) vs)}/>
+        </tbody>
 
-        <tr/>
-
-        <tr>
+        <tfoot><tr>
           <td>
             <button class="btn btn-primary"
                     value="Add Row"
@@ -162,7 +162,7 @@ functor Make(M : sig
             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] src =>
                 <xml><td><ctextbox class="form-control" source={src}/></td></xml>)
             allFl t.New}
-        </tr>
+        </tr></tfoot>
       </table>
     </xml>
 

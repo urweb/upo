@@ -109,14 +109,16 @@ functor AllStudents(M : sig
                                <button class="btn btn-secondary"
                                        onclick={fn _ => set exp False}
                                        value="Hide Grades"/>
-                               <table class="bs-table table-striped">
-                                 <tr>
+                               <table class="bs-table">
+                                 <thead><tr>
                                    <th>Student</th>
                                    <th>Grade</th>
-                                 </tr>
+                                 </tr></thead>
 
-                                 {List.mapX (fn (student, grade) =>
-                                                <xml><tr> <td>{[student]}</td> <td>{[grade]}</td> </tr></xml>) gs}
+                                 <tbody>
+                                   {List.mapX (fn (student, grade) =>
+                                                  <xml><tr> <td>{[student]}</td> <td>{[grade]}</td> </tr></xml>) gs}
+                                 </tbody>
                                </table>
                              </xml> else <xml>
                                <button class="btn btn-secondary"
@@ -141,7 +143,7 @@ functor AllStudents(M : sig
                            <button class="btn btn-secondary"
                                    onclick={fn _ => set expA False}
                                    value="Hide Averages"/>
-                           <table class="bs-table table-striped">
+                           <table class="bs-table">
                              <tr>
                                <th>Student</th>
                                <th>Grade</th>

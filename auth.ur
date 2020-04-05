@@ -325,7 +325,7 @@ functor Make(M : sig
         fun onload _ = return ()
 
         fun render ctx me = <xml>
-          <table class="bs-table table-striped">
+          <table class="bs-table">
             {List.mapX (fn r => <xml>
               <tr><td><a link={target r}
                          onclick={fn _ => set me.ShowAlert True}>{N.render r}</a></td></tr>

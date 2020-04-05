@@ -75,7 +75,7 @@ functor Html(M : sig
                 error <xml>Access denied</xml>
             
     fun render _ self = <xml>
-      <table class="bs-table table-striped">
+      <table class="bs-table">
         {@mapX4 [fn _ => string] [Widget.t'] [fn _ => id] [snd3] [tabl]
           (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (s : string) (w : Widget.t' p) (id : id) (c : p.2) =>
               <xml><tr class="form-group">
@@ -127,7 +127,7 @@ functor Html(M : sig
                                         </xml>)}/>
          </xml>}
              
-      <table class="bs-table table-striped">
+      <table class="bs-table">
         <tr>
           <dyn signal={bs <- signal self.Buttons;
                        return (@mapX [fn _ => $(map fst3 params) -> $(map fst3 results) -> string * url] [tr]
@@ -209,7 +209,7 @@ functor Csv(M : sig
         queryL (query vs)
 
     fun render _ self = <xml>
-      <table class="bs-table table-striped">
+      <table class="bs-table">
         {@mapX4 [fn _ => string] [Widget.t'] [fn _ => id] [snd3] [tabl]
           (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (s : string) (w : Widget.t' p) (id : id) (c : p.2) =>
               <xml><tr class="form-group">

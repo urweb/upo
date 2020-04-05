@@ -492,45 +492,47 @@ functor Make(M : sig
 
       <hr/>
 
-      <table class="bs-table table-striped">
-        <tr>
+      <table class="bs-table">
+        <thead><tr>
           <th class="col-sm-2">Month</th>
           <th class="col-sm-1">Balance</th>
           <th>Entries</th>
-        </tr>
-        <dyn signal={ms <- signal a.Months;
-                     return (List.mapX (fn m => <xml><tr>
-                       <td class="col_sm-1">{[m.Month]}</td>
-                       <td class="col-sm-1">{[m.Balance]}</td>
-                       <td>
-                         <dyn signal={expd <- signal m.Expanded;
-                                      return (if not expd then
-                                                  <xml><button class="btn btn-secondary"
-                                                               onclick={fn _ => set m.Expanded True}>
-                                                    <span class="glyphicon glyphicon-chevron-down"/>
-                                                  </button></xml>
-                                              else
-                                                  <xml>
-                                                    <button class="btn btn-secondary"
-                                                            onclick={fn _ => set m.Expanded False}>
-                                                      <span class="glyphicon glyphicon-chevron-up"/>
-                                                    </button>
+        </tr></thead>
+        <tbody>
+          <dyn signal={ms <- signal a.Months;
+                       return (List.mapX (fn m => <xml><tr>
+                         <td class="col_sm-1">{[m.Month]}</td>
+                         <td class="col-sm-1">{[m.Balance]}</td>
+                         <td>
+                           <dyn signal={expd <- signal m.Expanded;
+                                        return (if not expd then
+                                                    <xml><button class="btn btn-secondary"
+                                                                 onclick={fn _ => set m.Expanded True}>
+                                                      <span class="glyphicon glyphicon-chevron-down"/>
+                                                    </button></xml>
+                                                else
+                                                    <xml>
+                                                      <button class="btn btn-secondary"
+                                                              onclick={fn _ => set m.Expanded False}>
+                                                        <span class="glyphicon glyphicon-chevron-up"/>
+                                                      </button>
 
-                                                    <table class="bs-table table-striped">
-                                                      <tr>
-                                                        <th class="col-sm-3">What</th>
-                                                        <th class="col-sm-2">How Many</th>
-                                                        <th class="col-sm-2">How Much</th>
-                                                      </tr>
-                                                      {List.mapX (fn e => <xml><tr>
-                                                        <td class="col-sm-3">{e.What}</td>
-                                                        <td class="col-sm-2">{[e.HowMany]}</td>
-                                                        <td class="col-sm-2">{[e.HowMuch]}</td>
-                                                      </tr></xml>) m.Entries}
-                                                    </table>
-                                                  </xml>)}/>
-                       </td>
-                     </tr></xml>) ms)}/>
+                                                      <table class="bs-table">
+                                                        <tr>
+                                                          <th class="col-sm-3">What</th>
+                                                          <th class="col-sm-2">How Many</th>
+                                                          <th class="col-sm-2">How Much</th>
+                                                        </tr>
+                                                        {List.mapX (fn e => <xml><tr>
+                                                          <td class="col-sm-3">{e.What}</td>
+                                                          <td class="col-sm-2">{[e.HowMany]}</td>
+                                                          <td class="col-sm-2">{[e.HowMuch]}</td>
+                                                        </tr></xml>) m.Entries}
+                                                      </table>
+                                                    </xml>)}/>
+                         </td>
+                       </tr></xml>) ms)}/>
+        </tbody>
       </table>
     </xml>
 

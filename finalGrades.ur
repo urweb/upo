@@ -406,16 +406,18 @@ functor Make(M : sig
             end
 
     fun render ctx (a : a) = <xml>
-      <table class="bs-table table-striped">
-        <tr>
+      <table class="bs-table">
+        <thead><tr>
           <th>Range?</th>
           <th>{[gradeLabel]}</th>
           <th>{[summaryLabel]}</th>
           <th>{[keyLabel]}</th>
-        </tr>
+        </tr></thead>
 
-        <dyn signal={ranges <- signal a.Ranges;
-                     return (render' a.Ranges None ranges a.Entries)}/>
+        <tbody>
+          <dyn signal={ranges <- signal a.Ranges;
+                       return (render' a.Ranges None ranges a.Entries)}/>
+        </tbody>
       </table>
     </xml>
 
