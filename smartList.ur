@@ -116,6 +116,99 @@ fun orderedLinked [this :: Name] [fthis :: Name] [thisT ::: Type]
                          | x :: ls' => <xml><p><i>{[l]}:</i> {[x]}{List.mapX (fn v => <xml>, {[v]}</xml>) ls'}</p></xml>
 }
 
+functor LinkedWithFollow(M : sig
+                             con this :: Name
+                             con fthis :: Name
+                             con thisT :: Type
+                             con fthat :: Name
+                             con thatT :: Type
+                             con r :: {Type}
+                             constraint [this] ~ r
+                             constraint [fthis] ~ [fthat]
+                             val show_that : show thatT
+                             val inj_this : sql_injectable thisT
+                             val inj_that : sql_injectable thatT
+                             table from : {fthis : thisT, fthat : thatT}
+
+                             con user :: Name
+                             con cthat :: Name
+                             constraint [user] ~ [cthat]
+                             table to : {user : string, cthat : thatT}
+
+                             val label : string
+                             val whoami : transaction (option string)
+                         end) = struct
+    open M
+
+    type cfg = option string
+    type internal = list (thatT * source bool)
+
+    fun follow v =
+        uo <- whoami;
+        case uo of
+            None => error <xml>Must be logged in</xml>
+          | Some u =>
+            dml (DELETE FROM to
+                 WHERE T.{user} = {[u]}
+                   AND T.{cthat} = {[v]});
+            dml (INSERT INTO to({user}, {cthat})
+                 VALUES ({[u]}, {[v]}))
+
+    fun unfollow v =
+        uo <- whoami;
+        case uo of
+            None => error <xml>Must be logged in</xml>
+          | Some u =>
+            dml (DELETE FROM to
+                 WHERE T.{user} = {[u]}
+                   AND T.{cthat} = {[v]})
+
+    val t = {
+        Configure = whoami,
+        Generate = fn uo r =>
+                      List.mapQueryM (SELECT from.{fthat}, (SELECT COUNT( * ) > 0
+                                                            FROM to
+                                                            WHERE to.{cthat} = from.{fthat}
+                                                              AND {sql_nullable (SQL to.{user})}
+                                                                  = {[uo]}) AS Count
+                                      FROM from
+                                      WHERE from.{fthis} = {[r.this]}
+                                      ORDER BY from.{fthat})
+                                     (fn r =>
+                                         s <- source (r.Count = Some True);
+                                         return (r.From.fthat, s)),
+        Filter = fn _ => (WHERE TRUE),
+        SortBy = fn x => x,
+        Header = fn _ _ => <xml></xml>,
+        Body = fn uo ls => case ls of
+                               [] => <xml></xml>
+                             | x :: ls' =>
+                               let
+                                   fun one (v, followed) = <xml>{[v]}{case uo of
+                                                                          None => <xml></xml>
+                                                                        | Some _ => <xml>
+                                                                          <dyn signal={f <- signal followed;
+                                                                                       return (if f then
+                                                                                                   <xml>
+                                                                                                     <button class="btn btn-sm btn-secondary"
+                                                                                                             onclick={fn _ => rpc (unfollow v); set followed False}>
+                                                                                                       Unfollow
+                                                                                                     </button>
+                                                                                                   </xml>
+                                                                                               else
+                                                                                                   <xml>
+                                                                                                     <button class="btn btn-sm btn-primary"
+                                                                                                             onclick={fn _ => rpc (follow v); set followed True}>
+                                                                                                       Follow
+                                                                                                     </button>
+                                                                                                   </xml>)}/>
+                                                                        </xml>}</xml>
+                               in
+                                   <xml><p><i>{[label]}:</i> {one x}{List.mapX (fn v => <xml>, {one v}</xml>) ls'}</p></xml>
+                               end
+    }
+end
+
 type nonnull_cfg = unit
 type nonnull_st = unit
 val nonnull [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
