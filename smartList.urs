@@ -32,6 +32,17 @@ val iconButtonInHeader : cols ::: {Type} -> r ::: {Type} -> [cols ~ r]
                                         * url     (* ...and where clicking should take you *)))
                          -> t (cols ++ r) (iconButtonInHeader_cfg cols) (iconButtonInHeader_st cols)
 
+con linked_cfg :: Type -> Type
+con linked_st :: Type -> Type
+val linked : this :: Name -> fthis :: Name -> thisT ::: Type
+             -> fthat :: Name -> thatT ::: Type
+             -> r ::: {Type} -> fr ::: {Type} -> ks ::: {{Unit}}
+             -> [[this] ~ r] => [[fthis] ~ [fthat]] => [[fthis, fthat] ~ fr]
+             => show thatT -> sql_injectable thisT
+             -> sql_table ([fthis = thisT, fthat = thatT] ++ fr) ks
+             -> string (* label *)
+             -> t ([this = thisT] ++ r) (linked_cfg thatT) (linked_st thatT)
+
 con orderedLinked_cfg :: Type -> Type
 con orderedLinked_st :: Type -> Type
 val orderedLinked : this :: Name -> fthis :: Name -> thisT ::: Type
@@ -43,15 +54,27 @@ val orderedLinked : this :: Name -> fthis :: Name -> thisT ::: Type
                     -> string (* label *)
                     -> t ([this = thisT] ++ r) (orderedLinked_cfg thatT) (orderedLinked_st thatT)
 
+type nonnull_cfg
+type nonnull_st
+val nonnull : col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
+              => t ([col = option ct] ++ r) nonnull_cfg nonnull_st
+
+type taggedWithUser_cfg
+type taggedWithUser_st
+val taggedWithUser : user :: Name -> r ::: {Type} -> [[user] ~ r]
+                   => transaction (option string) (* get username, if any *)
+                      -> t ([user = string] ++ r) taggedWithUser_cfg taggedWithUser_st
+
+type sortby_cfg
+type sortby_st
+val sortby : col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
+             => t ([col = ct] ++ r) sortby_cfg sortby_st
+                       
 functor Make(M : sig
-                 con sortBy :: Name
-                 type sortByT
                  con r :: {Type}
-                 constraint [sortBy] ~ r
-                 table tab : ([sortBy = sortByT] ++ r)
-                 val wher : sql_exp [Tab = [sortBy = sortByT] ++ r] [] [] bool
+                 table tab : r
 
                  type cfg
                  type st
-                 val t : t ([sortBy = sortByT] ++ r) cfg st
+                 val t : t r cfg st
              end) : Ui.S0
