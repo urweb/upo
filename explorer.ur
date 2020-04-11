@@ -2204,10 +2204,10 @@ functor Make(M : sig
 
                 {extra}
 
-                <table class="bs-table">
+                <ul class="list-group">
                   <dyn signal={rows <- signal rows;
-                               return (List.mapX (fn (k, bod) => <xml><tr><td><a link={entry (maker [fn p => p.1] k)}>{bod}</a></td></tr></xml>) rows)}/>
-                </table>
+                               return (List.mapX (fn (k, bod) => <xml><li class="list-group-item"><a link={entry (maker [fn p => p.1] k)}>{bod}</a></li></xml>) rows)}/>
+                </ul>
 
                 {if mayAdd then
                      <xml><a class="btn btn-primary" link={create which}>New Entry</a></xml>
