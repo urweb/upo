@@ -6,3 +6,6 @@ val ord_richtext = _
 val inj_richtext = _
 val widget_richtext = Widget.htmlbox
 val explorer_richtext = @@Explorer.htmlbox
+type richtextInBody_cfg = _
+type richtextInBody_st = _
+val richtextInBody = @@SmartList.htmlInBody

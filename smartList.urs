@@ -21,6 +21,11 @@ val columnInBody : col :: Name -> colT ::: Type -> r ::: {Type} -> [[col] ~ r]
                    => show colT -> string (* label *)
                    -> t ([col = colT] ++ r) (columnInBody_cfg colT) (columnInBody_st colT)
 
+type htmlInBody_cfg
+type htmlInBody_st
+val htmlInBody : col :: Name -> r ::: {Type} -> [[col] ~ r]
+                 => t ([col = string] ++ r) htmlInBody_cfg htmlInBody_st
+
 con iconButtonInHeader_cfg :: {Type} -> Type
 con iconButtonInHeader_st :: {Type} -> Type
 val iconButtonInHeader : cols ::: {Type} -> r ::: {Type} -> [cols ~ r]
@@ -90,7 +95,25 @@ type taggedWithUser_cfg
 type taggedWithUser_st
 val taggedWithUser : user :: Name -> r ::: {Type} -> [[user] ~ r]
                    => transaction (option string) (* get username, if any *)
-                      -> t ([user = string] ++ r) taggedWithUser_cfg taggedWithUser_st
+                   -> t ([user = string] ++ r) taggedWithUser_cfg taggedWithUser_st
+
+type linkedToUser_cfg
+type linkedToUser_st
+val linkedToUser : key :: Name -> keyT ::: Type -> r ::: {Type} -> [[key] ~ r]
+                   => ckey :: Name -> user :: Name -> cr ::: {Type} -> ks ::: {{Unit}} -> [[ckey] ~ [user]] => [[ckey, user] ~ cr]
+                   => sql_table ([ckey = keyT, user = string] ++ cr) ks (* connector that must link current user to row *)
+                   -> transaction (option string) (* get username, if any *)
+                   -> t ([key = keyT] ++ r) linkedToUser_cfg linkedToUser_st
+
+type doubleLinkedToUser_cfg
+type doubleLinkedToUser_st
+val doubleLinkedToUser : key :: Name -> keyT ::: Type -> r ::: {Type} -> [[key] ~ r]
+                         => ckey :: Name -> ikey :: Name -> ikeyT ::: Type -> cr1 ::: {Type} -> ks1 ::: {{Unit}} -> [[ckey] ~ [ikey]] => [[ckey, ikey] ~ cr1]
+                         => ikey2 :: Name -> user :: Name -> cr2 ::: {Type} -> ks2 ::: {{Unit}} -> [[ikey2] ~ [user]] => [[ikey2, user] ~ cr2]
+                         => sql_table ([ckey = keyT, ikey = ikeyT] ++ cr1) ks1
+                         -> sql_table ([ikey2 = ikeyT, user = string] ++ cr2) ks2
+                         -> transaction (option string) (* get username, if any *)
+                         -> t ([key = keyT] ++ r) doubleLinkedToUser_cfg doubleLinkedToUser_st
 
 type sortby_cfg
 type sortby_st

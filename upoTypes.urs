@@ -14,3 +14,8 @@ val explorer_richtext : full ::: {Type}
                         => string
                            -> Explorer.t full ([tname = (key, [col = richtext] ++ cols, colsDone, cstrs, impl1, impl2, impl3)] ++ old)
                            -> Explorer.t full ([tname = (key, [col = richtext] ++ cols, [col = richtext] ++ colsDone, cstrs, Explorer.htmlbox1 impl1, Explorer.htmlbox2 impl2, Explorer.htmlbox3 impl3)] ++ old)
+
+type richtextInBody_cfg
+type richtextInBody_st
+val richtextInBody : col :: Name -> r ::: {Type} -> [[col] ~ r]
+                     => SmartList.t ([col = richtext] ++ r) richtextInBody_cfg richtextInBody_st

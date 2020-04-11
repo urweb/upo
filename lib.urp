@@ -62,7 +62,6 @@ linearStateMachine
 auth
 news
 explorer
-upoTypes
 scheduleSessions
 parameterizedQuery
 formToTable
@@ -75,3 +74,4 @@ choicesFromPreferences
 usersFromPreferences
 smartList
 smartInsert
+upoTypes

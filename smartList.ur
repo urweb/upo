@@ -51,6 +51,17 @@ fun columnInBody [col :: Name] [colT ::: Type] [r ::: {Type}] [[col] ~ r]
     Body = fn () v => <xml><p><i>{[l]}:</i> {[v]}</p></xml>
 }
 
+type htmlInBody_cfg = unit
+type htmlInBody_st = xbody
+val htmlInBody [col :: Name] [r ::: {Type}] [[col] ~ r] = {
+    Configure = return (),
+    Generate = fn () r => return (Widget.html r.col),
+    Filter = fn _ => (WHERE TRUE),
+    SortBy = fn x => x,
+    Header = fn () _ => <xml></xml>,
+    Body = fn () v => v
+}
+
 type iconButtonInHeader_cfg (cols :: {Type}) = option string * time
 type iconButtonInHeader_st (cols :: {Type}) = $cols
 fun iconButtonInHeader [cols ::: {Type}] [r ::: {Type}] [cols ~ r]
@@ -229,6 +240,49 @@ fun taggedWithUser [user :: Name] [r ::: {Type}] [[user] ~ r]
     Filter = fn uo => case uo of
                           None => (WHERE FALSE)
                         | Some u => (WHERE tab.{user} = {[u]}),
+    SortBy = fn x => x,
+    Header = fn _ _ => <xml></xml>,
+    Body = fn _ _ => <xml></xml>
+}
+
+type linkedToUser_cfg = option string
+type linkedToUser_st = unit
+fun linkedToUser [key :: Name] [keyT ::: Type] [r ::: {Type}] [[key] ~ r]
+    [ckey :: Name] [user :: Name] [cr ::: {Type}] [ks ::: {{Unit}}] [[ckey] ~ [user]] [[ckey, user] ~ cr]
+    (link : sql_table ([ckey = keyT, user = string] ++ cr) ks)
+    (whoami : transaction (option string)) = {
+    Configure = whoami,
+    Generate = fn _ _ => return (),
+    Filter = fn uo => case uo of
+                          None => (WHERE FALSE)
+                        | Some u => (WHERE (SELECT COUNT( * ) > 0
+                                            FROM link
+                                            WHERE link.{user} = {[u]}
+                                              AND link.{ckey} = tab.{key}) = {[Some True]}),
+    SortBy = fn x => x,
+    Header = fn _ _ => <xml></xml>,
+    Body = fn _ _ => <xml></xml>
+}
+
+type doubleLinkedToUser_cfg = option string
+type doubleLinkedToUser_st = unit
+fun doubleLinkedToUser [key :: Name] [keyT ::: Type] [r ::: {Type}] [[key] ~ r]
+                       [ckey :: Name] [ikey :: Name] [ikeyT ::: Type] [cr1 ::: {Type}] [ks1 ::: {{Unit}}]
+                       [[ckey] ~ [ikey]] [[ckey, ikey] ~ cr1]
+                       [ikey2 :: Name] [user :: Name] [cr2 ::: {Type}] [ks2 ::: {{Unit}}]
+                       [[ikey2] ~ [user]] [[ikey2, user] ~ cr2]
+                       (link1 : sql_table ([ckey = keyT, ikey = ikeyT] ++ cr1) ks1)
+                       (link2 : sql_table ([ikey2 = ikeyT, user = string] ++ cr2) ks2)
+                       (whoami : transaction (option string)) = {
+    Configure = whoami,
+    Generate = fn _ _ => return (),
+    Filter = fn uo => case uo of
+                          None => (WHERE FALSE)
+                        | Some u => (WHERE (SELECT COUNT( * ) > 0
+                                            FROM link1, link2
+                                            WHERE link1.{ckey} = tab.{key}
+                                              AND link2.{ikey2} = link1.{ikey}
+                                              AND link2.{user} = {[u]}) = {[Some True]}),
     SortBy = fn x => x,
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
