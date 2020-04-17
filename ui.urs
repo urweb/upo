@@ -164,3 +164,13 @@ val nextTab : context -> transaction unit
 
 (* Check if we would trigger that wraparound behavior. *)
 val inFinalTab : context -> signal bool
+
+(* Back-door way to create a context *)
+val context : {
+    ModalId : id
+    (* where did we stash the place to put modals? *),
+    ModalSpot : source xbody
+    (* what content do we put there?*),
+    Tab : option {Count : int, Current : source int}
+    (* track which tab we are on and how many there are *)
+} -> context

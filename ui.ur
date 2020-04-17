@@ -77,6 +77,8 @@ signature THEME = sig
     val titleInNavbar : bool
 end
 
+
+
 functor Make(M : THEME) = struct
     fun themed_head titl = <xml>
       <head>
@@ -395,3 +397,5 @@ fun inFinalTab ctx =
       | Some r =>
         cur <- signal r.Current;
         return (r.Count = 0 || cur = r.Count - 1)
+
+fun context x = x
