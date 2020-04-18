@@ -105,6 +105,32 @@ functor Bid(M : sig
     val t : t ([M.this = M.thisT] ++ M.r) cfg internal
 end
 
+(* Now an admin can use those bids to assign users to items. *)
+functor AssignFromBids(M : sig
+                           con this :: Name
+                           con assignee :: Name
+                           con fthis :: Name
+                           con thisT :: Type
+                           con user :: Name
+                           con preferred :: Name
+                           con r :: {Type}
+                           constraint [this] ~ [assignee]
+                           constraint [this, assignee] ~ r
+                           constraint [fthis] ~ [user]
+                           constraint [fthis, user] ~ [preferred]
+                           val inj_this : sql_injectable thisT
+                           table bid : {fthis : thisT, user : string, preferred : bool}
+
+                           val label : string
+                           val whoami : transaction (option string)
+
+                           table tab : ([this = thisT, assignee = option string] ++ r)
+                       end) : sig
+    type cfg
+    type internal
+    val t : t ([M.this = M.thisT, M.assignee = option string] ++ M.r) cfg internal
+end
+
 type nonnull_cfg
 type nonnull_st
 val nonnull : col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]

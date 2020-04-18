@@ -11,7 +11,7 @@ type t (r :: {Type}) (cfg :: Type) (st :: Type) = {
      
      (* Run on client: *)
      Header : cfg -> xtr,
-     Row : cfg -> st -> xtr
+     Row : cfg -> Ui.context -> st -> xtr
 }
 
 fun compose [r] [cfgb] [cfga] [stb] [sta] (b : t r cfgb stb) (a : t r cfga sta) = {
@@ -32,7 +32,7 @@ fun compose [r] [cfgb] [cfga] [stb] [sta] (b : t r cfgb stb) (a : t r cfga sta) 
                                        | (Some x, Some y) => Some (WHERE {x} OR {y}),
     SortBy = fn sb => b.SortBy (a.SortBy sb),
     Header = fn (cfgb, cfga) => <xml>{b.Header cfgb}{a.Header cfga}</xml>,
-    Row = fn (cfgb, cfga) (y, x) => <xml>{b.Row cfgb y}{a.Row cfga x}</xml>
+    Row = fn (cfgb, cfga) ctx (y, x) => <xml>{b.Row cfgb ctx y}{a.Row cfga ctx x}</xml>
 }
 
 type column_cfg (t :: Type) = unit
@@ -45,7 +45,7 @@ fun column [col :: Name] [colT ::: Type] [r ::: {Type}] [[col] ~ r]
     FilterLinks = fn _ => None,
     SortBy = fn x => x,
     Header = fn () => <xml><th>{[lbl]}</th></xml>,
-    Row = fn () v => <xml><td>{[v]}</td></xml>
+    Row = fn () _ v => <xml><td>{[v]}</td></xml>
 }
 
 type html_cfg = unit
@@ -57,7 +57,7 @@ fun html [col :: Name] [r ::: {Type}] [[col] ~ r] (lbl : string) = {
     FilterLinks = fn _ => None,
     SortBy = fn x => x,
     Header = fn () => <xml><th>{[lbl]}</th></xml>,
-    Row = fn () v => <xml><td>{v}</td></xml>
+    Row = fn () _ v => <xml><td>{v}</td></xml>
 }
 
 type iconButton_cfg (cols :: {Type}) = option string * time
@@ -72,7 +72,7 @@ fun iconButton [cols ::: {Type}] [r ::: {Type}] [cols ~ r]
     FilterLinks = fn _ => None,
     SortBy = fn x => x,
     Header = fn _ => <xml><th>{[lbl]}</th></xml>,
-    Row = fn (u, tm) cols =>
+    Row = fn (u, tm) _ cols =>
              case render u tm cols of
                  None => <xml><td/></xml>
                | Some (cl, ur) => <xml><td>
@@ -104,7 +104,7 @@ fun linked [this :: Name] [fthis :: Name] [thisT ::: Type]
     FilterLinks = fn _ => None,
     SortBy = fn x => x,
     Header = fn () => <xml><th>{[l]}</th></xml>,
-    Row = fn () ls => <xml><td>{links ls}</td></xml>
+    Row = fn () _ ls => <xml><td>{links ls}</td></xml>
 }
 
 type orderedLinked_cfg (t :: Type) = unit
@@ -126,7 +126,7 @@ fun orderedLinked [this :: Name] [fthis :: Name] [thisT ::: Type]
     FilterLinks = fn _ => None,
     SortBy = fn x => x,
     Header = fn () => <xml><th>{[l]}</th></xml>,
-    Row = fn () ls => <xml><td>{links ls}</td></xml>
+    Row = fn () _ ls => <xml><td>{links ls}</td></xml>
 }
 
 functor LinkedWithFollow(M : sig
@@ -194,7 +194,7 @@ functor LinkedWithFollow(M : sig
         FilterLinks = fn _ => None,
         SortBy = fn x => x,
         Header = fn _ => <xml><th>{[label]}</th></xml>,
-        Row = fn uo ls => let
+        Row = fn uo _ ls => let
                      fun one (v, followed) = <xml>
                        <span class="badge badge-pill badge-info">{[v]}</span>
                        {case uo of
@@ -297,7 +297,7 @@ functor Bid(M : sig
         FilterLinks = fn _ => None,
         SortBy = fn x => x,
         Header = fn _ => <xml><th>{[label]}</th></xml>,
-        Row = fn uo (v, s) => <xml><td>
+        Row = fn uo _ (v, s) => <xml><td>
           <button class="btn" onclick={fn _ => rpc (unavailable v); set s Unavailable}>
             <span dynClass={s <- signal s;
                             return (case s of
@@ -320,6 +320,88 @@ functor Bid(M : sig
     }
 end
 
+functor AssignFromBids(M : sig
+                           con this :: Name
+                           con assignee :: Name
+                           con fthis :: Name
+                           con thisT :: Type
+                           con user :: Name
+                           con preferred :: Name
+                           con r :: {Type}
+                           constraint [this] ~ [assignee]
+                           constraint [this, assignee] ~ r
+                           constraint [fthis] ~ [user]
+                           constraint [fthis, user] ~ [preferred]
+                           val inj_this : sql_injectable thisT
+                           table bid : {fthis : thisT, user : string, preferred : bool}
+
+                           val label : string
+                           val whoami : transaction (option string)
+
+                           table tab : ([this = thisT, assignee = option string] ++ r)
+                       end) = struct
+    open M
+   
+    type cfg = unit
+    type internal = thisT * list (string * bool (* preferred? *)) * source (option string)
+
+    fun assign v u =
+        uo <- whoami;
+        case uo of
+            None => error <xml>Must be logged in</xml>
+          | Some _ =>
+            dml (UPDATE tab
+                 SET {assignee} = {[u]}
+                 WHERE T.{this} = {[v]})
+
+    val t = {
+        Configure = return (),
+        Generate = fn () r =>
+                      s <- source r.assignee;
+                      choices <- List.mapQuery (SELECT bid.{user}, bid.{preferred}
+                                                FROM bid
+                                                WHERE bid.{fthis} = {[r.this]}
+                                                ORDER BY bid.{preferred} DESC, bid.{fthis})
+                                 (fn {Bid = r} => (r.user, r.preferred));
+                      return (r.this, choices, s),
+        Filter = fn _ => None,
+        FilterLinks = fn _ => None,
+        SortBy = fn x => x,
+        Header = fn _ => <xml><th>{[label]}</th></xml>,
+        Row = fn uo ctx (v, cs, s) => <xml><td>
+          <dyn signal={sv <- signal s;
+                       let
+                           val reassign = ss <- source "";
+                               return (Ui.modal (ssv <- get ss;
+                                                 case read ssv of
+                                                     None => error <xml>Invalid assigneee!</xml>
+                                                   | Some ssv =>
+                                                     rpc (assign v ssv);
+                                                     set s ssv)
+                                                <xml>Who do you want to assign?</xml>
+                                                <xml><cselect source={ss} class="form-control">
+                                                  <coption/>
+                                                  {List.mapX (fn (u, p) => <xml><coption value={show u}>{[u]}{if p then <xml>*</xml> else <xml></xml>}</coption></xml>) cs}
+                                                </cselect></xml>
+                                                <xml>Assign</xml>)
+                       in
+                           return (case sv of
+                                       None => Ui.modalButton ctx
+                                                              (CLASS "btn btn-sm text-muted")
+                                                              <xml><span class="glyphicon glyphicon-plus-circle"/> Unassigned</xml>
+                                                              reassign
+                                     | Some u => <xml>
+                                       <span class="badge badge-pill badge-info">{[u]}</span>
+                                       {Ui.modalButton ctx
+                                                       (CLASS "btn btn-sm btn-secondary")
+                                                       <xml>reassign</xml>
+                                                       reassign}
+                                     </xml>)
+                       end}/>
+        </td></xml>
+    }
+end
+
 type nonnull_cfg = unit
 type nonnull_st = unit
 val nonnull [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
@@ -329,7 +411,7 @@ val nonnull [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
     FilterLinks = fn _ => None,
     SortBy = fn x => x,
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>
 }
     
 type taggedWithUser_cfg = option string
@@ -344,7 +426,7 @@ fun taggedWithUser [user :: Name] [r ::: {Type}] [[user] ~ r]
     FilterLinks = fn _ => None,
     SortBy = fn x => x,
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>
 }
 
 type linkedToUser_cfg = option string
@@ -364,7 +446,7 @@ fun linkedToUser [key :: Name] [keyT ::: Type] [r ::: {Type}] [[key] ~ r]
                                                    AND link.{ckey} = tab.{key}) = {[Some True]}),
     SortBy = fn x => x,
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>
 }
 
 type doubleLinkedToUser_cfg = option string
@@ -389,7 +471,7 @@ fun doubleLinkedToUser [key :: Name] [keyT ::: Type] [r ::: {Type}] [[key] ~ r]
                                                         AND link2.{user} = {[u]}) = {[Some True]}),
     SortBy = fn x => x,
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>
 }
 
 type sortby_cfg = unit
@@ -401,7 +483,7 @@ val sortby [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
     FilterLinks = fn _ => None,
     SortBy = sql_order_by_Cons (SQL tab.{col}) sql_asc,
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>
 }
 
 functor Make(M : sig
@@ -429,13 +511,13 @@ functor Make(M : sig
 
     fun onload _ = return ()
 
-    fun render _ self = <xml>
+    fun render ctx self = <xml>
       <table class="bs-table">
         <thead>
           <tr>{t.Header self.Config}</tr>
         </thead>
         <tbody>
-          {List.mapX (fn r => <xml><tr>{t.Row self.Config r}</tr></xml>) self.Rows}
+          {List.mapX (fn r => <xml><tr>{t.Row self.Config ctx r}</tr></xml>) self.Rows}
         </tbody>
       </table>
     </xml>
