@@ -19,3 +19,8 @@ type richtextInBody_cfg
 type richtextInBody_st
 val richtextInBody : col :: Name -> r ::: {Type} -> [[col] ~ r]
                      => SmartList.t ([col = richtext] ++ r) richtextInBody_cfg richtextInBody_st
+
+type richtext_cfg
+type richtext_st
+val richtext : col :: Name -> r ::: {Type} -> [[col] ~ r]
+               => string -> SmartTable.t ([col = richtext] ++ r) richtext_cfg richtext_st

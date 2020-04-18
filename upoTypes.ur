@@ -9,3 +9,6 @@ val explorer_richtext = @@Explorer.htmlbox
 type richtextInBody_cfg = _
 type richtextInBody_st = _
 val richtextInBody = @@SmartList.htmlInBody
+type richtext_cfg = _
+type richtext_st = _
+val richtext = @@SmartTable.html

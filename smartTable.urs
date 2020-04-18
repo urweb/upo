@@ -1,4 +1,4 @@
-(* A configurable way of listing table rows as Bootstrap cards with fairly freeform formatting *)
+(* A configurable way of listing table rows as HTML tables *)
 
 con t :: {Type} (* available columns of table we are listing *)
     -> Type     (* configuration, to prepare once on server *)
@@ -9,33 +9,30 @@ val compose : r ::: {Type} -> cfga ::: Type -> cfgb ::: Type
               -> sta ::: Type -> stb ::: Type
               -> t r cfga sta -> t r cfgb stb -> t r (cfga * cfgb) (sta * stb)
 
-con columnInHeader_cfg :: Type -> Type
-con columnInHeader_st :: Type -> Type
-val columnInHeader : col :: Name -> colT ::: Type -> r ::: {Type} -> [[col] ~ r]
-                     => show colT
-                     -> t ([col = colT] ++ r) (columnInHeader_cfg colT) (columnInHeader_st colT)
+con column_cfg :: Type -> Type
+con column_st :: Type -> Type
+val column : col :: Name -> colT ::: Type -> r ::: {Type} -> [[col] ~ r]
+             => show colT
+             -> string (* label *)
+             -> t ([col = colT] ++ r) (column_cfg colT) (column_st colT)
 
-con columnInBody_cfg :: Type -> Type
-con columnInBody_st :: Type -> Type
-val columnInBody : col :: Name -> colT ::: Type -> r ::: {Type} -> [[col] ~ r]
-                   => show colT -> string (* label *)
-                   -> t ([col = colT] ++ r) (columnInBody_cfg colT) (columnInBody_st colT)
+type html_cfg
+type html_st
+val html : col :: Name -> r ::: {Type} -> [[col] ~ r]
+           => string (* label *)
+           -> t ([col = string] ++ r) html_cfg html_st
 
-type htmlInBody_cfg
-type htmlInBody_st
-val htmlInBody : col :: Name -> r ::: {Type} -> [[col] ~ r]
-                 => t ([col = string] ++ r) htmlInBody_cfg htmlInBody_st
-
-con iconButtonInHeader_cfg :: {Type} -> Type
-con iconButtonInHeader_st :: {Type} -> Type
-val iconButtonInHeader : cols ::: {Type} -> r ::: {Type} -> [cols ~ r]
-                         => transaction (option string) (* get username, if any *)
-                         -> (option string (* username, if any *)
-                             -> time       (* very recent timestamp *)
-                             -> $cols      (* values of selected columns *)
-                             -> option (css_class (* choose a Font Awesome icon *)
-                                        * url     (* ...and where clicking should take you *)))
-                         -> t (cols ++ r) (iconButtonInHeader_cfg cols) (iconButtonInHeader_st cols)
+con iconButton_cfg :: {Type} -> Type
+con iconButton_st :: {Type} -> Type
+val iconButton : cols ::: {Type} -> r ::: {Type} -> [cols ~ r]
+                 => transaction (option string) (* get username, if any *)
+                 -> (option string (* username, if any *)
+                     -> time       (* very recent timestamp *)
+                     -> $cols      (* values of selected columns *)
+                     -> option (css_class (* choose a Font Awesome icon *)
+                                * url     (* ...and where clicking should take you *)))
+                 -> string (* label *)
+                 -> t (cols ++ r) (iconButton_cfg cols) (iconButton_st cols)
 
 con linked_cfg :: Type -> Type
 con linked_st :: Type -> Type

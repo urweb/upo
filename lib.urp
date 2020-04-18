@@ -73,5 +73,6 @@ preferences
 choicesFromPreferences
 usersFromPreferences
 smartList
+smartTable
 smartInsert
 upoTypes
