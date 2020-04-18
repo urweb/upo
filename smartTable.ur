@@ -223,6 +223,103 @@ functor LinkedWithFollow(M : sig
     }
 end
 
+functor Bid(M : sig
+                con this :: Name
+                con fthis :: Name
+                con thisT :: Type
+                con user :: Name
+                con preferred :: Name
+                con r :: {Type}
+                constraint [this] ~ r
+                constraint [fthis] ~ [user]
+                constraint [fthis, user] ~ [preferred]
+                val inj_this : sql_injectable thisT
+                table bid : {fthis : thisT, user : string, preferred : bool}
+
+                val label : string
+                val whoami : transaction (option string)
+            end) = struct
+    open M
+
+    type cfg = option string
+    datatype pref = Unavailable | Available | Preferred
+    type internal = thisT * source pref
+
+    fun unavailable v =
+        uo <- whoami;
+        case uo of
+            None => error <xml>Must be logged in</xml>
+          | Some u =>
+            dml (DELETE FROM bid
+                 WHERE T.{user} = {[u]}
+                   AND T.{fthis} = {[v]})
+
+    fun available v =
+        uo <- whoami;
+        case uo of
+            None => error <xml>Must be logged in</xml>
+          | Some u =>
+            dml (DELETE FROM bid
+                 WHERE T.{user} = {[u]}
+                   AND T.{fthis} = {[v]});
+            dml (INSERT INTO bid({fthis}, {user}, {preferred})
+                 VALUES ({[v]}, {[u]}, FALSE))
+
+    fun preferred v =
+        uo <- whoami;
+        case uo of
+            None => error <xml>Must be logged in</xml>
+          | Some u =>
+            dml (DELETE FROM bid
+                 WHERE T.{user} = {[u]}
+                   AND T.{fthis} = {[v]});
+            dml (INSERT INTO bid({fthis}, {user}, {preferred})
+                 VALUES ({[v]}, {[u]}, TRUE))
+
+    val t = {
+        Configure = whoami,
+        Generate = fn uo r =>
+                      case uo of
+                          None =>
+                          s <- source Unavailable;
+                          return (r.this, s)
+                        | Some u =>
+                          po <- oneOrNoRowsE1 (SELECT (bid.{preferred})
+                                               FROM bid
+                                               WHERE bid.{fthis} = {[r.this]}
+                                                 AND bid.{user} = {[u]});
+                          s <- source (case po of
+                                           None => Unavailable
+                                         | Some False => Available
+                                         | Some True => Preferred);
+                          return (r.this, s),
+        Filter = fn _ => None,
+        FilterLinks = fn _ => None,
+        SortBy = fn x => x,
+        Header = fn _ => <xml><th>{[label]}</th></xml>,
+        Row = fn uo (v, s) => <xml><td>
+          <button class="btn" onclick={fn _ => rpc (unavailable v); set s Unavailable}>
+            <span dynClass={s <- signal s;
+                            return (case s of
+                                        Unavailable => CLASS "glyphicon-2x glyphicon glyphicon-times-circle text-danger"
+                                      | _ => CLASS "glyphicon glyphicon-times-circle text-danger")}/>
+          </button>
+          <button class="btn" onclick={fn _ => rpc (available v); set s Available}>
+            <span dynClass={s <- signal s;
+                            return (case s of
+                                        Available => CLASS "glyphicon-2x glyphicon glyphicon-check-circle text-success"
+                                      | _ => CLASS "glyphicon glyphicon-check-circle text-success")}/>
+          </button>
+          <button class="btn" onclick={fn _ => rpc (preferred v); set s Preferred}>
+            <span dynClass={s <- signal s;
+                            return (case s of
+                                        Preferred => CLASS "glyphicon-2x glyphicon glyphicon-exclamation-circle text-success"
+                                      | _ => CLASS "glyphicon glyphicon-exclamation-circle text-success")}/>
+          </button>
+        </td></xml>
+    }
+end
+
 type nonnull_cfg = unit
 type nonnull_st = unit
 val nonnull [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {

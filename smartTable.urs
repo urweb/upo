@@ -83,6 +83,28 @@ functor LinkedWithFollow(M : sig
     val t : t ([M.this = M.thisT] ++ M.r) cfg internal
 end
 
+(* Indicate interest in the current item. *)
+functor Bid(M : sig
+                con this :: Name
+                con fthis :: Name
+                con thisT :: Type
+                con user :: Name
+                con preferred :: Name
+                con r :: {Type}
+                constraint [this] ~ r
+                constraint [fthis] ~ [user]
+                constraint [fthis, user] ~ [preferred]
+                val inj_this : sql_injectable thisT
+                table bid : {fthis : thisT, user : string, preferred : bool}
+
+                val label : string
+                val whoami : transaction (option string)
+            end) : sig
+    type cfg
+    type internal
+    val t : t ([M.this = M.thisT] ++ M.r) cfg internal
+end
+
 type nonnull_cfg
 type nonnull_st
 val nonnull : col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
