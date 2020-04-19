@@ -223,6 +223,82 @@ functor LinkedWithFollow(M : sig
     }
 end
 
+functor Like(M : sig
+                 con this :: Name
+                 con fthis :: Name
+                 con thisT :: Type
+                 con user :: Name
+                 con r :: {Type}
+                 constraint [this] ~ r
+                 constraint [fthis] ~ [user]
+                 val inj_this : sql_injectable thisT
+                 table like : {fthis : thisT, user : string}
+
+                 val label : string
+                 val whoami : transaction (option string)
+             end) = struct
+    open M
+
+    type cfg = option string
+    type internal = thisT * source bool
+
+    fun unlike v =
+        uo <- whoami;
+        case uo of
+            None => error <xml>Must be logged in</xml>
+          | Some u =>
+            dml (DELETE FROM like
+                 WHERE T.{user} = {[u]}
+                   AND T.{fthis} = {[v]})
+
+    fun yeslike v =
+        uo <- whoami;
+        case uo of
+            None => error <xml>Must be logged in</xml>
+          | Some u =>
+            dml (DELETE FROM like
+                 WHERE T.{user} = {[u]}
+                   AND T.{fthis} = {[v]});
+            dml (INSERT INTO like({fthis}, {user})
+                 VALUES ({[v]}, {[u]}))
+
+    val t = {
+        Configure = whoami,
+        Generate = fn uo r =>
+                      case uo of
+                          None =>
+                          s <- source False;
+                          return (r.this, s)
+                        | Some u =>
+                          b <- oneRowE1 (SELECT COUNT( * ) > 0
+                                         FROM like
+                                         WHERE like.{fthis} = {[r.this]}
+                                           AND like.{user} = {[u]});
+                          s <- source b;
+                          return (r.this, s),
+        Filter = fn _ => None,
+        FilterLinks = fn _ => None,
+        SortBy = fn x => x,
+        Header = fn _ => <xml><th>{[label]}</th></xml>,
+        Row = fn uo _ (v, s) => <xml><td>
+          <button class="btn" onclick={fn _ => rpc (unlike v); set s False}>
+            <span dynClass={b <- signal s;
+                            return (if not b then
+                                        CLASS "glyphicon-2x glyphicon glyphicon-times-circle text-danger"
+                                    else
+                                        CLASS "glyphicon glyphicon-times-circle text-danger")}/>
+          </button>
+          <button class="btn" onclick={fn _ => rpc (yeslike v); set s True}>
+            <span dynClass={b <- signal s;
+                            return (if b then
+                                        CLASS "glyphicon-2x glyphicon glyphicon-check-circle text-success"
+                                    else
+                                        CLASS "glyphicon glyphicon-check-circle text-success")}/>
+          </button>
+        </td></xml>
+    }
+end
+
 functor Bid(M : sig
                 con this :: Name
                 con fthis :: Name
@@ -487,37 +563,89 @@ val sortby [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
 }
 
 functor Make(M : sig
-                 con r :: {Type}
-                 table tab : r
+                 con r :: {(Type * Type * Type)}
+                 table tab : (map fst3 r)
 
                  type cfg
                  type st
-                 val t : t r cfg st
+                 val t : t (map fst3 r) cfg st
+                 val widgets : $(map Widget.t' r)
+                 val fl : folder r
+                 val labels : $(map (fn _ => string) r)
+                 val injs : $(map (fn p => sql_injectable p.1) r)
+
+                 val authorized : transaction bool
+                 val allowCreate : bool
              end) = struct
     open M
 
     type a = {Config : cfg,
-              Rows : list st}
+              Configs : $(map thd3 r),
+              Rows : source (list st)}
 
     val create =
         cfg <- t.Configure;
+        cfgs <- @Monad.mapR _ [Widget.t'] [thd3]
+                 (fn [nm ::_] [p ::_] => @Widget.configure) fl widgets;
         rs <- List.mapQueryM (SELECT *
                               FROM tab
                               WHERE {Option.get (WHERE TRUE) (t.Filter cfg)}
                                 AND {Option.get (WHERE TRUE) (t.FilterLinks cfg)}
                               ORDER BY {{{t.SortBy (sql_order_by_Nil [[]])}}})
                              (fn {Tab = r} => t.Generate cfg r);
-        return {Config = cfg, Rows = rs}
+        rs <- source rs;
+        return {Config = cfg, Configs = cfgs, Rows = rs}
 
     fun onload _ = return ()
 
+    fun add r =
+        if not allowCreate then
+            error <xml>Access denied</xml>
+        else
+            authed <- authorized;
+            if not authed then
+                error <xml>Access denied</xml>
+            else
+                @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
+                cfg <- t.Configure;
+                t.Generate cfg r
+
     fun render ctx self = <xml>
+      {if not allowCreate then
+           <xml></xml>
+       else
+           Ui.modalButton ctx
+                          (CLASS "btn btn-primary")
+                          <xml>Add <span class="glyphicon glyphicon-plus"/></xml>
+                          (ws <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                                  (fn [nm ::_] [p ::_] => @Widget.create)
+                                  fl widgets self.Configs;
+                           return (Ui.modal
+                                   (vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                           (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : p.2) => current (@Widget.value w v))
+                                           fl widgets ws;
+                                    st <- rpc (add vs);
+                                    rs <- get self.Rows;
+                                    set self.Rows (List.append rs (st :: [])))
+                                   <xml>Add</xml>
+                                   (@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
+                                     (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
+                                         (lab : string) (w : Widget.t' p) x => <xml>
+                                           <div class="form-group">
+                                             <label class="control-label">{[lab]}</label>
+                                             {@Widget.asWidget w x None}
+                                           </div>
+                                         </xml>)
+                                     fl labels widgets ws)
+                                   <xml>Add</xml>))}
+
       <table class="bs-table">
         <thead>
           <tr>{t.Header self.Config}</tr>
         </thead>
         <tbody>
-          {List.mapX (fn r => <xml><tr>{t.Row self.Config ctx r}</tr></xml>) self.Rows}
+          <dyn signal={rs <- signal self.Rows;
+                       return (List.mapX (fn r => <xml><tr>{t.Row self.Config ctx r}</tr></xml>) rs)}/>
         </tbody>
       </table>
     </xml>

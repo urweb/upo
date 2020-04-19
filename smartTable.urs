@@ -84,6 +84,26 @@ functor LinkedWithFollow(M : sig
 end
 
 (* Indicate interest in the current item. *)
+functor Like(M : sig
+                 con this :: Name
+                 con fthis :: Name
+                 con thisT :: Type
+                 con user :: Name
+                 con r :: {Type}
+                 constraint [this] ~ r
+                 constraint [fthis] ~ [user]
+                 val inj_this : sql_injectable thisT
+                 table like : {fthis : thisT, user : string}
+
+                 val label : string
+                 val whoami : transaction (option string)
+             end) : sig
+    type cfg
+    type internal
+    val t : t ([M.this = M.thisT] ++ M.r) cfg internal
+end
+
+(* Like [Like], but with an additional option to indicate preferred choices *)
 functor Bid(M : sig
                 con this :: Name
                 con fthis :: Name
@@ -166,10 +186,17 @@ val sortby : col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
              => t ([col = ct] ++ r) sortby_cfg sortby_st
                        
 functor Make(M : sig
-                 con r :: {Type}
-                 table tab : r
+                 con r :: {(Type * Type * Type)}
+                 table tab : (map fst3 r)
 
                  type cfg
                  type st
-                 val t : t r cfg st
+                 val t : t (map fst3 r) cfg st
+                 val widgets : $(map Widget.t' r)
+                 val fl : folder r
+                 val labels : $(map (fn _ => string) r)
+                 val injs : $(map (fn p => sql_injectable p.1) r)
+
+                 val authorized : transaction bool
+                 val allowCreate : bool
              end) : Ui.S0
