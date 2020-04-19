@@ -129,6 +129,126 @@ fun orderedLinked [this :: Name] [fthis :: Name] [thisT ::: Type]
     Row = fn () _ ls => <xml><td>{links ls}</td></xml>
 }
 
+functor LinkedWithEdit(M : sig
+                           con this :: Name
+                           con fthis :: Name
+                           con thisT :: Type
+                           con fthat :: Name
+                           con thatT :: Type
+                           con r :: {Type}
+                           constraint [this] ~ r
+                           constraint [fthis] ~ [fthat]
+                           val show_that : show thatT
+                           val read_that : read thatT
+                           val eq_that : eq thatT
+                           val inj_this : sql_injectable thisT
+                           val inj_that : sql_injectable thatT
+                           table link : {fthis : thisT, fthat : thatT}
+
+                           con tkey :: Name
+                           con tr :: {Type}
+                           constraint [tkey] ~ tr
+                           table that : ([tkey = thatT] ++ tr)
+
+                           val label : string
+                           val authorized : transaction bool
+                       end) = struct
+    open M
+
+    type cfg = option (list thatT) (* if present, allowed to add *)
+    type internal = thisT * source (list thatT)
+
+    fun add k v =
+        authed <- authorized;
+        if not authed then
+            error <xml>Must be logged in</xml>
+        else
+            dml (DELETE FROM link
+                 WHERE T.{fthis} = {[k]}
+                   AND T.{fthat} = {[v]});
+            dml (INSERT INTO link({fthis}, {fthat})
+                 VALUES ({[k]}, {[v]}))
+
+    fun remove k v =
+        authed <- authorized;
+        if not authed then
+            error <xml>Must be logged in</xml>
+        else
+            dml (DELETE FROM link
+                 WHERE T.{fthis} = {[k]}
+                   AND T.{fthat} = {[v]})
+
+    val t = {
+        Configure = authed <- authorized;
+          if not authed then
+              return None
+          else
+              ts <- List.mapQuery (SELECT that.{tkey}
+                                   FROM that
+                                   ORDER BY that.{tkey})
+                                  (fn r => r.That.tkey);
+              return (Some ts),
+        Generate = fn _ r =>
+                      ls <- List.mapQuery (SELECT link.{fthat}
+                                            FROM link
+                                            WHERE link.{fthis} = {[r.this]})
+                                          (fn r => r.Link.fthat);
+                      ls <- source ls;
+                      return (r.this, ls),
+        Filter = fn _ => None,
+        FilterLinks = fn _ => None,
+        SortBy = fn x => x,
+        Header = fn _ => <xml><th>{[label]}</th></xml>,
+        Row = fn authed ctx (k, ls) => let
+                     fun one v = <xml>
+                       <span class="badge badge-pill badge-info">
+                         {[v]}
+                         {case authed of
+                              None => <xml></xml>
+                            | Some _ => <xml>
+                              <button class="btn btn-sm"
+                                      onclick={fn _ => rpc (remove k v);
+                                                  lsV <- get ls;
+                                                  set ls (List.filter (fn v' => v' <> v) lsV)}>
+                                &times;
+                              </button>
+                            </xml>}
+                       </span>
+                     </xml>
+                 in
+                     <xml><td>
+                       <dyn signal={ls <- signal ls; return (List.mapX one ls)}/>
+                       {case authed of
+                            None => <xml></xml>
+                          | Some ts =>
+                            Ui.modalButton ctx
+                                           (CLASS "btn btn-sm btn-secondary")
+                                           <xml>Add</xml>
+                                           (s <- source "";
+                                            lsV <- get ls;
+                                            return (Ui.modal (v <- get s;
+                                                              case read v of
+                                                                  None => error <xml>Bad selection</xml>
+                                                                | Some v =>
+                                                                  rpc (add k v);
+                                                                  lsV <- get ls;
+                                                                  set ls (List.append lsV (v :: [])))
+                                                             <xml>Add</xml>
+                                                             <xml>
+                                                               <cselect source={s} class="form-control">
+                                                                 {List.mapX (fn t =>
+                                                                                if List.mem t lsV then
+                                                                                    <xml></xml>
+                                                                                else
+                                                                                    <xml><coption>{[t]}</coption></xml>) ts}
+                                                               </cselect>
+                                                             </xml>
+                                                             <xml>Add</xml>))}
+                     </td></xml>
+                 end
+    }
+end
+
 functor LinkedWithFollow(M : sig
                              con this :: Name
                              con fthis :: Name

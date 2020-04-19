@@ -56,6 +56,35 @@ val orderedLinked : this :: Name -> fthis :: Name -> thisT ::: Type
                     -> string (* label *)
                     -> t ([this = thisT] ++ r) (orderedLinked_cfg thatT) (orderedLinked_st thatT)
 
+functor LinkedWithEdit(M : sig
+                           con this :: Name
+                           con fthis :: Name
+                           con thisT :: Type
+                           con fthat :: Name
+                           con thatT :: Type
+                           con r :: {Type}
+                           constraint [this] ~ r
+                           constraint [fthis] ~ [fthat]
+                           val show_that : show thatT
+                           val read_that : read thatT
+                           val eq_that : eq thatT
+                           val inj_this : sql_injectable thisT
+                           val inj_that : sql_injectable thatT
+                           table link : {fthis : thisT, fthat : thatT}
+
+                           con tkey :: Name
+                           con tr :: {Type}
+                           constraint [tkey] ~ tr
+                           table that : ([tkey = thatT] ++ tr)
+
+                           val label : string
+                           val authorized : transaction bool
+                       end) : sig
+    type cfg
+    type internal
+    val t : t ([M.this = M.thisT] ++ M.r) cfg internal
+end
+
 functor LinkedWithFollow(M : sig
                              con this :: Name
                              con fthis :: Name
