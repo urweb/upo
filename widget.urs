@@ -64,6 +64,10 @@ type timebox
 type timebox_config
 val timebox : t time timebox timebox_config
 
+type opt_timebox
+type opt_timebox_config
+val opt_timebox : t (option time) opt_timebox opt_timebox_config
+
 con choicebox :: Type -> Type
 con choicebox_config :: Type -> Type
 val choicebox : a ::: Type ->
