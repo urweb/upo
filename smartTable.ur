@@ -8,7 +8,7 @@ type t (r :: {Type}) (cfg :: Type) (st :: Type) = {
      Filter : cfg -> option (sql_exp [Tab = r] [] [] bool),
      FilterLinks : cfg -> option (sql_exp [Tab = r] [] [] bool),
      SortBy : sql_order_by [Tab = r] [] -> sql_order_by [Tab = r] [],
-     
+
      (* Run on client: *)
      Header : cfg -> xtr,
      Row : cfg -> Ui.context -> st -> xtr
@@ -537,7 +537,7 @@ functor AssignFromBids(M : sig
                            table tab : ([this = thisT, assignee = option string] ++ r)
                        end) = struct
     open M
-   
+
     type cfg = unit
     type internal = thisT * list (string * bool (* preferred? *)) * source (option string)
 
@@ -570,7 +570,7 @@ functor AssignFromBids(M : sig
                            val reassign = ss <- source "";
                                return (Ui.modal (ssv <- get ss;
                                                  case read ssv of
-                                                     None => error <xml>Invalid assigneee!</xml>
+                                                     None => error <xml>Invalid assignee!</xml>
                                                    | Some ssv =>
                                                      rpc (assign v ssv);
                                                      set s ssv)
@@ -578,6 +578,129 @@ functor AssignFromBids(M : sig
                                                 <xml><cselect source={ss} class="form-control">
                                                   <coption/>
                                                   {List.mapX (fn (u, p) => <xml><coption value={show u}>{[u]}{if p then <xml>*</xml> else <xml></xml>}</coption></xml>) cs}
+                                                </cselect></xml>
+                                                <xml>Assign</xml>)
+                       in
+                           return (case sv of
+                                       None => Ui.modalButton ctx
+                                                              (CLASS "btn btn-sm text-muted")
+                                                              <xml><span class="glyphicon glyphicon-plus-circle"/> Unassigned</xml>
+                                                              reassign
+                                     | Some u => <xml>
+                                       <span class="badge badge-pill badge-info">{[u]}</span>
+                                       {Ui.modalButton ctx
+                                                       (CLASS "btn btn-sm btn-secondary")
+                                                       <xml>reassign</xml>
+                                                       reassign}
+                                     </xml>)
+                       end}/>
+        </td></xml>
+    }
+end
+
+functor AssignFromBids2(M : sig
+                            con fthat :: Name
+                            con thatT :: Type
+                            con user :: Name
+                            con preferred :: Name
+                            constraint [fthat] ~ [user]
+                            constraint [fthat, user] ~ [preferred]
+                            table bid : {fthat : thatT, user : string, preferred : bool}
+
+                            con this :: Name
+                            con thisT :: Type
+                            con that :: Name
+                            con assignees :: {Unit}
+                            con r :: {Type}
+                            constraint [this] ~ [that]
+                            constraint [this, that] ~ assignees
+                            constraint [this, that] ~ r
+                            constraint assignees ~ r
+                            table tab : ([this = thisT, that = option thatT] ++ mapU (option string) assignees ++ r)
+
+                            val fl : folder assignees
+                            val show_that : show thatT
+                            val read_that : read thatT
+                            val eq_that : eq thatT
+                            val inj_that : sql_injectable_prim thatT
+                            val inj_this : sql_injectable thisT
+
+                            val label : string
+                            val whoami : transaction (option string)
+                        end) = struct
+    open M
+
+    type cfg = unit
+    type internal = thisT * list (thatT * int (* #preferred? *)) * source (option thatT)
+
+    fun assign v t =
+        uo <- whoami;
+        case uo of
+            None => error <xml>Must be logged in</xml>
+          | Some _ =>
+            dml (UPDATE tab
+                 SET {that} = {[t]}
+                 WHERE T.{this} = {[v]})
+
+    fun extendPrefs (uo : option string) (pso : option (list (thatT * int))) =
+        case uo of
+            None => return None
+          | Some u =>
+            case pso of
+                None => return None
+              | Some ps =>
+                ps <- query1 (SELECT bid.{fthat}, bid.{preferred}
+                              FROM bid
+                              WHERE bid.{user} = {[u]})
+                             (fn r ps =>
+                                 return (if List.exists (fn (t, _) => t = r.fthat) ps then
+                                             List.mp (fn (t, n) => (t, if t = r.fthat && r.preferred then
+                                                                           n + 1
+                                                                       else
+                                                                           n)) ps
+                                         else
+                                             (r.fthat, if r.preferred then 1 else 0) :: ps))
+                             ps;
+                return (Some ps)
+
+    fun buildPrefs (uos : $(mapU (option string) assignees)) =
+      pso <- @Monad.foldR _ [fn _ => option string] [fn _ => option (list (thatT * int))]
+              (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] => extendPrefs)
+              (Some []) fl uos;
+      return (case pso of
+                  None => []
+                | Some ps => List.sort (fn (_, n1) (_, n2) => n1 < n2) ps)
+
+    fun stars n =
+        if n <= 0 then
+            ""
+        else
+            "*" ^ stars (n - 1)
+
+    val t = {
+        Configure = return (),
+        Generate = fn () r =>
+                      s <- source r.that;
+                      choices <- buildPrefs (r --- _);
+                      return (r.this, choices, s),
+        Filter = fn _ => None,
+        FilterLinks = fn _ => None,
+        SortBy = fn x => x,
+        Header = fn _ => <xml><th>{[label]}</th></xml>,
+        Row = fn uo ctx (v, cs, s) => <xml><td>
+          <dyn signal={sv <- signal s;
+                       let
+                           val reassign = ss <- source (show sv);
+                               return (Ui.modal (ssv <- get ss;
+                                                 case read ssv of
+                                                     None => error <xml>Invalid assignment!</xml>
+                                                   | Some ssv =>
+                                                     rpc (assign v ssv);
+                                                     set s ssv)
+                                                <xml>Which value do you want to assign?</xml>
+                                                <xml><cselect source={ss} class="form-control">
+                                                  <coption/>
+                                                  {List.mapX (fn (t, n) => <xml><coption value={show t}>{[t]}{[stars n]}</coption></xml>) cs}
                                                 </cselect></xml>
                                                 <xml>Assign</xml>)
                        in
@@ -609,7 +732,7 @@ val nonnull [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
-    
+
 type taggedWithUser_cfg = option string
 type taggedWithUser_st = unit
 fun taggedWithUser [user :: Name] [r ::: {Type}] [[user] ~ r]

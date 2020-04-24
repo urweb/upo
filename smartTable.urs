@@ -180,6 +180,43 @@ functor AssignFromBids(M : sig
     val t : t ([M.this = M.thisT, M.assignee = option string] ++ M.r) cfg internal
 end
 
+(* Variant: we have assigned some users, who gave their preferences for another aspect (e.g. times).
+ * Now assign a value for that aspect, based on preferences of assigned users. *)
+functor AssignFromBids2(M : sig
+                            con fthat :: Name
+                            con thatT :: Type
+                            con user :: Name
+                            con preferred :: Name
+                            constraint [fthat] ~ [user]
+                            constraint [fthat, user] ~ [preferred]
+                            table bid : {fthat : thatT, user : string, preferred : bool}
+
+                            con this :: Name
+                            con thisT :: Type
+                            con that :: Name
+                            con assignees :: {Unit}
+                            con r :: {Type}
+                            constraint [this] ~ [that]
+                            constraint [this, that] ~ assignees
+                            constraint [this, that] ~ r
+                            constraint assignees ~ r
+                            table tab : ([this = thisT, that = option thatT] ++ mapU (option string) assignees ++ r)
+
+                            val fl : folder assignees
+                            val show_that : show thatT
+                            val read_that : read thatT
+                            val eq_that : eq thatT
+                            val inj_that : sql_injectable_prim thatT
+                            val inj_this : sql_injectable thisT
+
+                            val label : string
+                            val whoami : transaction (option string)
+                        end) : sig
+    type cfg
+    type internal
+    val t : t ([M.this = M.thisT, M.that = option M.thatT] ++ mapU (option string) M.assignees ++ M.r) cfg internal
+end
+
 type nonnull_cfg
 type nonnull_st
 val nonnull : col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
@@ -213,7 +250,7 @@ type sortby_cfg
 type sortby_st
 val sortby : col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
              => t ([col = ct] ++ r) sortby_cfg sortby_st
-                       
+
 functor Make(M : sig
                  con r :: {(Type * Type * Type)}
                  table tab : (map fst3 r)
