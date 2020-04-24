@@ -228,7 +228,7 @@ functor Make(M : sig
                                                                       </button></xml>)}/>
                                    <dyn signal={p <- signal r.Post;
                                                 return <xml>
-                                                  {[@Widget.asValue title p.Title]} -- {[p.Poster]} at {[p.When]}
+                                                  {@Widget.asValue title p.Title} -- {[p.Poster]} at {[p.When]}
 
                                                   {if not (mayModify a.Access p.Poster p.Poster) then
                                                      <xml></xml>
