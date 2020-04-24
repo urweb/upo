@@ -5,7 +5,7 @@ val eq_richtext : eq richtext
 val ord_richtext : ord richtext
 val inj_richtext : sql_injectable_prim richtext
 val widget_richtext : Widget.t richtext Widget.htmlbox Widget.htmlbox_config
-                      
+
 val explorer_richtext : full ::: {Type}
                         -> tname :: Name -> key ::: Type -> col :: Name
                         -> cols ::: {Type} -> colsDone ::: {Type} -> cstrs ::: {{Unit}}
@@ -22,5 +22,5 @@ val richtextInBody : col :: Name -> r ::: {Type} -> [[col] ~ r]
 
 type richtext_cfg
 type richtext_st
-val richtext : col :: Name -> r ::: {Type} -> [[col] ~ r]
-               => string -> SmartTable.t ([col = richtext] ++ r) richtext_cfg richtext_st
+val richtext : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
+               => string -> SmartTable.t inp ([col = richtext] ++ r) richtext_cfg richtext_st
