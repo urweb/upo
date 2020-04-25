@@ -286,7 +286,7 @@ functor Make(M : sig
                  val allowCreate : bool
              end) : Ui.S0
 
-(* This version expects an input of the same type as one of the columns. *)
+(* This version expects an explicit input. *)
 functor Make1(M : sig
                   type inp
                   con r :: {(Type * Type * Type)}
