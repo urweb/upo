@@ -309,6 +309,7 @@ val sortbyDesc : inp ::: Type -> col :: Name -> ct ::: Type -> r ::: {Type} -> [
 functor Make(M : sig
                  con r :: {(Type * Type * Type)}
                  table tab : (map fst3 r)
+                 val title : string
 
                  type cfg
                  type st
@@ -327,6 +328,7 @@ functor Make1(M : sig
                   type inp
                   con r :: {(Type * Type * Type)}
                   table tab : (map fst3 r)
+                  val title : string
 
                   type cfg
                   type st

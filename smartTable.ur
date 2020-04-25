@@ -965,6 +965,7 @@ val sortbyDesc [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] 
 functor Make(M : sig
                  con r :: {(Type * Type * Type)}
                  table tab : (map fst3 r)
+                 val title : string
 
                  type cfg
                  type st
@@ -1017,7 +1018,7 @@ functor Make(M : sig
        else
            Ui.modalButton ctx
                           (CLASS "btn btn-primary")
-                          <xml>Add <span class="glyphicon glyphicon-plus"/></xml>
+                          <xml>Create New {[title]}</xml>
                           (ws <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
                                   (fn [nm ::_] [p ::_] => @Widget.create)
                                   fl widgets self.Configs;
@@ -1060,6 +1061,7 @@ functor Make1(M : sig
                   type inp
                   con r :: {(Type * Type * Type)}
                   table tab : (map fst3 r)
+                  val title : string
 
                   type cfg
                   type st
@@ -1114,7 +1116,7 @@ functor Make1(M : sig
        else
            Ui.modalButton ctx
                           (CLASS "btn btn-primary")
-                          <xml>Add <span class="glyphicon glyphicon-plus"/></xml>
+                          <xml>Create New {[title]}</xml>
                           (ws <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
                                   (fn [nm ::_] [p ::_] => @Widget.create)
                                   fl widgets self.Configs;
