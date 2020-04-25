@@ -8,6 +8,7 @@ type t (inp :: Type) (r :: {Type}) (cfg :: Type) (st :: Type) = {
      Filter : cfg -> inp -> option (sql_exp [Tab = r] [] [] bool),
      FilterLinks : cfg -> inp -> option (sql_exp [Tab = r] [] [] bool),
      SortBy : sql_order_by [Tab = r] [] -> sql_order_by [Tab = r] [],
+     OnCreate : cfg -> inp -> $r -> transaction unit,
 
      (* Run on client: *)
      Header : cfg -> xtr,
@@ -22,6 +23,7 @@ fun inputIs [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_inj
     Filter = fn () inp => Some (WHERE tab.{col} = {[inp]}),
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn () => <xml></xml>,
     Row = fn () _ _ => <xml></xml>
 }
@@ -34,6 +36,45 @@ fun inputIsOpt [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_
     Filter = fn () inp => Some (WHERE tab.{col} = {[Some inp]}),
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
+    Header = fn () => <xml></xml>,
+    Row = fn () _ _ => <xml></xml>
+}
+
+type inputConnected_cfg = unit
+type inputConnected_st = unit
+fun inputConnected [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}] [ckey :: Name]
+    [inpCol :: Name] [cothers ::: {Type}] [ckeys ::: {{Unit}}]
+    [[key] ~ r] [[ckey] ~ [inpCol]] [[ckey, inpCol] ~ cothers]
+    (_ : sql_injectable inp)
+    (ctr : sql_table ([ckey = keyT, inpCol = inp] ++ cothers) ckeys) = {
+    Configure = return (),
+    Generate = fn () _ => return (),
+    Filter = fn () inp => Some (WHERE NOT ((SELECT TRUE
+                                            FROM ctr
+                                            WHERE ctr.{ckey} = tab.{key}
+                                              AND ctr.{inpCol} = {[inp]}) IS NULL)),
+    FilterLinks = fn () _ => None,
+    SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
+    Header = fn () => <xml></xml>,
+    Row = fn () _ _ => <xml></xml>
+}
+
+type inputConnects_cfg = unit
+type inputConnects_st = unit
+fun inputConnects [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}]
+                  [ckey :: Name] [inpCol :: Name] [ckeys ::: {{Unit}}]
+                  [[key] ~ r] [[ckey] ~ [inpCol]]
+                  (_ : sql_injectable keyT) (_ : sql_injectable inp)
+                  (ctr : sql_table [ckey = keyT, inpCol = inp] ckeys) = {
+    Configure = return (),
+    Generate = fn () _ => return (),
+    Filter = fn () _ => None,
+    FilterLinks = fn () _ => None,
+    SortBy = fn x => x,
+    OnCreate = fn () inp r => dml (INSERT INTO ctr({ckey}, {inpCol})
+                                   VALUES ({[r.key]}, {[inp]})),
     Header = fn () => <xml></xml>,
     Row = fn () _ _ => <xml></xml>
 }
@@ -55,6 +96,7 @@ fun compose [inp] [r] [cfgb] [cfga] [stb] [sta] (b : t inp r cfgb stb) (a : t in
                                            | (x, None) => x
                                            | (Some x, Some y) => Some (WHERE {x} OR {y}),
     SortBy = fn sb => b.SortBy (a.SortBy sb),
+    OnCreate = fn (cfgb, cfga) inp r => b.OnCreate cfgb inp r; a.OnCreate cfga inp r,
     Header = fn (cfgb, cfga) => <xml>{b.Header cfgb}{a.Header cfga}</xml>,
     Row = fn (cfgb, cfga) ctx (y, x) => <xml>{b.Row cfgb ctx y}{a.Row cfga ctx x}</xml>
 }
@@ -68,6 +110,7 @@ fun column [inp ::: Type] [col :: Name] [colT ::: Type] [r ::: {Type}] [[col] ~ 
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn () => <xml><th>{[lbl]}</th></xml>,
     Row = fn () _ v => <xml><td>{[v]}</td></xml>
 }
@@ -80,6 +123,7 @@ fun html [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (lbl : string) 
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn () => <xml><th>{[lbl]}</th></xml>,
     Row = fn () _ v => <xml><td>{v}</td></xml>
 }
@@ -95,6 +139,7 @@ fun iconButton [inp ::: Type] [cols ::: {Type}] [r ::: {Type}] [cols ~ r]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn _ => <xml><th>{[lbl]}</th></xml>,
     Row = fn (u, tm) _ cols =>
              case render u tm cols of
@@ -127,6 +172,7 @@ fun linked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn () => <xml><th>{[l]}</th></xml>,
     Row = fn () _ ls => <xml><td>{links ls}</td></xml>
 }
@@ -149,6 +195,7 @@ fun orderedLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn () => <xml><th>{[l]}</th></xml>,
     Row = fn () _ ls => <xml><td>{links ls}</td></xml>
 }
@@ -223,6 +270,7 @@ functor LinkedWithEdit(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        OnCreate = fn _ _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn authed ctx (k, ls) => let
                      fun one v = <xml>
@@ -339,6 +387,7 @@ functor LinkedWithFollow(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        OnCreate = fn _ _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo _ ls => let
                      fun one (v, followed) = <xml>
@@ -426,6 +475,7 @@ functor Like(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        OnCreate = fn _ _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo _ (v, s) => <xml><td>
           <button class="btn" onclick={fn _ => rpc (unlike v); set s False}>
@@ -520,6 +570,7 @@ functor Bid(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        OnCreate = fn _ _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo _ (v, s) => <xml><td>
           <button class="btn" onclick={fn _ => rpc (unavailable v); set s Unavailable}>
@@ -592,6 +643,7 @@ functor AssignFromBids(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        OnCreate = fn _ _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo ctx (v, cs, s) => <xml><td>
           <dyn signal={sv <- signal s;
@@ -716,6 +768,7 @@ functor AssignFromBids2(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        OnCreate = fn _ _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo ctx (v, cs, s) => <xml><td>
           <dyn signal={sv <- signal s;
@@ -759,6 +812,7 @@ val nonnull [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r
     Filter = fn _ _ => Some (WHERE NOT (tab.{col} IS NULL)),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -771,6 +825,7 @@ val isnull [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r]
     Filter = fn _ _ => Some (WHERE tab.{col} IS NULL),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -783,6 +838,7 @@ val past [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col} < CURRENT_TIMESTAMP),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -792,6 +848,7 @@ val pastOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col} < {sql_nullable (SQL CURRENT_TIMESTAMP)}),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -804,6 +861,7 @@ val future [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col} > CURRENT_TIMESTAMP),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -813,6 +871,7 @@ val futureOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col} > {sql_nullable (SQL CURRENT_TIMESTAMP)}),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -828,6 +887,7 @@ fun taggedWithUser [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
                           | Some u => Some (WHERE tab.{user} = {[u]}),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -848,6 +908,7 @@ fun linkedToUser [inp ::: Type] [key :: Name] [keyT ::: Type] [r ::: {Type}] [[k
                                                         WHERE link.{user} = {[u]}
                                                           AND link.{ckey} = tab.{key}) = {[Some True]}),
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -873,6 +934,7 @@ fun doubleLinkedToUser [inp ::: Type] [key :: Name] [keyT ::: Type] [r ::: {Type
                                                           AND link2.{ikey2} = link1.{ikey}
                                                           AND link2.{user} = {[u]}) = {[Some True]}),
     SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -885,6 +947,7 @@ val sortby [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = sql_order_by_Cons (SQL tab.{col}) sql_asc,
+    OnCreate = fn _ _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -894,6 +957,7 @@ val sortbyDesc [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] 
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = sql_order_by_Cons (SQL tab.{col}) sql_desc,
+    OnCreate = fn _ _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -944,6 +1008,7 @@ functor Make(M : sig
             else
                 @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
                 cfg <- t.Configure;
+                t.OnCreate cfg () r;
                 t.Generate cfg r
 
     fun render ctx self = <xml>
@@ -1011,6 +1076,7 @@ functor Make1(M : sig
 
     type input = inp
     type a = {Config : cfg,
+              Input : inp,
               Configs : $(map thd3 r),
               Rows : source (list st)}
 
@@ -1025,11 +1091,11 @@ functor Make1(M : sig
                               ORDER BY {{{t.SortBy (sql_order_by_Nil [[]])}}})
                              (fn {Tab = r} => t.Generate cfg r);
         rs <- source rs;
-        return {Config = cfg, Configs = cfgs, Rows = rs}
+        return {Config = cfg, Input = inp, Configs = cfgs, Rows = rs}
 
     fun onload _ = return ()
 
-    fun add r =
+    fun add inp r =
         if not allowCreate then
             error <xml>Access denied</xml>
         else
@@ -1039,6 +1105,7 @@ functor Make1(M : sig
             else
                 @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
                 cfg <- t.Configure;
+                t.OnCreate cfg inp r;
                 t.Generate cfg r
 
     fun render ctx self = <xml>
@@ -1055,7 +1122,7 @@ functor Make1(M : sig
                                    (vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : p.2) => current (@Widget.value w v))
                                            fl widgets ws;
-                                    st <- rpc (add vs);
+                                    st <- rpc (add self.Input vs);
                                     rs <- get self.Rows;
                                     set self.Rows (List.append rs (st :: [])))
                                    <xml>Add</xml>

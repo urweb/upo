@@ -22,6 +22,22 @@ val inputIsOpt : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
                  => sql_injectable_prim inp
                  -> t inp ([col = option inp] ++ r) inputIs_cfg inputIs_st
 
+type inputConnected_cfg
+type inputConnected_st
+val inputConnected : inp ::: Type -> key :: Name -> keyT ::: Type -> r ::: {Type} -> ckey :: Name -> inpCol :: Name -> cothers ::: {Type} -> ckeys ::: {{Unit}}
+                     -> [[key] ~ r] => [[ckey] ~ [inpCol]] => [[ckey, inpCol] ~ cothers]
+                     => sql_injectable inp
+                     -> sql_table ([ckey = keyT, inpCol = inp] ++ cothers) ckeys
+                     -> t inp ([key = keyT] ++ r) inputConnected_cfg inputConnected_st
+
+type inputConnects_cfg
+type inputConnects_st
+val inputConnects : inp ::: Type -> key :: Name -> keyT ::: Type -> r ::: {Type} -> ckey :: Name -> inpCol :: Name -> ckeys ::: {{Unit}}
+                    -> [[key] ~ r] => [[ckey] ~ [inpCol]]
+                    => sql_injectable keyT -> sql_injectable inp
+                    -> sql_table [ckey = keyT, inpCol = inp] ckeys
+                    -> t inp ([key = keyT] ++ r) inputConnected_cfg inputConnected_st
+
 con column_cfg :: Type -> Type
 con column_st :: Type -> Type
 val column : inp ::: Type -> col :: Name -> colT ::: Type -> r ::: {Type} -> [[col] ~ r]
