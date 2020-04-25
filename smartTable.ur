@@ -763,6 +763,18 @@ val nonnull [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r
     Row = fn _ _ _ => <xml></xml>
 }
 
+type isnull_cfg = unit
+type isnull_st = unit
+val isnull [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
+    Configure = return (),
+    Generate = fn _ _ => return (),
+    Filter = fn _ _ => Some (WHERE tab.{col} IS NULL),
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    Header = fn _ => <xml></xml>,
+    Row = fn _ _ _ => <xml></xml>
+}
+
 type taggedWithUser_cfg = option string
 type taggedWithUser_st = unit
 fun taggedWithUser [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
@@ -831,6 +843,15 @@ val sortby [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = sql_order_by_Cons (SQL tab.{col}) sql_asc,
+    Header = fn _ => <xml></xml>,
+    Row = fn _ _ _ => <xml></xml>
+}
+val sortbyDesc [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
+    Configure = return (),
+    Generate = fn _ _ => return (),
+    Filter = fn _ _ => None,
+    FilterLinks = fn _ _ => None,
+    SortBy = sql_order_by_Cons (SQL tab.{col}) sql_desc,
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }

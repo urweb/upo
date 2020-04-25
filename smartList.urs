@@ -105,11 +105,19 @@ type nonnull_st
 val nonnull : inp ::: Type -> col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
               => t inp ([col = option ct] ++ r) nonnull_cfg nonnull_st
 
+type isnull_cfg
+type isnull_st
+val isnull : inp ::: Type -> col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
+    => t inp ([col = option ct] ++ r) isnull_cfg isnull_st
+
 type taggedWithUser_cfg
 type taggedWithUser_st
 val taggedWithUser : inp ::: Type -> user :: Name -> r ::: {Type} -> [[user] ~ r]
                    => transaction (option string) (* get username, if any *)
                    -> t inp ([user = string] ++ r) taggedWithUser_cfg taggedWithUser_st
+val taggedWithUserOpt : inp ::: Type -> user :: Name -> r ::: {Type} -> [[user] ~ r]
+                        => transaction (option string)
+                        -> t inp ([user = option string] ++ r) taggedWithUser_cfg taggedWithUser_st
 
 type linkedToUser_cfg
 type linkedToUser_st
@@ -133,6 +141,8 @@ type sortby_cfg
 type sortby_st
 val sortby : inp ::: Type -> col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
              => t inp ([col = ct] ++ r) sortby_cfg sortby_st
+val sortbyDesc : inp ::: Type -> col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
+                 => t inp ([col = ct] ++ r) sortby_cfg sortby_st
 
 functor Make(M : sig
                  con r :: {Type}
