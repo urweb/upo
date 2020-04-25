@@ -284,6 +284,48 @@ val isnull [inp] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
     Body = fn _ _ => <xml></xml>
 }
 
+type past_cfg = unit
+type past_st = unit
+val past [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
+    Configure = return (),
+    Generate = fn _ _ => return (),
+    Filter = fn _ _ => Some (WHERE tab.{col} < CURRENT_TIMESTAMP),
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    Header = fn _ _ => <xml></xml>,
+    Body = fn _ _ => <xml></xml>
+}
+val pastOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
+    Configure = return (),
+    Generate = fn _ _ => return (),
+    Filter = fn _ _ => Some (WHERE tab.{col} < {sql_nullable (SQL CURRENT_TIMESTAMP)}),
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    Header = fn _ _ => <xml></xml>,
+    Body = fn _ _ => <xml></xml>
+}
+
+type future_cfg = unit
+type future_st = unit
+val future [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
+    Configure = return (),
+    Generate = fn _ _ => return (),
+    Filter = fn _ _ => Some (WHERE tab.{col} > CURRENT_TIMESTAMP),
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    Header = fn _ _ => <xml></xml>,
+    Body = fn _ _ => <xml></xml>
+}
+val futureOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
+    Configure = return (),
+    Generate = fn _ _ => return (),
+    Filter = fn _ _ => Some (WHERE tab.{col} > {sql_nullable (SQL CURRENT_TIMESTAMP)}),
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    Header = fn _ _ => <xml></xml>,
+    Body = fn _ _ => <xml></xml>
+}
+
 type taggedWithUser_cfg = option string
 type taggedWithUser_st = unit
 fun taggedWithUser [inp] [user :: Name] [r ::: {Type}] [[user] ~ r]

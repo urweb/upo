@@ -245,6 +245,20 @@ type isnull_st
 val isnull : inp ::: Type -> col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
               => t inp ([col = option ct] ++ r) isnull_cfg isnull_st
 
+type past_cfg
+type past_st
+val past : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
+           => t inp ([col = time] ++ r) past_cfg past_st
+val pastOpt : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
+              => t inp ([col = option time] ++ r) past_cfg past_st
+
+type future_cfg
+type future_st
+val future : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
+             => t inp ([col = time] ++ r) future_cfg future_st
+val futureOpt : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
+                => t inp ([col = option time] ++ r) future_cfg future_st
+
 type taggedWithUser_cfg
 type taggedWithUser_st
 val taggedWithUser : inp ::: Type -> user :: Name -> r ::: {Type} -> [[user] ~ r]
