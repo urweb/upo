@@ -321,6 +321,8 @@ functor Make(M : sig
 
                  val authorized : transaction bool
                  val allowCreate : bool
+                 (* Note: creation is streamlined and
+                  * omits showing widgets that are marked optional. *)
              end) : Ui.S0
 
 (* This version expects an explicit input. *)

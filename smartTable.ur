@@ -1032,7 +1032,10 @@ functor Make(M : sig
                                    <xml>Add</xml>
                                    (@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
                                      (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
-                                         (lab : string) (w : Widget.t' p) x => <xml>
+                                         (lab : string) (w : Widget.t' p) x =>
+                                         if @Widget.optional w then
+                                             <xml></xml>
+                                         else <xml>
                                            <div class="form-group">
                                              <label class="control-label">{[lab]}</label>
                                              {@Widget.asWidget w x None}
@@ -1130,7 +1133,10 @@ functor Make1(M : sig
                                    <xml>Add</xml>
                                    (@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
                                      (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
-                                         (lab : string) (w : Widget.t' p) x => <xml>
+                                         (lab : string) (w : Widget.t' p) x =>
+                                         if @Widget.optional w then
+                                             <xml></xml>
+                                         else <xml>
                                            <div class="form-group">
                                              <label class="control-label">{[lab]}</label>
                                              {@Widget.asWidget w x None}

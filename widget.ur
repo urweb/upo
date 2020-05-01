@@ -8,7 +8,8 @@ con t (value :: Type) (state :: Type) (config :: Type) =
         AsWidget : state -> option id -> xbody,
         AsWidgetSimple : state -> option id -> xbody,
         Value : state -> signal value,
-        AsValue : value -> xbody }
+        AsValue : value -> xbody,
+        Optional : bool }
 
 con t' (value :: Type, state :: Type, config :: Type) = t value state config
 
@@ -22,6 +23,7 @@ fun asWidget [value] [state] [config] (t : t value state config) = t.AsWidget
 fun asWidget_simple [value] [state] [config] (t : t value state config) = t.AsWidgetSimple
 fun value [value] [state] [config] (t : t value state config) = t.Value
 fun asValue [value] [state] [config] (t : t value state config) = t.AsValue
+fun optional [value] [state] [config] (t : t value state config) = t.Optional
 
 fun make [value] [state] [config] r = r
 
@@ -41,7 +43,8 @@ val textbox = { Configure = return (),
                                   None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
                                 | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
                 Value = signal,
-                AsValue = txt }
+                AsValue = txt,
+                Optional = False }
 
 val opt_textbox = { Configure = return (),
                     Create = fn () => source "",
@@ -64,7 +67,8 @@ val opt_textbox = { Configure = return (),
                                          | _ => Some v),
                     AsValue = fn o => case o of
                                           None => <xml></xml>
-                                        | Some s => txt s }
+                                        | Some s => txt s,
+                    Optional = True }
 
 val checkbox = { Configure = return (),
                  Create = fn () => source False,
@@ -81,7 +85,8 @@ val checkbox = { Configure = return (),
                                    None => <xml><ccheckbox class={Bootstrap4.form_control} source={s}/></xml>
                                  | Some id => <xml><ccheckbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
                  Value = signal,
-                 AsValue = txt }
+                 AsValue = txt,
+                 Optional = False }
 
 val intbox = { Configure = return (),
                Create = fn () => source "",
@@ -98,7 +103,8 @@ val intbox = { Configure = return (),
                                  None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
                                | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
                Value = fn s => v <- signal s; return (Option.get 0 (read v)),
-               AsValue = txt }
+               AsValue = txt,
+               Optional = False }
 
 val timebox = { Configure = t <- now; return (show t),
                 Create = fn t => s <- source ""; return (t, s),
@@ -115,7 +121,8 @@ val timebox = { Configure = t <- now; return (show t),
                                   None => <xml><ctextbox placeholder={t} class={Bootstrap4.form_control} source={s}/></xml>
                                 | Some id => <xml><ctextbox placeholder={t} class={Bootstrap4.form_control} source={s} id={id}/></xml>,
                 Value = fn (_, s) => v <- signal s; return (Option.get minTime (read v)),
-                AsValue = fn t => if t = minTime then <xml><b>INVALID</b></xml> else txt t }
+                AsValue = fn t => if t = minTime then <xml><b>INVALID</b></xml> else txt t,
+                Optional = False }
 
 val opt_timebox = { Configure = return (),
                     Create = fn () => source "",
@@ -134,7 +141,8 @@ val opt_timebox = { Configure = return (),
                     Value = fn s => v <- signal s; return (read v),
                     AsValue = fn t => case t of
                                           None => <xml></xml>
-                                        | Some t => if t = minTime then <xml><b>INVALID</b></xml> else txt t }
+                                        | Some t => if t = minTime then <xml><b>INVALID</b></xml> else txt t,
+                    Optional = True }
 
 val urlbox = { Configure = return (),
                Create = fn () => source "",
@@ -154,7 +162,8 @@ val urlbox = { Configure = return (),
                AsValue = fn s =>
                            case checkUrl s of
                                None => <xml><b>[BLOCKED URL]</b></xml>
-                             | Some url => <xml><a href={url}><tt>{[url]}</tt></a></xml> }
+                             | Some url => <xml><a href={url}><tt>{[url]}</tt></a></xml>,
+               Optional = False }
 
 val undoEtc = Ckeditor.Bar {Nam = Some "Undo, etc.",
                             Buttons = Ckeditor.Cut
@@ -219,7 +228,8 @@ val htmlbox = { Configure = return (),
                 AsWidget = fn me _ => Ckeditor.show me,
                 AsWidgetSimple = fn me _ => Ckeditor.show me,
                 Value = Ckeditor.content,
-                AsValue = html }
+                AsValue = html,
+                Optional = False }
 
 type choicebox (a :: Type) =
     { Choices : list a,
@@ -263,7 +273,8 @@ fun choicebox [a ::: Type] (_ : show a) (_ : read a) (choice : a) (choices : lis
                  return (case read s of
                              None => choice
                            | Some v => v),
-      AsValue = txt }
+      AsValue = txt,
+      Optional = False }
 
 type foreignbox (a :: Type) =
     { Choices : source (list a),
@@ -306,7 +317,8 @@ fun foreignbox [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : sql_quer
                  return (case v of
                              "" => None
                            | _ => read v),
-      AsValue = txt }
+      AsValue = txt,
+      Optional = True }
 
 con foreignbox_default = foreignbox
 con foreignbox_default_config = foreignbox_config
@@ -345,7 +357,8 @@ fun foreignbox_default [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : 
                  return (case v of
                              "" => default
                            | _ => Option.get default (read v)),
-      AsValue = txt }
+      AsValue = txt,
+      Optional = False }
 
 functor Fuzzybox(M : sig
                      con f :: Name
@@ -361,7 +374,7 @@ functor Fuzzybox(M : sig
              NotInitialized (* so no point in similarity-sorting *)
            | Initialized of string
            | FetchedSortedList of string
-         
+
     type state =
          { Stage : source stage,
            Choices : source (list string),
@@ -425,5 +438,6 @@ functor Fuzzybox(M : sig
                                            None => <xml><ctextbox class={Bootstrap4.form_control} source={me.Source}/></xml>
                                          | Some id => <xml><ctextbox class={Bootstrap4.form_control} id={id} source={me.Source}/></xml>,
           Value = fn me => signal me.Source,
-          AsValue = txt }
+          AsValue = txt,
+          Optional = False }
 end

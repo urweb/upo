@@ -17,6 +17,8 @@ val asWidget : value ::: Type -> state ::: Type -> config ::: Type -> t value st
 val asWidget_simple : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> option id -> xbody (* Alternative version, currently only used to show a textbox instead of a dropdown *)
 val value : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> state -> signal value
 val asValue : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> value -> xbody
+val optional : value ::: Type -> state ::: Type -> config ::: Type -> t value state config -> bool
+(* Does this widget represent an [option] type, where the default "null" value is a perfectly sensible final value? *)
 
 val make : value ::: Type -> state ::: Type -> config ::: Type
            -> { Configure : transaction config,
@@ -28,7 +30,8 @@ val make : value ::: Type -> state ::: Type -> config ::: Type
                 AsWidget : state -> option id -> xbody,
                 AsWidgetSimple : state -> option id -> xbody,
                 Value : state -> signal value,
-                AsValue : value -> xbody }
+                AsValue : value -> xbody,
+                Optional : bool }
            -> t value state config
 
 (* Some default widgets *)
