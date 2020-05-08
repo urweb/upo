@@ -274,17 +274,17 @@ functor LinkedWithEdit(M : sig
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn authed ctx (k, ls) => let
                      fun one v = <xml>
-                       <span class="badge badge-pill badge-info">
+                       <span class="badge badge-pill badge-info p-2">
                          {[v]}
                          {case authed of
                               None => <xml></xml>
                             | Some _ => <xml>
-                              <button class="btn btn-sm"
-                                      onclick={fn _ => rpc (remove k v);
-                                                  lsV <- get ls;
-                                                  set ls (List.filter (fn v' => v' <> v) lsV)}>
+                              <span class="text-white" style="cursor: pointer"
+                                    onclick={fn _ => rpc (remove k v);
+                                                lsV <- get ls;
+                                                set ls (List.filter (fn v' => v' <> v) lsV)}>
                                 &times;
-                              </button>
+                              </span>
                             </xml>}
                        </span>
                      </xml>
