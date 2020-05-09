@@ -11,6 +11,9 @@ type t (inp :: Type) (r :: {Type}) (cfg :: Type) (st :: Type) = {
      OnCreate : cfg -> inp -> $r -> transaction unit,
 
      (* Run on client: *)
+     GenerateLocal : cfg -> transaction st,
+     WidgetForCreate : cfg -> st -> xbody,
+     OnCreateLocal : $r -> st -> transaction unit,
      Header : cfg -> xtr,
      Row : cfg -> Ui.context -> st -> xtr
 }
@@ -24,6 +27,9 @@ fun inputIs [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_inj
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml></xml>,
     Row = fn () _ _ => <xml></xml>
 }
@@ -37,6 +43,9 @@ fun inputIsOpt [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml></xml>,
     Row = fn () _ _ => <xml></xml>
 }
@@ -57,6 +66,9 @@ fun inputConnected [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}] [ckey :: N
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml></xml>,
     Row = fn () _ _ => <xml></xml>
 }
@@ -73,8 +85,15 @@ fun inputConnects [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}]
     Filter = fn () _ => None,
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
-    OnCreate = fn () inp r => dml (INSERT INTO ctr({ckey}, {inpCol})
+    OnCreate = fn () inp r =>
+                  dml (DELETE FROM ctr
+                       WHERE T.{ckey} = {[r.key]}
+                         AND T.{inpCol} = {[inp]});
+                  dml (INSERT INTO ctr({ckey}, {inpCol})
                                    VALUES ({[r.key]}, {[inp]})),
+    GenerateLocal = fn () => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml></xml>,
     Row = fn () _ _ => <xml></xml>
 }
@@ -97,20 +116,26 @@ fun compose [inp] [r] [cfgb] [cfga] [stb] [sta] (b : t inp r cfgb stb) (a : t in
                                            | (Some x, Some y) => Some (WHERE {x} OR {y}),
     SortBy = fn sb => b.SortBy (a.SortBy sb),
     OnCreate = fn (cfgb, cfga) inp r => b.OnCreate cfgb inp r; a.OnCreate cfga inp r,
+    GenerateLocal = fn (cfgb, cfga) => b <- b.GenerateLocal cfgb; a <- a.GenerateLocal cfga; return (b, a),
+    WidgetForCreate = fn (cfgb, cfga) (y, x) => <xml>{b.WidgetForCreate cfgb y}{a.WidgetForCreate cfga x}</xml>,
+    OnCreateLocal = fn r (y, x) => b.OnCreateLocal r y; a.OnCreateLocal r x,
     Header = fn (cfgb, cfga) => <xml>{b.Header cfgb}{a.Header cfga}</xml>,
     Row = fn (cfgb, cfga) ctx (y, x) => <xml>{b.Row cfgb ctx y}{a.Row cfga ctx x}</xml>
 }
 
 type column_cfg (t :: Type) = unit
-type column_st (t :: Type) = t
+type column_st (t :: Type) = option t
 fun column [inp ::: Type] [col :: Name] [colT ::: Type] [r ::: {Type}] [[col] ~ r]
            (_ : show colT) (lbl : string) = {
     Configure = return (),
-    Generate = fn () r => return r.col,
+    Generate = fn () r => return (Some r.col),
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return None,
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[lbl]}</th></xml>,
     Row = fn () _ v => <xml><td>{[v]}</td></xml>
 }
@@ -124,30 +149,39 @@ fun html [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (lbl : string) 
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return <xml></xml>,
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[lbl]}</th></xml>,
     Row = fn () _ v => <xml><td>{v}</td></xml>
 }
 
 type iconButton_cfg (cols :: {Type}) = option string * time
-type iconButton_st (cols :: {Type}) = $cols
+type iconButton_st (cols :: {Type}) = option $cols
 fun iconButton [inp ::: Type] [cols ::: {Type}] [r ::: {Type}] [cols ~ r]
     (whoami : transaction (option string))
     (render : option string -> time -> $cols -> option (css_class * url))
     (lbl : string) = {
     Configure = u <- whoami; tm <- now; return (u, tm),
-    Generate = fn _ r => return (r --- r),
+    Generate = fn _ r => return (Some (r --- r)),
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn _ => return None,
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml><th>{[lbl]}</th></xml>,
     Row = fn (u, tm) _ cols =>
-             case render u tm cols of
-                 None => <xml><td/></xml>
-               | Some (cl, ur) => <xml><td>
-                 <a href={ur}
-                 class={classes cl (CLASS "btn btn-primary btn-lg glyphicon")}/>
-               </td></xml>
+             case cols of
+                 None => error <xml>Missing iconButton columns</xml>
+               | Some cols =>
+                 case render u tm cols of
+                     None => <xml><td/></xml>
+                   | Some (cl, ur) => <xml><td>
+                     <a href={ur}
+                     class={classes cl (CLASS "btn btn-primary btn-lg glyphicon")}/>
+                   </td></xml>
 }
 
 fun links [a] (_ : show a) (ls : list a) : xbody = <xml>
@@ -173,6 +207,9 @@ fun linked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return [],
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[l]}</th></xml>,
     Row = fn () _ ls => <xml><td>{links ls}</td></xml>
 }
@@ -196,6 +233,9 @@ fun orderedLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return [],
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[l]}</th></xml>,
     Row = fn () _ ls => <xml><td>{links ls}</td></xml>
 }
@@ -228,7 +268,7 @@ functor LinkedWithEdit(M : sig
     open M
 
     type cfg = option (list thatT) (* if present, allowed to add *)
-    type internal = thisT * source (list thatT)
+    type internal = option thisT * source (list thatT)
 
     fun add k v =
         authed <- authorized;
@@ -241,6 +281,18 @@ functor LinkedWithEdit(M : sig
             dml (INSERT INTO link({fthis}, {fthat})
                  VALUES ({[k]}, {[v]}))
 
+    fun addAll k vs =
+        authed <- authorized;
+        if not authed then
+            error <xml>Must be logged in</xml>
+        else
+            List.app (fn v =>
+                         dml (DELETE FROM link
+                              WHERE T.{fthis} = {[k]}
+                                AND T.{fthat} = {[v]});
+                         dml (INSERT INTO link({fthis}, {fthat})
+                              VALUES ({[k]}, {[v]}))) vs
+
     fun remove k v =
         authed <- authorized;
         if not authed then
@@ -249,6 +301,9 @@ functor LinkedWithEdit(M : sig
             dml (DELETE FROM link
                  WHERE T.{fthis} = {[k]}
                    AND T.{fthat} = {[v]})
+
+    val savedLabel = label
+    val label = Basis.label
 
     val t = {
         Configure = authed <- authorized;
@@ -266,12 +321,64 @@ functor LinkedWithEdit(M : sig
                                             WHERE link.{fthis} = {[r.this]})
                                           (fn r => r.Link.fthat);
                       ls <- source ls;
-                      return (r.this, ls),
+                      return (Some r.this, ls),
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
         OnCreate = fn _ _ _ => return (),
-        Header = fn _ => <xml><th>{[label]}</th></xml>,
+        GenerateLocal = fn _ => ls <- source []; return (None, ls),
+        WidgetForCreate = fn ts (_, ls) =>
+          case ts of
+              None => <xml></xml>
+            | Some ts =>
+              <xml>
+                <div class="form-group">
+                  <label class="control-label">{[savedLabel]}</label>
+                  <active code={s <- source "";
+                                return <xml>
+                                  <dyn signal={lsV <- signal ls;
+                                               return <xml>
+                                                 <div class="input-group mb-3">
+                                                   <div class="input-group-prepend">
+                                                     <button class="btn btn-outline-secondary"
+                                                             onclick={fn _ => v <- get s;
+                                                                         case read v of
+                                                                             None => return ()
+                                                                           | Some v => set ls (List.append lsV (v :: []))}>
+                                                       Add:
+                                                     </button>
+                                                   </div>
+                                                   <cselect source={s} class="form-control">
+                                                     {List.mapX (fn t =>
+                                                                    if List.mem t lsV then
+                                                                        <xml></xml>
+                                                                    else
+                                                                        <xml><coption>{[t]}</coption></xml>) ts}
+                                                   </cselect>
+                                                 </div>
+                                                 {let
+                                                      fun one v = <xml>
+                                                        <span class="badge badge-pill badge-info p-2">
+                                                          {[v]}
+                                                          <span class="text-white" style="cursor: pointer"
+                                                                onclick={fn _ => set ls (List.filter (fn v' => v' <> v) lsV)}>
+                                                            &times;
+                                                          </span>
+                                                        </span>
+                                                      </xml>
+                                                  in
+                                                      List.mapX one lsV
+                                                  end}
+                                               </xml>}/>
+                                </xml>}/>
+                </div>
+              </xml>,
+        OnCreateLocal = fn r (_, ls) =>
+                           ls <- get ls;
+                           case ls of
+                               [] => return ()
+                             | _ => rpc (addAll r.this ls),
+        Header = fn _ => <xml><th>{[savedLabel]}</th></xml>,
         Row = fn authed ctx (k, ls) => let
                      fun one v = <xml>
                        <span class="badge badge-pill badge-info p-2">
@@ -280,9 +387,13 @@ functor LinkedWithEdit(M : sig
                               None => <xml></xml>
                             | Some _ => <xml>
                               <span class="text-white" style="cursor: pointer"
-                                    onclick={fn _ => rpc (remove k v);
-                                                lsV <- get ls;
-                                                set ls (List.filter (fn v' => v' <> v) lsV)}>
+                                    onclick={fn _ =>
+                                                case k of
+                                                    None => error <xml>Missing self for buttons</xml>
+                                                  | Some k =>
+                                                    rpc (remove k v);
+                                                    lsV <- get ls;
+                                                    set ls (List.filter (fn v' => v' <> v) lsV)}>
                                 &times;
                               </span>
                             </xml>}
@@ -301,11 +412,14 @@ functor LinkedWithEdit(M : sig
                                             lsV <- get ls;
                                             return (Ui.modal (v <- get s;
                                                               case read v of
-                                                                  None => error <xml>Bad selection</xml>
-                                                                | Some v =>
-                                                                  rpc (add k v);
-                                                                  lsV <- get ls;
-                                                                  set ls (List.append lsV (v :: [])))
+                                                                    None => error <xml>Bad selection</xml>
+                                                                  | Some v =>
+                                                                    case k of
+                                                                        None => error <xml>Missing self for buttons</xml>
+                                                                      | Some k =>
+                                                                        rpc (add k v);
+                                                                        lsV <- get ls;
+                                                                        set ls (List.append lsV (v :: [])))
                                                              <xml>Add</xml>
                                                              <xml>
                                                                <cselect source={s} class="form-control">
@@ -388,6 +502,9 @@ functor LinkedWithFollow(M : sig
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
         OnCreate = fn _ _ _ => return (),
+        GenerateLocal = fn _ => return [],
+        WidgetForCreate = fn _ _ => <xml></xml>,
+        OnCreateLocal = fn _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo _ ls => let
                      fun one (v, followed) = <xml>
@@ -436,7 +553,7 @@ functor Like(M : sig
     open M
 
     type cfg = option string
-    type internal = thisT * source bool
+    type internal = option thisT * source bool
 
     fun unlike v =
         uo <- whoami;
@@ -464,28 +581,31 @@ functor Like(M : sig
                       case uo of
                           None =>
                           s <- source False;
-                          return (r.this, s)
+                          return (Some r.this, s)
                         | Some u =>
                           b <- oneRowE1 (SELECT COUNT( * ) > 0
                                          FROM like
                                          WHERE like.{fthis} = {[r.this]}
                                            AND like.{user} = {[u]});
                           s <- source b;
-                          return (r.this, s),
+                          return (Some r.this, s),
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
         OnCreate = fn _ _ _ => return (),
+        GenerateLocal = fn _ => s <- source False; return (None, s),
+        WidgetForCreate = fn _ _ => <xml></xml>,
+        OnCreateLocal = fn _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo _ (v, s) => <xml><td>
-          <button class="btn" onclick={fn _ => rpc (unlike v); set s False}>
+          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing like reference</xml> | Some v => rpc (unlike v); set s False}>
             <span dynClass={b <- signal s;
                             return (if not b then
                                         CLASS "glyphicon-2x glyphicon glyphicon-times-circle text-danger"
                                     else
                                         CLASS "glyphicon glyphicon-times-circle text-danger")}/>
           </button>
-          <button class="btn" onclick={fn _ => rpc (yeslike v); set s True}>
+          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing like reference</xml> | Some v => rpc (yeslike v); set s True}>
             <span dynClass={b <- signal s;
                             return (if b then
                                         CLASS "glyphicon-2x glyphicon glyphicon-check-circle text-success"
@@ -517,7 +637,7 @@ functor Bid(M : sig
 
     type cfg = option string
     datatype pref = Unavailable | Available | Preferred
-    type internal = thisT * source pref
+    type internal = option thisT * source pref
 
     fun unavailable v =
         uo <- whoami;
@@ -556,7 +676,7 @@ functor Bid(M : sig
                       case uo of
                           None =>
                           s <- source Unavailable;
-                          return (r.this, s)
+                          return (Some r.this, s)
                         | Some u =>
                           po <- oneOrNoRowsE1 (SELECT (bid.{preferred})
                                                FROM bid
@@ -566,26 +686,29 @@ functor Bid(M : sig
                                            None => Unavailable
                                          | Some False => Available
                                          | Some True => Preferred);
-                          return (r.this, s),
+                          return (Some r.this, s),
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
         OnCreate = fn _ _ _ => return (),
+        GenerateLocal = fn _ => s <- source Unavailable; return (None, s),
+        WidgetForCreate = fn _ _ => <xml></xml>,
+        OnCreateLocal = fn _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo _ (v, s) => <xml><td>
-          <button class="btn" onclick={fn _ => rpc (unavailable v); set s Unavailable}>
+          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (unavailable v); set s Unavailable}>
             <span dynClass={s <- signal s;
                             return (case s of
                                         Unavailable => CLASS "glyphicon-2x glyphicon glyphicon-times-circle text-danger"
                                       | _ => CLASS "glyphicon glyphicon-times-circle text-danger")}/>
           </button>
-          <button class="btn" onclick={fn _ => rpc (available v); set s Available}>
+          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (available v); set s Available}>
             <span dynClass={s <- signal s;
                             return (case s of
                                         Available => CLASS "glyphicon-2x glyphicon glyphicon-check-circle text-success"
                                       | _ => CLASS "glyphicon glyphicon-check-circle text-success")}/>
           </button>
-          <button class="btn" onclick={fn _ => rpc (preferred v); set s Preferred}>
+          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (preferred v); set s Preferred}>
             <span dynClass={s <- signal s;
                             return (case s of
                                         Preferred => CLASS "glyphicon-2x glyphicon glyphicon-exclamation-circle text-success"
@@ -619,7 +742,7 @@ functor AssignFromBids(M : sig
     open M
 
     type cfg = unit
-    type internal = thisT * list (string * bool (* preferred? *)) * source (option string)
+    type internal = option thisT * list (string * bool (* preferred? *)) * source (option string)
 
     fun assign v u =
         uo <- whoami;
@@ -639,11 +762,14 @@ functor AssignFromBids(M : sig
                                                 WHERE bid.{fthis} = {[r.this]}
                                                 ORDER BY bid.{preferred} DESC, bid.{fthis})
                                  (fn {Bid = r} => (r.user, r.preferred));
-                      return (r.this, choices, s),
+                      return (Some r.this, choices, s),
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
         OnCreate = fn _ _ _ => return (),
+        GenerateLocal = fn () => s <- source None; return (None, [], s),
+        WidgetForCreate = fn _ _ => <xml></xml>,
+        OnCreateLocal = fn _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo ctx (v, cs, s) => <xml><td>
           <dyn signal={sv <- signal s;
@@ -653,8 +779,11 @@ functor AssignFromBids(M : sig
                                                  case read ssv of
                                                      None => error <xml>Invalid assignee!</xml>
                                                    | Some ssv =>
-                                                     rpc (assign v ssv);
-                                                     set s ssv)
+                                                     case v of
+                                                         None => error <xml>Missing bid reference</xml>
+                                                       | Some v =>
+                                                         rpc (assign v ssv);
+                                                         set s ssv)
                                                 <xml>Who do you want to assign?</xml>
                                                 <xml><cselect source={ss} class="form-control">
                                                   <coption/>
@@ -713,7 +842,7 @@ functor AssignFromBids2(M : sig
     open M
 
     type cfg = unit
-    type internal = thisT * list (thatT * int (* #preferred? *)) * source (option thatT)
+    type internal = option thisT * list (thatT * int (* #preferred? *)) * source (option thatT)
 
     fun assign v t =
         uo <- whoami;
@@ -764,11 +893,14 @@ functor AssignFromBids2(M : sig
         Generate = fn () r =>
                       s <- source r.that;
                       choices <- buildPrefs (r --- _);
-                      return (r.this, choices, s),
+                      return (Some r.this, choices, s),
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
         OnCreate = fn _ _ _ => return (),
+        GenerateLocal = fn () => s <- source None; return (None, [], s),
+        WidgetForCreate = fn _ _ => <xml></xml>,
+        OnCreateLocal = fn _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo ctx (v, cs, s) => <xml><td>
           <dyn signal={sv <- signal s;
@@ -778,8 +910,11 @@ functor AssignFromBids2(M : sig
                                                  case read ssv of
                                                      None => error <xml>Invalid assignment!</xml>
                                                    | Some ssv =>
-                                                     rpc (assign v ssv);
-                                                     set s ssv)
+                                                     case v of
+                                                         None => error <xml>Missing assignment reference</xml>
+                                                       | Some v =>
+                                                         rpc (assign v ssv);
+                                                         set s ssv)
                                                 <xml>Which value do you want to assign?</xml>
                                                 <xml><cselect source={ss} class="form-control">
                                                   <coption/>
@@ -813,6 +948,9 @@ val nonnull [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -826,6 +964,9 @@ val isnull [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r]
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -839,6 +980,9 @@ val past [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -849,6 +993,9 @@ val pastOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -862,6 +1009,9 @@ val future [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -872,6 +1022,9 @@ val futureOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -888,6 +1041,9 @@ fun taggedWithUser [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn _ => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -909,6 +1065,9 @@ fun linkedToUser [inp ::: Type] [key :: Name] [keyT ::: Type] [r ::: {Type}] [[k
                                                           AND link.{ckey} = tab.{key}) = {[Some True]}),
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn _ => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -935,6 +1094,9 @@ fun doubleLinkedToUser [inp ::: Type] [key :: Name] [keyT ::: Type] [r ::: {Type
                                                           AND link2.{user} = {[u]}) = {[Some True]}),
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn _ => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -948,6 +1110,9 @@ val sortby [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r]
     FilterLinks = fn _ _ => None,
     SortBy = sql_order_by_Cons (SQL tab.{col}) sql_asc,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -958,6 +1123,9 @@ val sortbyDesc [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] 
     FilterLinks = fn _ _ => None,
     SortBy = sql_order_by_Cons (SQL tab.{col}) sql_desc,
     OnCreate = fn _ _ _ => return (),
+    GenerateLocal = fn () => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>
 }
@@ -1110,7 +1278,17 @@ functor Make1(M : sig
             else
                 @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
                 cfg <- t.Configure;
-                t.OnCreate cfg inp r;
+                t.OnCreate cfg inp r
+
+    fun generate r =
+        if not allowCreate then
+            error <xml>Access denied</xml>
+        else
+            authed <- authorized;
+            if not authed then
+                error <xml>Access denied</xml>
+            else
+                cfg <- t.Configure;
                 t.Generate cfg r
 
     fun render ctx self = <xml>
@@ -1123,26 +1301,32 @@ functor Make1(M : sig
                           (ws <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
                                   (fn [nm ::_] [p ::_] => @Widget.create)
                                   fl widgets self.Configs;
+                           stl <- t.GenerateLocal self.Config;
                            return (Ui.modal
                                    (vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : p.2) => current (@Widget.value w v))
                                            fl widgets ws;
-                                    st <- rpc (add self.Input vs);
+                                    rpc (add self.Input vs);
+                                    t.OnCreateLocal vs stl;
+                                    st <- rpc (generate vs);
                                     rs <- get self.Rows;
                                     set self.Rows (List.append rs (st :: [])))
                                    <xml>Add</xml>
-                                   (@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
-                                     (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
-                                         (lab : string) (w : Widget.t' p) x =>
-                                         if @Widget.optional w then
-                                             <xml></xml>
-                                         else <xml>
-                                           <div class="form-group">
-                                             <label class="control-label">{[lab]}</label>
-                                             {@Widget.asWidget w x None}
-                                           </div>
-                                         </xml>)
-                                     fl labels widgets ws)
+                                   <xml>
+                                     {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
+                                       (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
+                                                    (lab : string) (w : Widget.t' p) x =>
+                                           if @Widget.optional w then
+                                               <xml></xml>
+                                           else <xml>
+                                             <div class="form-group">
+                                               <label class="control-label">{[lab]}</label>
+                                               {@Widget.asWidget w x None}
+                                             </div>
+                                           </xml>)
+                                       fl labels widgets ws}
+                                     {t.WidgetForCreate self.Config stl}
+                                   </xml>
                                    <xml>Add</xml>))}
 
       <table class="bs-table">
