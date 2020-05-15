@@ -1,0 +1,7 @@
+ffi select2Ffi
+jsFunc Select2Ffi.replace=uw_select2_replace
+clientOnly Select2Ffi.replace
+benignEffectful Select2Ffi.replace
+jsFile select2Urweb.js
+
+select2

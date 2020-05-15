@@ -334,41 +334,18 @@ functor LinkedWithEdit(M : sig
               <xml>
                 <div class="form-group">
                   <label class="control-label">{[savedLabel]}</label>
-                  <active code={s <- source "";
-                                return <xml>
-                                  <dyn signal={lsV <- signal ls;
-                                               return <xml>
-                                                 <div class="input-group mb-3">
-                                                   <div class="input-group-prepend">
-                                                     <button class="btn btn-outline-secondary"
-                                                             onclick={fn _ => v <- get s;
-                                                                         case read v of
-                                                                             None => return ()
-                                                                           | Some v => set ls (List.append lsV (v :: []))}>
-                                                       Add:
-                                                     </button>
-                                                   </div>
-                                                   <cselect source={s} class="form-control">
-                                                     {List.mapX (fn t =>
+                  <active code={lsV <- get ls;
+                                s2 <- Select2.create (List.mapX (fn t =>
                                                                     if List.mem t lsV then
-                                                                        <xml></xml>
+                                                                        <xml><coption selected={True}>{[t]}</coption></xml>
                                                                     else
-                                                                        <xml><coption>{[t]}</coption></xml>) ts}
-                                                   </cselect>
-                                                 </div>
-                                                 {let
-                                                      fun one v = <xml>
-                                                        <span class="badge badge-pill badge-info p-2">
-                                                          {[v]}
-                                                          <span class="text-white" style="cursor: pointer"
-                                                                onclick={fn _ => set ls (List.filter (fn v' => v' <> v) lsV)}>
-                                                            &times;
-                                                          </span>
-                                                        </span>
-                                                      </xml>
-                                                  in
-                                                      List.mapX one lsV
-                                                  end}
+                                                                        <xml><coption>{[t]}</coption></xml>) ts);
+                                return <xml>
+                                  {Select2.render s2}
+                                  <dyn signal={seled <- Select2.selected s2;
+                                               return <xml>
+                                                 <active code={set ls (List.mp readError seled);
+                                                               return <xml></xml>}/>
                                                </xml>}/>
                                 </xml>}/>
                 </div>

@@ -2,6 +2,7 @@ html5
 library $/bootstrap/bootstrap4
 library $/ajaxUpload
 library ckeditor
+library select2
 allow responseHeader Content-Disposition
 allow env SSL_CLIENT_S_DN
 allow mime text/csv
