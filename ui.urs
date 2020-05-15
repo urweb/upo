@@ -130,6 +130,12 @@ val modalButton : context
                   -> transaction xbody (* content of modal dialog *)
                   -> xbody
 
+(* Like [modalButton] but for Font Awesome icons *)
+val modalIcon : context
+                -> css_class         (* additional styling *)
+                -> transaction xbody (* content of modal dialog *)
+                -> xbody
+
 (* The same, but uses <a> instead of <button>. Useful for button dropdowns. *)
 val modalAnchor : context
                   -> css_class         (* additional styling *)
@@ -143,7 +149,7 @@ val activateModal : context
                     -> transaction unit
 val deactivateModal : context
                       -> transaction unit
-                     
+
 (* A standard template for creating the modal form *)
 val modal : transaction unit     (* callback on clicking main button *)
             -> xbody             (* main prompt *)

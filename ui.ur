@@ -311,6 +311,15 @@ fun modalButton ctx cls bod onclick = <xml>
   </button>
 </xml>
 
+fun modalIcon ctx cls onclick = <xml>
+  <i class={cls} style="cursor: pointer"
+     data-toggle="modal"
+     data-target={"#" ^ show ctx.ModalId}
+     onclick={fn _ =>
+                 ms <- onclick;
+                 set ctx.ModalSpot ms}/>
+</xml>
+
 fun modalAnchor ctx cls bod onclick = <xml>
   <a class={cls}
      data-toggle="modal"

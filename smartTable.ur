@@ -405,32 +405,31 @@ functor LinkedWithEdit(M : sig
                        {case authed of
                             None => <xml></xml>
                           | Some ts =>
-                            Ui.modalButton ctx
-                                           (CLASS "btn btn-sm btn-secondary")
-                                           <xml>Add</xml>
-                                           (s <- source "";
-                                            lsV <- get ls;
-                                            return (Ui.modal (v <- get s;
-                                                              case read v of
-                                                                    None => error <xml>Bad selection</xml>
-                                                                  | Some v =>
-                                                                    case k of
-                                                                        None => error <xml>Missing self for buttons</xml>
-                                                                      | Some k =>
-                                                                        rpc (add k v);
-                                                                        lsV <- get ls;
-                                                                        set ls (List.append lsV (v :: [])))
-                                                             <xml>Add</xml>
-                                                             <xml>
-                                                               <cselect source={s} class="form-control">
-                                                                 {List.mapX (fn t =>
-                                                                                if List.mem t lsV then
-                                                                                    <xml></xml>
-                                                                                else
-                                                                                    <xml><coption>{[t]}</coption></xml>) ts}
-                                                               </cselect>
-                                                             </xml>
-                                                             <xml>Add</xml>))}
+                            Ui.modalIcon ctx
+                                         (CLASS "glyphicon glyphicon-plus-circle")
+                                         (s <- source "";
+                                          lsV <- get ls;
+                                          return (Ui.modal (v <- get s;
+                                                            case read v of
+                                                                  None => error <xml>Bad selection</xml>
+                                                                | Some v =>
+                                                                  case k of
+                                                                      None => error <xml>Missing self for buttons</xml>
+                                                                    | Some k =>
+                                                                      rpc (add k v);
+                                                                      lsV <- get ls;
+                                                                      set ls (List.append lsV (v :: [])))
+                                                           <xml>Add</xml>
+                                                           <xml>
+                                                             <cselect source={s} class="form-control">
+                                                               {List.mapX (fn t =>
+                                                                              if List.mem t lsV then
+                                                                                  <xml></xml>
+                                                                              else
+                                                                                  <xml><coption>{[t]}</coption></xml>) ts}
+                                                             </cselect>
+                                                           </xml>
+                                                           <xml>Add</xml>))}
                      </td></xml>
                  end
     }
@@ -798,10 +797,9 @@ functor AssignFromBids(M : sig
                                                               reassign
                                      | Some u => <xml>
                                        <span class="badge badge-pill badge-info">{[u]}</span>
-                                       {Ui.modalButton ctx
-                                                       (CLASS "btn btn-sm btn-secondary")
-                                                       <xml>reassign</xml>
-                                                       reassign}
+                                       {Ui.modalIcon ctx
+                                                     (CLASS "glyphicon glyphicon-pencil")
+                                                     reassign}
                                      </xml>)
                        end}/>
         </td></xml>
@@ -929,10 +927,9 @@ functor AssignFromBids2(M : sig
                                                               reassign
                                      | Some u => <xml>
                                        <span class="badge badge-pill badge-info">{[u]}</span>
-                                       {Ui.modalButton ctx
-                                                       (CLASS "btn btn-sm btn-secondary")
-                                                       <xml>reassign</xml>
-                                                       reassign}
+                                       {Ui.modalIcon ctx
+                                                     (CLASS "glyphicon glyphicon-pencil")
+                                                     reassign}
                                      </xml>)
                        end}/>
         </td></xml>
