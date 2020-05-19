@@ -667,7 +667,7 @@ functor Make(M : sig
                                            <h2>Post Message</h2>
 
                                            {@Widget.asWidget text a.NewPost None}<br/>
-                                           
+
                                            <button dynClass={v <- @Widget.value text a.NewPost;
                                                              return (case v of
                                                                          "" => CLASS "btn disabled"
@@ -681,9 +681,12 @@ functor Make(M : sig
             </xml>
         end
 
+    fun notification _ = <xml></xml>
+
     fun ui k = {Create = create k,
                 Onload = onload,
-                Render = render}
+                Render = render,
+                Notification = notification}
 
     functor Todo(N : sig
                      con tag :: Name

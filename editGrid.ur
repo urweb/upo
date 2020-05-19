@@ -166,7 +166,10 @@ functor Make(M : sig
       </table>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     val ui = {Create = create,
               Render = render,
-              Onload = fn _ => return ()}
+              Onload = fn _ => return (),
+              Notification = notification}
 end

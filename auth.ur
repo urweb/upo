@@ -343,9 +343,12 @@ functor Make(M : sig
           </div>
         </xml>
 
+        fun notification _ = <xml></xml>
+
         val ui = {Create = create,
                   Onload = onload,
-                  Render = render}
+                  Render = render,
+                  Notification = notification}
 
     end
 

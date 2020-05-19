@@ -290,9 +290,12 @@ functor Make(M : sig
                      </xml>) ents)}/>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     fun ui u = {Create = create u,
                 Onload = onload,
-                Render = render}
+                Render = render,
+                Notification = notification}
 
     fun add k =
         rest <- oneRow1 ({{{sql_query1 [[]]

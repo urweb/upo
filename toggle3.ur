@@ -17,7 +17,7 @@ functor Make(M : sig
                  val noAnswerYetHeadingText : xbody
                  val trueHeadingText : xbody
                  val falseHeadingText : xbody
-                                        
+
                  val trueButtonText : xbody'
                  val falseButtonText : xbody'
 
@@ -99,7 +99,10 @@ functor Make(M : sig
                    </xml>}/>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     fun ui u = {Create = create u,
                 Onload = onload,
-                Render = render}
+                Render = render,
+                Notification = notification}
 end

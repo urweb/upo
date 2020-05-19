@@ -131,10 +131,13 @@ functor Make(M : sig
       </table>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     fun ui x = {
         Create = create x,
         Onload = fn _ => return (),
-        Render = fn _ => render
+        Render = fn _ => render,
+        Notification = notification
     }
 
 end

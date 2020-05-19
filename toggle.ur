@@ -82,7 +82,10 @@ functor Make(M : sig
                    </xml>)}/>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     fun ui u = {Create = create u,
                 Onload = onload,
-                Render = render}
+                Render = render,
+                Notification = notification}
 end

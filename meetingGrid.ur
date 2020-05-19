@@ -7,7 +7,7 @@ style meeting_movable
 
 open Bootstrap4
 open Tooltip
-     
+
 functor Make(M : sig
                  con homeKey1 :: Name
                  type homeKeyT
@@ -830,10 +830,13 @@ functor Make(M : sig
                     spawn (loop ())
                 end
 
+            fun notification _ = <xml></xml>
+
             fun ui filt = {
                 Create = create,
                 Onload = onload,
-                Render = render filt
+                Render = render filt,
+                Notification = notification
             }
 
         end
@@ -983,10 +986,13 @@ functor Make(M : sig
                     spawn (loop ())
                 end
 
+            fun notification _ = <xml></xml>
+
             fun ui x = {
                 Create = create x,
                 Onload = onload,
-                Render = fn _ => render
+                Render = fn _ => render,
+                Notification = notification
             }
 
         end
@@ -1082,10 +1088,13 @@ functor Make(M : sig
 
             fun onload _ = return ()
 
+            fun notification _ = <xml></xml>
+
             fun ui x = {
                 Create = create x,
                 Onload = onload,
-                Render = fn _ => render
+                Render = fn _ => render,
+                Notification = notification
             }
         end
     end

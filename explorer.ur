@@ -2542,10 +2542,12 @@ functor Make(M : sig
 
     type input = variant (map (fn p => p.1) tables)
     type a = source (option Ui.context) * xbody
+    fun notification _ = <xml></xml>
     fun ui which = {
         Create = entry_create which,
         Onload = fn _ => return (),
-        Render = entry_render
+        Render = entry_render,
+        Notification = notification
     }
-                     
+
 end

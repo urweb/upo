@@ -342,14 +342,17 @@ functor Make(M : sig
                                               | _ => <xml/>}, with <i>{[count]}</i> vote{case count of
                                                                                              1 => <xml/>
                                                                                            | _ => <xml>s</xml>}:</h3>
-                         
+
                          {List.mapX (fn ch => <xml>{[ch]}<br/></xml>) choices}
                        </xml>}/>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     fun ui r = {Create = create r,
                 Onload = onload,
-                Render = render}
+                Render = render,
+                Notification = notification}
 
     fun removeVotesFor r =
         dml (DELETE FROM vote

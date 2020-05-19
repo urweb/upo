@@ -16,7 +16,7 @@ functor Make(M : sig
 
                  val mayChange : transaction bool
              end) = struct
-    
+
     open M
 
     type step = variant (mapU unit steps)
@@ -164,8 +164,11 @@ functor Make(M : sig
           </table>
         </xml>
 
+        fun notification _ = <xml></xml>
+
         val ui = {Create = create,
                   Onload = onload,
-                  Render = render}
+                  Render = render,
+                  Notification = notification}
     end
 end

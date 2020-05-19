@@ -698,9 +698,12 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                 </tbody>
               </table></xml>
             end
+
+        fun notification _ = <xml></xml>
     in
         {Create = create,
          Onload = onload,
-         Render = render}
+         Render = render,
+         Notification = notification}
     end
 end

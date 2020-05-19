@@ -70,7 +70,7 @@ functor Make(M : sig
                           rpc (save cs)}>
         Save preferences
       </button>
-        
+
       <table class="bs-table">
         {List.mapX (fn (c, s) => <xml><tr>
           <td>{[c]}</td>
@@ -83,7 +83,10 @@ functor Make(M : sig
       </table>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     fun ui u = {Create = create u,
                 Onload = onload,
-                Render = render}
+                Render = render,
+                Notification = notification}
 end

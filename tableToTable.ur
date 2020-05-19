@@ -130,7 +130,7 @@ functor Make(M : sig
                                        </tr></xml>)
                                        inFl labelsIn widgetsIn self.InValues}
                                  </table>
-                                              
+
                                  {@mapX4 [fn _ => string] [Widget.t'] [fn _ => id] [snd3] [body]
                                      (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] lab w id v => <xml>
                                        <div class="form-group">
@@ -151,8 +151,10 @@ functor Make(M : sig
                                </div></xml>)}/>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     fun ui k = {Create = create k,
                 Onload = onload,
-                Render = render}
-    
+                Render = render,
+                Notification = notification}
 end

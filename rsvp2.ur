@@ -457,10 +457,13 @@ functor Make(M : sig
                 spawn (loop ())
             end
 
+        fun notification _ = <xml></xml>
+
         fun ui x = {
             Create = create x,
             Onload = onload,
-            Render = fn _ => render
+            Render = fn _ => render,
+            Notification = notification
         }
     end
 
@@ -621,10 +624,13 @@ functor Make(M : sig
                             </div></xml>}/>
             </xml>) t.Events
 
+        fun notification _ = <xml></xml>
+
         fun ui x = {
             Create = create x,
             Onload = fn _ => return (),
-            Render = fn _ => render
+            Render = fn _ => render,
+            Notification = notification
         }
 
     end
@@ -650,10 +656,13 @@ functor Make(M : sig
             {List.mapX (fn ev => <xml><li><b>{[(ev --- eventData) : $eventKey]}</b>: {M.render (ev --- eventKey)}</li></xml>) t}
         </ul></xml>
 
+        fun notification _ = <xml></xml>
+
         fun ui x = {
             Create = create x,
             Onload = fn _ => return (),
-            Render = fn _ => render
+            Render = fn _ => render,
+            Notification = notification
         }
 
     end

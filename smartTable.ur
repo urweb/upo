@@ -1206,9 +1206,12 @@ functor Make(M : sig
       </table>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     val ui = {Create = create,
               Onload = onload,
-              Render = render}
+              Render = render,
+              Notification = notification}
 end
 
 functor Make1(M : sig
@@ -1323,7 +1326,10 @@ functor Make1(M : sig
       </table>
     </xml>
 
-    fun ui inp = {Create = create inp,
-                  Onload = onload,
-                  Render = render}
+   fun notification _ = <xml></xml>
+
+   fun ui inp = {Create = create inp,
+                 Onload = onload,
+                 Render = render,
+                 Notification = notification}
 end

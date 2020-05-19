@@ -244,9 +244,12 @@ functor Make(M : sig
                        </table></xml>}/>
         </div></xml>
 
+        fun notification _ = <xml></xml>
+
         fun ui x = {Create = create x,
                     Onload = onload,
-                    Render = render}
+                    Render = render,
+                    Notification = notification}
     end
 
     structure AllFilesAllUsers = struct
@@ -291,9 +294,12 @@ functor Make(M : sig
                        </table></xml>}/>
         </div></xml>
 
+        fun notification _ = <xml></xml>
+
         fun ui x = {Create = create x,
                     Onload = onload,
-                    Render = render}
+                    Render = render,
+                    Notification = notification}
     end
 
     structure AllFilesAllKeys = struct
@@ -315,8 +321,11 @@ functor Make(M : sig
           </table>
         </xml>
 
+        fun notification _ = <xml></xml>
+
         val ui = {Create = create,
                   Onload = onload,
-                  Render = render}
+                  Render = render,
+                  Notification = notification}
     end
 end

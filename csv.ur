@@ -269,7 +269,7 @@ functor Import1(M : sig
                              | Uploaded => <xml>Import complete.</xml>
                              | UploadFailed => <xml>Import failed!</xml>)}/>
       <hr/>
-                                
+
       <p><i>Or</i> copy and paste the CSV data here, with each line in the format:
         {case @foldR [fn _ => string] [fn _ => option xbody]
                (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (label : string) (ob : option xbody) =>
@@ -281,7 +281,7 @@ functor Import1(M : sig
            | Some ob => ob}</p>
 
         <ctextarea source={a.PasteHere} cols={20} class="form-control"/>
-        
+
         <button value="Import"
                 class="btn btn-primary"
                 onclick={fn _ =>
@@ -296,9 +296,12 @@ functor Import1(M : sig
                    return (refreshed.Render ctx sub)}/>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     val ui = {Create = create,
               Onload = onload,
-              Render = render}
+              Render = render,
+              Notification = notification}
 
 end
 
@@ -408,19 +411,22 @@ functor ImportWithHeader1(M : sig
                   onclick={fn _ =>
                               csv <- get a.PasteHere;
                               rpc (import csv);
-                              refresh a;                            
+                              refresh a;
                               set a.PasteHere ""}/>
 
         <hr/>
       </xml> else <xml></xml>}
-        
+
       <dyn signal={sub <- signal a.Subwidget;
                    return (refreshed.Render ctx sub)}/>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     val ui = {Create = create,
               Onload = onload,
-              Render = render}
+              Render = render,
+              Notification = notification}
 end
 
 fun escape' s =
@@ -517,8 +523,11 @@ functor Generate1(M : sig
       </form>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     val ui = {Create = create,
               Onload = onload,
-              Render = render}
+              Render = render,
+              Notification = notification}
 
 end

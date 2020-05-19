@@ -190,7 +190,7 @@ functor Make(M : sig
         case uo of
             None => error <xml>Access denied</xml>
           | Some u => t.Apply u v
-                   
+
     fun render _ w = <xml>
       {t.Render w}
 
@@ -201,7 +201,10 @@ functor Make(M : sig
                           rpc (save v)}/>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     val ui = {Create = create,
               Onload = onload,
-              Render = render}
+              Render = render,
+              Notification = notification}
 end

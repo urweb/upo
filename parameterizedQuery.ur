@@ -163,10 +163,13 @@ functor Html(M : sig
       </table>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     type input = _
     fun ui bs = {Create = create bs,
                  Onload = onload,
-                 Render = render}
+                 Render = render,
+                 Notification = notification}
 end
 
 functor Csv(M : sig
@@ -230,7 +233,10 @@ functor Csv(M : sig
                    </form></xml>}/>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     val ui = {Create = create,
               Onload = onload,
-              Render = render}
+              Render = render,
+              Notification = notification}
 end

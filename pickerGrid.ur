@@ -137,7 +137,10 @@ functor Make(M : sig
                           rpc (save rs)}/>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     fun ui filter = {Create = create filter,
                      Onload = onload,
-                     Render = render}
+                     Render = render,
+                     Notification = notification}
 end

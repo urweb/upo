@@ -9,7 +9,7 @@ functor Make(M : sig
                  constraint [keyName] ~ otherConstraints
 
                  val t : sql_table (map fst3 (key ++ r)) ([keyName = map (fn _ => ()) key] ++ otherConstraints)
-                            
+
                  val labels : $(map (fn _ => string) (key ++ r))
                  val ws : $(map Widget.t' (key ++ r))
                  val kfl : folder key
@@ -27,7 +27,7 @@ functor Make(M : sig
         return (k ++ r)
 
     fun onload _ = return ()
-        
+
     fun render _ r = <xml>
       <table class="bs-table">
         {@mapX3 [Widget.t'] [fn _ => string] [fst3] [_]
@@ -41,9 +41,12 @@ functor Make(M : sig
       </table>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     fun ui k = {
         Create = create k,
         Onload = onload,
-        Render = render
+        Render = render,
+        Notification = notification
     }
 end

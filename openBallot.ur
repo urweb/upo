@@ -398,9 +398,12 @@ functor Make(M : sig
                        </xml>}/>
     </xml>
 
+    fun notification _ = <xml></xml>
+
     fun ui r = {Create = create r,
                 Onload = onload,
-                Render = render}
+                Render = render,
+                Notification = notification}
 
     fun removeVotesFor r =
         dml (DELETE FROM vote
@@ -438,9 +441,12 @@ functor Make(M : sig
           </table>
         </xml>
 
+        fun notification _ = <xml></xml>
+
         fun ui x = {Create = create x,
                     Onload = onload,
-                    Render = render}
+                    Render = render,
+                    Notification = notification}
     end
 
 end

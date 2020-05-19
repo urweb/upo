@@ -457,9 +457,12 @@ functor Make(M : sig
       </xml>) self.Rows}
     </xml>
 
+    fun notification _ = <xml></xml>
+
     val ui = {Create = create,
               Onload = onload,
-              Render = render}
+              Render = render,
+              Notification = notification}
 end
 
 functor Make1(M : sig
@@ -502,7 +505,10 @@ functor Make1(M : sig
       </xml>) self.Rows}
     </xml>
 
+    fun notification _ = <xml></xml>
+
     fun ui inp = {Create = create inp,
                   Onload = onload,
-                  Render = render}
+                  Render = render,
+                  Notification = notification}
 end

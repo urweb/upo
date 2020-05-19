@@ -9,7 +9,8 @@ type context = {
 type t a = {
      Create : transaction a,
      Onload : a -> transaction unit,
-     Render : context -> a -> xbody
+     Render : context -> a -> xbody,
+     Notification : a -> xbody
 }
 
 signature S0 = sig
@@ -29,7 +30,9 @@ fun seq [ts] (fl : folder ts) (ts : $(map t ts)) = {
     Onload = @Monad.appR2 _ [t] [ident] (fn [nm ::_] [t ::_] r => r.Onload) fl ts,
     Render = fn ctx =>
                 @mapX2 [t] [ident] [body] (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] r =>
-                                              r.Render ctx) fl ts
+                                              r.Render ctx) fl ts,
+    Notification = @mapX2 [t] [ident] [body] (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] r =>
+                                                 r.Notification) fl ts
 }
 
 datatype moded a1 a2 = First of a1 | Second of a2
@@ -45,26 +48,32 @@ fun moded [a1] [a2] (which : bool) (t1 : t a1) (t2 : t a2) = {
                         | Second x => t2.Onload x,
     Render = fn ctx st => case st of
                               First x => t1.Render ctx x
-                            | Second x => t2.Render ctx x
+                            | Second x => t2.Render ctx x,
+    Notification = fn st => case st of
+                                First x => t1.Notification x
+                              | Second x => t2.Notification x
 }
 
 type computed a b = a * b
 fun computed [a] [b] (f : a -> t b) (x : transaction a) : t (computed a b) = {
     Create = v <- x; st <- (f v).Create; return (v, st),
     Onload = fn (v, st) => (f v).Onload st,
-    Render = fn ctx (v, st) => (f v).Render ctx st
+    Render = fn ctx (v, st) => (f v).Render ctx st,
+    Notification = fn (v, st) => (f v).Notification st
 }
 
 type const = unit
 fun const bod = {
     Create = return (),
     Onload = fn () => return (),
-    Render = fn _ () => bod
+    Render = fn _ () => bod,
+    Notification = fn _ => <xml></xml>
 }
 fun constM bod = {
     Create = return (),
     Onload = fn () => return (),
-    Render = fn ctx () => bod ctx
+    Render = fn ctx () => bod ctx,
+    Notification = fn _ => <xml></xml>
 }
 
 signature THEME = sig
