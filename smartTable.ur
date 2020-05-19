@@ -393,31 +393,33 @@ functor LinkedWithEdit(M : sig
                        {case authed of
                             None => <xml></xml>
                           | Some ts =>
-                            Ui.modalIcon ctx
-                                         (CLASS "glyphicon glyphicon-plus-circle")
-                                         (s <- source "";
-                                          lsV <- get ls;
-                                          return (Ui.modal (v <- get s;
-                                                            case read v of
-                                                                  None => error <xml>Bad selection</xml>
-                                                                | Some v =>
-                                                                  case k of
-                                                                      None => error <xml>Missing self for buttons</xml>
-                                                                    | Some k =>
-                                                                      rpc (add k v);
-                                                                      lsV <- get ls;
-                                                                      set ls (List.append lsV (v :: [])))
-                                                           <xml>Add</xml>
-                                                           <xml>
-                                                             <cselect source={s} class="form-control">
-                                                               {List.mapX (fn t =>
-                                                                              if List.mem t lsV then
-                                                                                  <xml></xml>
-                                                                              else
-                                                                                  <xml><coption>{[t]}</coption></xml>) ts}
-                                                             </cselect>
-                                                           </xml>
-                                                           <xml>Add</xml>))}
+                            case k of
+                                None => error <xml>Missing self for buttons</xml>
+                              | Some k =>
+                                Ui.modalIcon ctx
+                                             (CLASS "glyphicon glyphicon-pencil-alt")
+                                             (lsV <- get ls;
+                                              s2 <- Select2.create (List.mapX (fn t =>
+                                                                        if List.mem t lsV then
+                                                                            <xml><coption selected={True}>{[t]}</coption></xml>
+                                                                        else
+                                                                            <xml><coption>{[t]}</coption></xml>) ts);
+                                              return (Ui.modal (seled <- current (Select2.selected s2);
+                                                                seled <- return (List.mp readError seled);
+                                                                List.app (fn selectedNow =>
+                                                                             if List.mem selectedNow lsV then
+                                                                                 return ()
+                                                                             else
+                                                                                 rpc (add k selectedNow)) seled;
+                                                                List.app (fn selectedBefore =>
+                                                                             if List.mem selectedBefore seled then
+                                                                                 return ()
+                                                                             else
+                                                                                 rpc (remove k selectedBefore)) lsV;
+                                                                set ls seled)
+                                                               <xml>Change selection</xml>
+                                                               (Select2.render s2)
+                                                               <xml>Save</xml>))}
                      </td></xml>
                  end,
         Todos = fn _ _ => return 0
