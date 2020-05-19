@@ -246,7 +246,7 @@ functor Make(M: sig
                        </xml>) sesl)}/>
         </xml>
 
-        fun notification _ = <xml></xml>
+        fun notification _ _ = <xml></xml>
 
         val ui = {Create = create,
                   Onload = onload,

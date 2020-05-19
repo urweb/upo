@@ -41,7 +41,7 @@ functor Make(M : sig
       </table>
     </xml>
 
-    fun notification _ = <xml></xml>
+    fun notification _ _ = <xml></xml>
 
     fun ui k = {
         Create = create k,

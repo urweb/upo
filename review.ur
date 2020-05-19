@@ -314,7 +314,7 @@ functor Make(M : sig
                                </xml>)}/>
         </xml>
 
-        fun notification _ = <xml></xml>
+        fun notification _ _ = <xml></xml>
 
         fun ui inp = {Create = create inp,
                       Onload = onload,
@@ -362,7 +362,7 @@ functor Make(M : sig
           </xml>) rs}
         </xml>
 
-        fun notification _ = <xml></xml>
+        fun notification _ _ = <xml></xml>
 
         fun ui e = {Create = create e,
                     Onload = onload,

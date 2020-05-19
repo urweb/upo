@@ -108,7 +108,7 @@ functor Make(M : sig
                                </div></xml>)}/>
     </xml>
 
-    fun notification _ = <xml></xml>
+    fun notification _ _ = <xml></xml>
 
     fun ui ws = {Create = create ws,
                  Onload = onload,

@@ -699,7 +699,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
               </table></xml>
             end
 
-        fun notification _ = <xml></xml>
+        fun notification _ _ = <xml></xml>
     in
         {Create = create,
          Onload = onload,

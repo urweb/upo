@@ -244,7 +244,7 @@ functor Make(M : sig
                        </table></xml>}/>
         </div></xml>
 
-        fun notification _ = <xml></xml>
+        fun notification _ _ = <xml></xml>
 
         fun ui x = {Create = create x,
                     Onload = onload,
@@ -294,7 +294,7 @@ functor Make(M : sig
                        </table></xml>}/>
         </div></xml>
 
-        fun notification _ = <xml></xml>
+        fun notification _ _ = <xml></xml>
 
         fun ui x = {Create = create x,
                     Onload = onload,
@@ -321,7 +321,7 @@ functor Make(M : sig
           </table>
         </xml>
 
-        fun notification _ = <xml></xml>
+        fun notification _ _ = <xml></xml>
 
         val ui = {Create = create,
                   Onload = onload,

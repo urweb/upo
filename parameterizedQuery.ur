@@ -163,7 +163,7 @@ functor Html(M : sig
       </table>
     </xml>
 
-    fun notification _ = <xml></xml>
+    fun notification _ _ = <xml></xml>
 
     type input = _
     fun ui bs = {Create = create bs,
@@ -233,7 +233,7 @@ functor Csv(M : sig
                    </form></xml>}/>
     </xml>
 
-    fun notification _ = <xml></xml>
+    fun notification _ _ = <xml></xml>
 
     val ui = {Create = create,
               Onload = onload,

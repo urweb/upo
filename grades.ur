@@ -71,7 +71,7 @@ functor OneStudent(M : sig
 
     fun render w = <xml><ul>{render' w}</ul></xml>
 
-    fun notification _ = <xml></xml>
+    fun notification _ _ = <xml></xml>
 
     fun ui stid = {Create = tr <- oneStudent t stid; toWidget tr,
                    Onload = fn _ => return (),
@@ -171,7 +171,7 @@ functor AllStudents(M : sig
                                    <xml/>)}/>
           </li></xml>
 
-    fun notification _ = <xml></xml>
+    fun notification _ _ = <xml></xml>
 
     val ui = {Create = tr <- allStudents t; toWidget tr,
               Onload = fn _ => return (),

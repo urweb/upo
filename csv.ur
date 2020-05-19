@@ -296,7 +296,7 @@ functor Import1(M : sig
                    return (refreshed.Render ctx sub)}/>
     </xml>
 
-    fun notification _ = <xml></xml>
+    fun notification _ _ = <xml></xml>
 
     val ui = {Create = create,
               Onload = onload,
@@ -421,7 +421,7 @@ functor ImportWithHeader1(M : sig
                    return (refreshed.Render ctx sub)}/>
     </xml>
 
-    fun notification _ = <xml></xml>
+    fun notification _ _ = <xml></xml>
 
     val ui = {Create = create,
               Onload = onload,
@@ -523,7 +523,7 @@ functor Generate1(M : sig
       </form>
     </xml>
 
-    fun notification _ = <xml></xml>
+    fun notification _ _ = <xml></xml>
 
     val ui = {Create = create,
               Onload = onload,

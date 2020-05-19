@@ -830,7 +830,7 @@ functor Make(M : sig
                     spawn (loop ())
                 end
 
-            fun notification _ = <xml></xml>
+            fun notification _ _ = <xml></xml>
 
             fun ui filt = {
                 Create = create,
@@ -986,7 +986,7 @@ functor Make(M : sig
                     spawn (loop ())
                 end
 
-            fun notification _ = <xml></xml>
+            fun notification _ _ = <xml></xml>
 
             fun ui x = {
                 Create = create x,
@@ -1088,7 +1088,7 @@ functor Make(M : sig
 
             fun onload _ = return ()
 
-            fun notification _ = <xml></xml>
+            fun notification _ _ = <xml></xml>
 
             fun ui x = {
                 Create = create x,

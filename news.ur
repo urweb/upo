@@ -332,7 +332,7 @@ functor Make(M : sig
            {render' ctx a a.Head}
         </xml>
 
-    fun notification _ = <xml></xml>
+    fun notification _ _ = <xml></xml>
 
     val ui = {Create = create,
               Onload = onload,

@@ -127,7 +127,7 @@ functor Make(M : sig
                                </div></xml>)}/>
     </xml>
 
-    fun notification _ = <xml></xml>
+    fun notification _ _ = <xml></xml>
 
     fun ui x = {Create = create x,
                 Onload = fn _ => return (),
