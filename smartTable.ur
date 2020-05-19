@@ -768,10 +768,14 @@ functor AssignFromBids(M : sig
                                                 <xml>Assign</xml>)
                        in
                            return (case sv of
-                                       None => Ui.modalButton ctx
-                                                              (CLASS "btn btn-sm text-muted")
-                                                              <xml><span class="glyphicon glyphicon-plus-circle"/> Unassigned</xml>
-                                                              reassign
+                                       None =>
+                                       (case cs of
+                                            [] => <xml><span class="small text-muted">No responses</span></xml>
+                                          | _ => Ui.modalButton ctx
+                                                                (CLASS "btn btn-sm text-muted")
+                                                                <xml><span class="glyphicon glyphicon-plus-circle"/> Unassigned
+                                                                  <span class="badge badge-pill badge-warning">{[List.length cs]}</span></xml>
+                                                                reassign)
                                      | Some u => <xml>
                                        <span class="badge badge-pill badge-info">{[u]}</span>
                                        {Ui.modalIcon ctx
@@ -898,10 +902,15 @@ functor AssignFromBids2(M : sig
                                                 <xml>Assign</xml>)
                        in
                            return (case sv of
-                                       None => Ui.modalButton ctx
-                                                              (CLASS "btn btn-sm text-muted")
-                                                              <xml><span class="glyphicon glyphicon-plus-circle"/> Unassigned</xml>
-                                                              reassign
+                                       None =>
+                                       (case cs of
+                                            [] => <xml><span class="small text-muted">No responses</span></xml>
+                                          | _ =>
+                                            Ui.modalButton ctx
+                                                           (CLASS "btn btn-sm text-muted")
+                                                           <xml><span class="glyphicon glyphicon-plus-circle"/> Unassigned
+                                                             <span class="badge badge-pill badge-warning">{[List.length cs]}</span></xml>
+                                                           reassign)
                                      | Some u => <xml>
                                        <span class="badge badge-pill badge-info">{[u]}</span>
                                        {Ui.modalIcon ctx
