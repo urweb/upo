@@ -194,7 +194,7 @@ functor Make(M : sig
                                                                    onclick={fn _ =>
                                                                                fr <- initRow a.Config r.Content;
                                                                                set r.Editing (Some fr)}>
-                                                             <span class="glyphicon glyphicon-pencil"/>
+                                                             <span class="glyphicon glyphicon-pencil-alt"/>
                                                            </button>
                                                        </xml> else
                                                            <xml/>}

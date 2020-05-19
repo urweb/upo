@@ -574,19 +574,19 @@ functor Like(M : sig
         OnCreateLocal = fn _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo _ (v, s) => <xml><td>
-          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing like reference</xml> | Some v => rpc (unlike v); set s False}>
-            <span dynClass={b <- signal s;
-                            return (if not b then
-                                        CLASS "glyphicon-2x glyphicon glyphicon-times-circle text-danger"
-                                    else
-                                        CLASS "glyphicon glyphicon-times-circle text-danger")}/>
-          </button>
           <button class="btn" onclick={fn _ => case v of None => error <xml>Missing like reference</xml> | Some v => rpc (yeslike v); set s True}>
             <span dynClass={b <- signal s;
                             return (if b then
-                                        CLASS "glyphicon-2x glyphicon glyphicon-check-circle text-success"
+                                        CLASS "glyphicon-2x fas glyphicon-smile"
                                     else
-                                        CLASS "glyphicon glyphicon-check-circle text-success")}/>
+                                        CLASS "glyphicon-2x far glyphicon-smile")}/>
+          </button>
+          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing like reference</xml> | Some v => rpc (unlike v); set s False}>
+            <span dynClass={b <- signal s;
+                            return (if not b then
+                                        CLASS "glyphicon-2x fas glyphicon-frown"
+                                    else
+                                        CLASS "glyphicon-2x far glyphicon-frown")}/>
           </button>
         </td></xml>
     }
@@ -672,23 +672,23 @@ functor Bid(M : sig
         OnCreateLocal = fn _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo _ (v, s) => <xml><td>
-          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (unavailable v); set s Unavailable}>
+          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (preferred v); set s Preferred}>
             <span dynClass={s <- signal s;
                             return (case s of
-                                        Unavailable => CLASS "glyphicon-2x glyphicon glyphicon-times-circle text-danger"
-                                      | _ => CLASS "glyphicon glyphicon-times-circle text-danger")}/>
+                                        Preferred => CLASS "glyphicon-2x fas glyphicon-smile"
+                                      | _ => CLASS "glyphicon-2x far glyphicon-smile")}/>
           </button>
           <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (available v); set s Available}>
             <span dynClass={s <- signal s;
                             return (case s of
-                                        Available => CLASS "glyphicon-2x glyphicon glyphicon-check-circle text-success"
-                                      | _ => CLASS "glyphicon glyphicon-check-circle text-success")}/>
+                                        Available => CLASS "glyphicon-2x fas glyphicon-meh"
+                                      | _ => CLASS "glyphicon-2x far glyphicon-meh")}/>
           </button>
-          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (preferred v); set s Preferred}>
+          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (unavailable v); set s Unavailable}>
             <span dynClass={s <- signal s;
                             return (case s of
-                                        Preferred => CLASS "glyphicon-2x glyphicon glyphicon-exclamation-circle text-success"
-                                      | _ => CLASS "glyphicon glyphicon-exclamation-circle text-success")}/>
+                                        Unavailable => CLASS "glyphicon-2x fas glyphicon-frown"
+                                      | _ => CLASS "glyphicon-2x far glyphicon-frown")}/>
           </button>
         </td></xml>
     }
@@ -775,7 +775,7 @@ functor AssignFromBids(M : sig
                                      | Some u => <xml>
                                        <span class="badge badge-pill badge-info">{[u]}</span>
                                        {Ui.modalIcon ctx
-                                                     (CLASS "glyphicon glyphicon-pencil")
+                                                     (CLASS "glyphicon glyphicon-pencil-alt")
                                                      reassign}
                                      </xml>)
                        end}/>
@@ -905,7 +905,7 @@ functor AssignFromBids2(M : sig
                                      | Some u => <xml>
                                        <span class="badge badge-pill badge-info">{[u]}</span>
                                        {Ui.modalIcon ctx
-                                                     (CLASS "glyphicon glyphicon-pencil")
+                                                     (CLASS "glyphicon glyphicon-pencil-alt")
                                                      reassign}
                                      </xml>)
                        end}/>

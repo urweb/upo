@@ -82,7 +82,7 @@ functor Make(M : sig
                           return (if exp then
                                       CLASS "glyphicon glyphicon-remove"
                                   else
-                                      CLASS "glyphicon glyphicon-pencil")}/>
+                                      CLASS "glyphicon glyphicon-pencil-alt")}/>
         </button>
         {[textLabel]}
       </h2>

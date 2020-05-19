@@ -666,7 +666,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                                                                     @Widget.initialize w cfg v)
                                                                                                                                 fl ws cfgs vals;
                                                                                                                        set ws0 (Some wids)}>
-                                                                                                 <span class="glyphicon glyphicon-pencil"/>
+                                                                                                 <span class="glyphicon glyphicon-pencil-alt"/>
                                                                                                </button></td>
                                                                                                <td><button class="btn btn-secondary"
                                                                                                            onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
@@ -863,7 +863,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                                                                     @Widget.initialize w cfg v)
                                                                                                                                 fl ws cfgs vals;
                                                                                                                        set ws0 (Some wids)}>
-                                                                                                 <span class="glyphicon glyphicon-pencil"/>
+                                                                                                 <span class="glyphicon glyphicon-pencil-alt"/>
                                                                                                </button></td>
                                                                                                <td><button class="btn btn-secondary"
                                                                                                            onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
@@ -1205,7 +1205,7 @@ functor ManyToManyWithFile(M : sig
                                                                                                                                     fl ws cfgs vals;
                                                                                                                            upl <- source None;
                                                                                                                            set ws0 (Some (wids, upl))}>
-                                                                                                     <span class="glyphicon glyphicon-pencil"/>
+                                                                                                     <span class="glyphicon glyphicon-pencil-alt"/>
                                                                                                    </button></td>
                                                                                                    <td><button class="btn btn-secondary"
                                                                                                                onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
@@ -1472,7 +1472,7 @@ functor ManyToManyWithFile(M : sig
                                                                                                                                     fl ws cfgs vals;
                                                                                                                            upl <- source None;
                                                                                                                            set ws0 (Some (wids, upl))}>
-                                                                                                     <span class="glyphicon glyphicon-pencil"/>
+                                                                                                     <span class="glyphicon glyphicon-pencil-alt"/>
                                                                                                    </button></td>
                                                                                                    <td><button class="btn btn-secondary"
                                                                                                                onclick={fn _ => set sl (List.filter (fn (k1', _, _) => k1' <> k1) slv)}>
@@ -1731,7 +1731,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                                                                   @Widget.initialize w cfg v)
                                                                                                                               fl ws cfgs vals;
                                                                                                                      set ws0 (Some wids)}>
-                                                                                                           <span class="glyphicon glyphicon-pencil"/>
+                                                                                                           <span class="glyphicon glyphicon-pencil-alt"/>
                                                                                              </button></td>
                                                                                              <td><button class="btn btn-secondary"
                                                                                                          onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
@@ -1926,7 +1926,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                                                                  @Widget.initialize w cfg v)
                                                                                                                              fl ws cfgs vals;
                                                                                                                     set ws0 (Some wids)}>
-                                                                                              <span class="glyphicon glyphicon-pencil"/>
+                                                                                              <span class="glyphicon glyphicon-pencil-alt"/>
                                                                                             </button></td>
                                                                                             <td><button class="btn btn-secondary"
                                                                                                         onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>

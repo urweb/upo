@@ -306,7 +306,7 @@ functor Make(M : sig
                                                            onclick={fn _ =>
                                                                        s <- source rng;
                                                                        set rb (Some s)}>
-                                                     <span class="glyphicon glyphicon-pencil"/>
+                                                     <span class="glyphicon glyphicon-pencil-alt"/>
                                                    </button>
                                                  </xml>
                                              end)}/>
@@ -330,7 +330,7 @@ functor Make(M : sig
                                                                onclick={fn _ =>
                                                                            s <- source text;
                                                                            set newgr (Some s)}>
-                                                         <span class="glyphicon glyphicon-pencil"/>
+                                                         <span class="glyphicon glyphicon-pencil-alt"/>
                                                        </button>
                                                      </xml>
                                                  end
@@ -342,7 +342,7 @@ functor Make(M : sig
                                                                onclick={fn _ =>
                                                                            s <- source "";
                                                                            set newgr (Some s)}>
-                                                         <span class="glyphicon glyphicon-pencil"/>
+                                                         <span class="glyphicon glyphicon-pencil-alt"/>
                                                        </button>
                                                      </xml>
                                                    | (min, max, g) :: _ =>
@@ -358,7 +358,7 @@ functor Make(M : sig
                                                                        onclick={fn _ =>
                                                                                    s <- source text;
                                                                                    set newgr (Some s)}>
-                                                                 <span class="glyphicon glyphicon-pencil"/>
+                                                                 <span class="glyphicon glyphicon-pencil-alt"/>
                                                                </button>
                                                              </xml>
                                                          end
@@ -369,7 +369,7 @@ functor Make(M : sig
                                                                    onclick={fn _ =>
                                                                                s <- source "";
                                                                                set newgr (Some s)}>
-                                                             <span class="glyphicon glyphicon-pencil"/>
+                                                             <span class="glyphicon glyphicon-pencil-alt"/>
                                                            </button>
                                                          </xml>)
                                    | Some gs =>
