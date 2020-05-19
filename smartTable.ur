@@ -15,7 +15,8 @@ type t (inp :: Type) (r :: {Type}) (cfg :: Type) (st :: Type) = {
      WidgetForCreate : cfg -> st -> xbody,
      OnCreateLocal : $r -> st -> transaction unit,
      Header : cfg -> xtr,
-     Row : cfg -> Ui.context -> st -> xtr
+     Row : cfg -> Ui.context -> st -> xtr,
+     Todos : cfg -> st -> signal int
 }
 
 type inputIs_cfg = unit
@@ -31,7 +32,8 @@ fun inputIs [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_inj
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml></xml>,
-    Row = fn () _ _ => <xml></xml>
+    Row = fn () _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 
 type inputIsOpt_cfg = unit
@@ -47,7 +49,8 @@ fun inputIsOpt [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml></xml>,
-    Row = fn () _ _ => <xml></xml>
+    Row = fn () _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 
 type inputConnected_cfg = unit
@@ -70,7 +73,8 @@ fun inputConnected [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}] [ckey :: N
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml></xml>,
-    Row = fn () _ _ => <xml></xml>
+    Row = fn () _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 
 type inputConnects_cfg = unit
@@ -95,7 +99,8 @@ fun inputConnects [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}]
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml></xml>,
-    Row = fn () _ _ => <xml></xml>
+    Row = fn () _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 
 fun compose [inp] [r] [cfgb] [cfga] [stb] [sta] (b : t inp r cfgb stb) (a : t inp r cfga sta) = {
@@ -120,7 +125,8 @@ fun compose [inp] [r] [cfgb] [cfga] [stb] [sta] (b : t inp r cfgb stb) (a : t in
     WidgetForCreate = fn (cfgb, cfga) (y, x) => <xml>{b.WidgetForCreate cfgb y}{a.WidgetForCreate cfga x}</xml>,
     OnCreateLocal = fn r (y, x) => b.OnCreateLocal r y; a.OnCreateLocal r x,
     Header = fn (cfgb, cfga) => <xml>{b.Header cfgb}{a.Header cfga}</xml>,
-    Row = fn (cfgb, cfga) ctx (y, x) => <xml>{b.Row cfgb ctx y}{a.Row cfga ctx x}</xml>
+    Row = fn (cfgb, cfga) ctx (y, x) => <xml>{b.Row cfgb ctx y}{a.Row cfga ctx x}</xml>,
+    Todos = fn (cfgb, cfga) (y, x) => nb <- b.Todos cfgb y; na <- a.Todos cfga x; return (nb + na)
 }
 
 type column_cfg (t :: Type) = unit
@@ -137,7 +143,8 @@ fun column [inp ::: Type] [col :: Name] [colT ::: Type] [r ::: {Type}] [[col] ~ 
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[lbl]}</th></xml>,
-    Row = fn () _ v => <xml><td>{[v]}</td></xml>
+    Row = fn () _ v => <xml><td>{[v]}</td></xml>,
+    Todos = fn _ _ => return 0
 }
 
 type html_cfg = unit
@@ -153,7 +160,8 @@ fun html [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (lbl : string) 
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[lbl]}</th></xml>,
-    Row = fn () _ v => <xml><td>{v}</td></xml>
+    Row = fn () _ v => <xml><td>{v}</td></xml>,
+    Todos = fn _ _ => return 0
 }
 
 type iconButton_cfg (cols :: {Type}) = option string * time
@@ -181,7 +189,8 @@ fun iconButton [inp ::: Type] [cols ::: {Type}] [r ::: {Type}] [cols ~ r]
                    | Some (cl, ur) => <xml><td>
                      <a href={ur}
                      class={classes cl (CLASS "btn btn-primary btn-lg glyphicon")}/>
-                   </td></xml>
+                   </td></xml>,
+    Todos = fn _ _ => return 0
 }
 
 fun links [a] (_ : show a) (ls : list a) : xbody = <xml>
@@ -211,7 +220,8 @@ fun linked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[l]}</th></xml>,
-    Row = fn () _ ls => <xml><td>{links ls}</td></xml>
+    Row = fn () _ ls => <xml><td>{links ls}</td></xml>,
+    Todos = fn _ _ => return 0
 }
 
 type orderedLinked_cfg (t :: Type) = unit
@@ -237,7 +247,8 @@ fun orderedLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[l]}</th></xml>,
-    Row = fn () _ ls => <xml><td>{links ls}</td></xml>
+    Row = fn () _ ls => <xml><td>{links ls}</td></xml>,
+    Todos = fn _ _ => return 0
 }
 
 functor LinkedWithEdit(M : sig
@@ -408,7 +419,8 @@ functor LinkedWithEdit(M : sig
                                                            </xml>
                                                            <xml>Add</xml>))}
                      </td></xml>
-                 end
+                 end,
+        Todos = fn _ _ => return 0
     }
 end
 
@@ -507,7 +519,8 @@ functor LinkedWithFollow(M : sig
                      </xml>
                  in
                      <xml><td>{List.mapX one ls}</td></xml>
-                 end
+                 end,
+        Todos = fn _ _ => return 0
     }
 end
 
@@ -588,7 +601,8 @@ functor Like(M : sig
                                     else
                                         CLASS "glyphicon-2x far glyphicon-frown")}/>
           </button>
-        </td></xml>
+        </td></xml>,
+        Todos = fn _ _ => return 0
     }
 end
 
@@ -690,7 +704,8 @@ functor Bid(M : sig
                                         Unavailable => CLASS "glyphicon-2x fas glyphicon-frown"
                                       | _ => CLASS "glyphicon-2x far glyphicon-frown")}/>
           </button>
-        </td></xml>
+        </td></xml>,
+        Todos = fn _ _ => return 0
     }
 end
 
@@ -783,7 +798,8 @@ functor AssignFromBids(M : sig
                                                      reassign}
                                      </xml>)
                        end}/>
-        </td></xml>
+        </td></xml>,
+        Todos = fn _ (_, cs, s) => sv <- signal s; return (case sv of Some _ => 0 | None => case cs of [] => 0 | _ => 1)
     }
 end
 
@@ -918,7 +934,8 @@ functor AssignFromBids2(M : sig
                                                      reassign}
                                      </xml>)
                        end}/>
-        </td></xml>
+        </td></xml>,
+        Todos = fn _ (_, cs, s) => sv <- signal s; return (case sv of Some _ => 0 | None => case cs of [] => 0 | _ => 1)
     }
 end
 
@@ -935,7 +952,8 @@ val nonnull [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 
 type isnull_cfg = unit
@@ -951,7 +969,8 @@ val isnull [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r]
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 
 type past_cfg = unit
@@ -967,7 +986,8 @@ val past [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 val pastOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Configure = return (),
@@ -980,7 +1000,8 @@ val pastOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 
 type future_cfg = unit
@@ -996,7 +1017,8 @@ val future [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 val futureOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Configure = return (),
@@ -1009,7 +1031,8 @@ val futureOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 
 type taggedWithUser_cfg = option string
@@ -1028,7 +1051,8 @@ fun taggedWithUser [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 
 type linkedToUser_cfg = option string
@@ -1052,7 +1076,8 @@ fun linkedToUser [inp ::: Type] [key :: Name] [keyT ::: Type] [r ::: {Type}] [[k
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 
 type doubleLinkedToUser_cfg = option string
@@ -1081,7 +1106,8 @@ fun doubleLinkedToUser [inp ::: Type] [key :: Name] [keyT ::: Type] [r ::: {Type
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 
 type sortby_cfg = unit
@@ -1097,7 +1123,8 @@ val sortby [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r]
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 val sortbyDesc [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
     Configure = return (),
@@ -1110,7 +1137,8 @@ val sortbyDesc [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] 
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
-    Row = fn _ _ _ => <xml></xml>
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
 }
 
 functor Make(M : sig
@@ -1206,7 +1234,16 @@ functor Make(M : sig
       </table>
     </xml>
 
-    fun notification _ _ = <xml></xml>
+    fun notification _ self = <xml>
+      <dyn signal={st <- signal self.Rows;
+                   n <- List.foldlM (fn r n =>
+                                        m <- t.Todos self.Config r;
+                                        return (m + n)) 0 st;
+                   return (if n = 0 then
+                               <xml></xml>
+                           else
+                               <xml><span class="badge badge-pill badge-warning">{[n]}</span></xml>)}/>
+    </xml>
 
     val ui = {Create = create,
               Onload = onload,
@@ -1326,7 +1363,16 @@ functor Make1(M : sig
       </table>
     </xml>
 
-   fun notification _ _ = <xml></xml>
+    fun notification _ self = <xml>
+      <dyn signal={st <- signal self.Rows;
+                   n <- List.foldlM (fn r n =>
+                                        m <- t.Todos self.Config r;
+                                        return (m + n)) 0 st;
+                   return (if n = 0 then
+                               <xml></xml>
+                           else
+                               <xml><span class="badge badge-pill badge-warning">{[n]}</span></xml>)}/>
+    </xml>
 
    fun ui inp = {Create = create inp,
                  Onload = onload,
