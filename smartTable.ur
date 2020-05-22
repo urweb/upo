@@ -624,6 +624,7 @@ functor Bid(M : sig
 
                 val label : string
                 val whoami : transaction (option string)
+                val response : option string
             end) = struct
     open M
 
@@ -662,6 +663,11 @@ functor Bid(M : sig
             dml (INSERT INTO bid({fthis}, {user}, {preferred})
                  VALUES ({[v]}, {[u]}, TRUE))
 
+    val maybeAlert =
+        case response of
+            None => return ()
+          | Some msg => alert msg
+
     val t = {
         Configure = whoami,
         Generate = fn uo r =>
@@ -688,13 +694,13 @@ functor Bid(M : sig
         OnCreateLocal = fn _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo _ (v, s) => <xml><td>
-          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (preferred v); set s Preferred}>
+          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (preferred v); set s Preferred; maybeAlert}>
             <span dynClass={s <- signal s;
                             return (case s of
                                         Preferred => CLASS "glyphicon-2x fas glyphicon-smile"
                                       | _ => CLASS "glyphicon-2x far glyphicon-smile")}/>
           </button>
-          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (available v); set s Available}>
+          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (available v); set s Available; maybeAlert}>
             <span dynClass={s <- signal s;
                             return (case s of
                                         Available => CLASS "glyphicon-2x fas glyphicon-meh"

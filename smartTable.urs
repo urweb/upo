@@ -181,6 +181,7 @@ functor Bid(M : sig
 
                 val label : string
                 val whoami : transaction (option string)
+                val response : option string (* Optionally, say this in a popup after user makes a positive selection. *)
             end) : sig
     type cfg
     type internal
