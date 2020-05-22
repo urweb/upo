@@ -969,10 +969,14 @@ functor AssignFromBids(M : sig
                                        (case cs of
                                             [] => <xml><span class="small text-muted">No responses</span></xml>
                                           | _ => <xml><h5>
-                                            {Ui.modalAnchor ctx
-                                                            (CLASS "badge badge-warning")
-                                                            <xml>{[List.length cs]}</xml>
-                                                            reassign}
+                                            {let
+                                                 val len = List.length cs
+                                             in
+                                                 Ui.modalAnchor ctx
+                                                                (CLASS "badge badge-warning")
+                                                                <xml>{[len]} response{[case len of 1 => "" | _ => "s"]}</xml>
+                                                                reassign
+                                             end}
                                           </h5></xml>)
                                      | Some u => <xml>
                                        <span class="badge badge-pill badge-info">{[u]}</span>
@@ -1105,10 +1109,14 @@ functor AssignFromBids2(M : sig
                                        (case cs of
                                             [] => <xml><span class="small text-muted">No responses</span></xml>
                                           | _ => <xml><h5>
-                                            {Ui.modalAnchor ctx
-                                                            (CLASS "badge badge-warning")
-                                                            <xml>{[List.length cs]}</xml>
-                                                            reassign}
+                                            {let
+                                                 val len = List.length cs
+                                             in
+                                                 Ui.modalAnchor ctx
+                                                                (CLASS "badge badge-warning")
+                                                                <xml>{[len]} response{[case len of 1 => "" | _ => "s"]}</xml>
+                                                                reassign
+                                             end}
                                           </h5></xml>)
                                      | Some u => <xml>
                                        <span class="badge badge-pill badge-info">{[u]}</span>
