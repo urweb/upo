@@ -82,7 +82,7 @@ functor Make(M : sig
                             set t.Editing (not exp)}>
           <span dynClass={exp <- signal t.Editing;
                           return (if exp then
-                                      CLASS "glyphicon glyphicon-remove"
+                                      CLASS "glyphicon glyphicon-trash"
                                   else
                                       CLASS "glyphicon glyphicon-pencil-alt")}/>
         </button>

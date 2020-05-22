@@ -121,7 +121,7 @@ functor Make(M : sig
                          <tr>
                            <td>
                              {Ui.modalButton ctx (CLASS "btn btn-secondary")
-                                             <xml><span class="glyphicon glyphicon-remove"/></xml>
+                                             <xml><span class="glyphicon glyphicon-trash"/></xml>
                                              (return (Ui.modal
                                                           (rpc (del r.OldKey);
                                                            set t.Rows (List.filter (fn r' => r'.OldKey <> r.OldKey) vs))

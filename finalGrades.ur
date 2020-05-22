@@ -278,7 +278,7 @@ functor Make(M : sig
                                                </button>
                                                <button class="btn btn-secondary btn-sm"
                                                        onclick={fn _ => set rb None}>
-                                                 <span class="glyphicon glyphicon-remove"/>
+                                                 <span class="glyphicon glyphicon-trash"/>
                                                </button>
                                              </xml>
                                            | None =>
@@ -395,7 +395,7 @@ functor Make(M : sig
                                        </button>
                                        <button class="btn btn-secondary btn-sm"
                                                onclick={fn _ => set newgr None}>
-                                         <span class="glyphicon glyphicon-remove"/>
+                                         <span class="glyphicon glyphicon-trash"/>
                                        </button>
                                      </xml>}/>
                   </td>

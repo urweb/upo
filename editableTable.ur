@@ -181,7 +181,7 @@ functor Make(M : sig
                                                     <td>
                                                       {if a.Perm.Delete then
                                                            Ui.modalButton ctx (CLASS "btn btn-secondary")
-                                                                          <xml><span class="glyphicon glyphicon-remove"/></xml>
+                                                                          <xml><span class="glyphicon glyphicon-trash"/></xml>
                                                                           (return (Ui.modal
                                                                                        (rpc (del r.Content))
                                                                                        <xml>Are you sure you want to delete this row?</xml>

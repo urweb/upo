@@ -670,7 +670,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                                </button></td>
                                                                                                <td><button class="btn btn-secondary"
                                                                                                            onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
-                                                                                                 <span class="glyphicon glyphicon-remove"/>
+                                                                                                 <span class="glyphicon glyphicon-trash"/>
                                                                                                </button></td>
                                                                                              </xml>}
                                                                                           </tr>
@@ -694,7 +694,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                           </button></td>
                                                                                           <td><button class="btn btn-secondary"
                                                                                                       onclick={fn _ => set ws0 None}>
-                                                                                            <span class="glyphicon glyphicon-remove"/>
+                                                                                            <span class="glyphicon glyphicon-trash"/>
                                                                                           </button></td>
                                                                                         </tr>
                                                                                       </xml>}/>
@@ -867,7 +867,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                                </button></td>
                                                                                                <td><button class="btn btn-secondary"
                                                                                                            onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
-                                                                                                 <span class="glyphicon glyphicon-remove"/>
+                                                                                                 <span class="glyphicon glyphicon-trash"/>
                                                                                                </button></td>
                                                                                              </xml>}
                                                                                           </tr>
@@ -891,7 +891,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                           </button></td>
                                                                                           <td><button class="btn btn-secondary"
                                                                                                       onclick={fn _ => set ws0 None}>
-                                                                                            <span class="glyphicon glyphicon-remove"/>
+                                                                                            <span class="glyphicon glyphicon-trash"/>
                                                                                           </button></td>
                                                                                         </tr>
                                                                                       </xml>}/>
@@ -1209,7 +1209,7 @@ functor ManyToManyWithFile(M : sig
                                                                                                    </button></td>
                                                                                                    <td><button class="btn btn-secondary"
                                                                                                                onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
-                                                                                                     <span class="glyphicon glyphicon-remove"/>
+                                                                                                     <span class="glyphicon glyphicon-trash"/>
                                                                                                    </button></td>
                                                                                                  </xml>}
                                                                                               </tr>
@@ -1240,7 +1240,7 @@ functor ManyToManyWithFile(M : sig
                                                                                               </button></td>
                                                                                               <td><button class="btn btn-secondary"
                                                                                                           onclick={fn _ => set ws0 None}>
-                                                                                                <span class="glyphicon glyphicon-remove"/>
+                                                                                                <span class="glyphicon glyphicon-trash"/>
                                                                                               </button></td>
                                                                                             </tr>
                                                                                           </xml>}/>
@@ -1476,7 +1476,7 @@ functor ManyToManyWithFile(M : sig
                                                                                                    </button></td>
                                                                                                    <td><button class="btn btn-secondary"
                                                                                                                onclick={fn _ => set sl (List.filter (fn (k1', _, _) => k1' <> k1) slv)}>
-                                                                                                     <span class="glyphicon glyphicon-remove"/>
+                                                                                                     <span class="glyphicon glyphicon-trash"/>
                                                                                                    </button></td>
                                                                                                  </xml>}
                                                                                               </tr>
@@ -1507,7 +1507,7 @@ functor ManyToManyWithFile(M : sig
                                                                                               </button></td>
                                                                                               <td><button class="btn btn-secondary"
                                                                                                           onclick={fn _ => set ws0 None}>
-                                                                                                <span class="glyphicon glyphicon-remove"/>
+                                                                                                <span class="glyphicon glyphicon-trash"/>
                                                                                               </button></td>
                                                                                             </tr>
                                                                                           </xml>}/>
@@ -1735,7 +1735,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                              </button></td>
                                                                                              <td><button class="btn btn-secondary"
                                                                                                          onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
-                                                                                               <span class="glyphicon glyphicon-remove"/>
+                                                                                               <span class="glyphicon glyphicon-trash"/>
                                                                                              </button></td>
                                                                                            </xml>}
                                                                                         </tr></xml>
@@ -1758,7 +1758,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                           </button></td>
                                                                                           <td><button class="btn btn-secondary"
                                                                                                       onclick={fn _ => set ws0 None}>
-                                                                                            <span class="glyphicon glyphicon-remove"/>
+                                                                                            <span class="glyphicon glyphicon-trash"/>
                                                                                           </button></td>
                                                                                         </tr>
                                                                                       </xml>}/>
@@ -1930,7 +1930,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                             </button></td>
                                                                                             <td><button class="btn btn-secondary"
                                                                                                         onclick={fn _ => set sl (List.filter (fn (k2', _, _) => k2' <> k2) slv)}>
-                                                                                              <span class="glyphicon glyphicon-remove"/>
+                                                                                              <span class="glyphicon glyphicon-trash"/>
                                                                                             </button></td>
                                                                                           </tr>
                                                                                         </xml>
@@ -1956,7 +1956,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                              </button></td>
                                                                                              <td><button class="btn btn-secondary"
                                                                                                          onclick={fn _ => set ws0 None}>
-                                                                                               <span class="glyphicon glyphicon-remove"/>
+                                                                                               <span class="glyphicon glyphicon-trash"/>
                                                                                              </button></td>
                                                                                            </xml>}
                                                                                         </tr>
