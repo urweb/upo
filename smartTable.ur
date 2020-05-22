@@ -788,11 +788,12 @@ functor AssignFromBids(M : sig
                                        None =>
                                        (case cs of
                                             [] => <xml><span class="small text-muted">No responses</span></xml>
-                                          | _ => Ui.modalButton ctx
-                                                                (CLASS "btn btn-sm text-muted")
-                                                                <xml><span class="glyphicon glyphicon-plus-circle"/> Unassigned
-                                                                  <span class="badge badge-pill badge-warning">{[List.length cs]}</span></xml>
-                                                                reassign)
+                                          | _ => <xml><h5>
+                                            {Ui.modalAnchor ctx
+                                                            (CLASS "badge badge-warning")
+                                                            <xml>{[List.length cs]}</xml>
+                                                            reassign}
+                                          </h5></xml>)
                                      | Some u => <xml>
                                        <span class="badge badge-pill badge-info">{[u]}</span>
                                        {Ui.modalIcon ctx
@@ -923,12 +924,12 @@ functor AssignFromBids2(M : sig
                                        None =>
                                        (case cs of
                                             [] => <xml><span class="small text-muted">No responses</span></xml>
-                                          | _ =>
-                                            Ui.modalButton ctx
-                                                           (CLASS "btn btn-sm text-muted")
-                                                           <xml><span class="glyphicon glyphicon-plus-circle"/> Unassigned
-                                                             <span class="badge badge-pill badge-warning">{[List.length cs]}</span></xml>
-                                                           reassign)
+                                          | _ => <xml><h5>
+                                            {Ui.modalAnchor ctx
+                                                            (CLASS "badge badge-warning")
+                                                            <xml>{[List.length cs]}</xml>
+                                                            reassign}
+                                          </h5></xml>)
                                      | Some u => <xml>
                                        <span class="badge badge-pill badge-info">{[u]}</span>
                                        {Ui.modalIcon ctx

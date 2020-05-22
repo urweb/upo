@@ -334,6 +334,7 @@ fun modalAnchor ctx cls bod onclick = <xml>
   <a class={cls}
      data-toggle="modal"
      data-target={"#" ^ show ctx.ModalId}
+     href="#"
      onclick={fn _ =>
                  ms <- onclick;
                  set ctx.ModalSpot ms}>
