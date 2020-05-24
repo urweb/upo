@@ -29,6 +29,7 @@ html
 clientCert
 ui
 identityMonad
+changeWatcher
 csv
 widget
 displayRow

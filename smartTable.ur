@@ -1350,11 +1350,12 @@ functor Make(M : sig
              end) = struct
     open M
 
-    type a = {Config : cfg,
-              Configs : $(map thd3 r),
-              Rows : source (list st)}
+    type a = {Config : source cfg,
+              Configs : source $(map thd3 r),
+              Rows : source (list st),
+              Changes : ChangeWatcher.t}
 
-    val create =
+    val rows =
         cfg <- t.Configure;
         cfgs <- @Monad.mapR _ [Widget.t'] [thd3]
                  (fn [nm ::_] [p ::_] => @Widget.configure) fl widgets;
@@ -1364,10 +1365,28 @@ functor Make(M : sig
                                 AND {Option.get (WHERE TRUE) (t.FilterLinks cfg ())}
                               ORDER BY {{{t.SortBy (sql_order_by_Nil [[]])}}})
                              (fn {Tab = r} => t.Generate cfg r);
-        rs <- source rs;
-        return {Config = cfg, Configs = cfgs, Rows = rs}
+        return (cfg, cfgs, rs)
 
-    fun onload _ = return ()
+    val create =
+        (cfg, cfgs, rs) <- rows;
+        cfg <- source cfg;
+        cfgs <- source cfgs;
+        rs <- source rs;
+        ch <- ChangeWatcher.listen title;
+        return {Config = cfg, Configs = cfgs, Rows = rs, Changes = ch}
+
+    val redo =
+        ok <- authorized;
+        if not ok then
+            error <xml>Access denied</xml>
+        else
+            rows
+
+    fun onload self = ChangeWatcher.onChange self.Changes
+                      ((cfg, cfgs, rs) <- rpc redo;
+                       set self.Config cfg;
+                       set self.Configs cfgs;
+                       set self.Rows rs)
 
     fun add r =
         if not allowCreate then
@@ -1378,9 +1397,9 @@ functor Make(M : sig
                 error <xml>Access denied</xml>
             else
                 @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
+                ChangeWatcher.changed title;
                 cfg <- t.Configure;
-                t.OnCreate cfg () r;
-                t.Generate cfg r
+                t.OnCreate cfg () r
 
     fun render ctx self = <xml>
       {if not allowCreate then
@@ -1389,16 +1408,15 @@ functor Make(M : sig
            Ui.modalButton ctx
                           (CLASS "btn btn-primary")
                           <xml>Create New {[title]}</xml>
-                          (ws <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                          (cfgs <- get self.Configs;
+                           ws <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
                                   (fn [nm ::_] [p ::_] => @Widget.create)
-                                  fl widgets self.Configs;
+                                  fl widgets cfgs;
                            return (Ui.modal
                                    (vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : p.2) => current (@Widget.value w v))
                                            fl widgets ws;
-                                    st <- rpc (add vs);
-                                    rs <- get self.Rows;
-                                    set self.Rows (List.append rs (st :: [])))
+                                    rpc (add vs))
                                    <xml>Add</xml>
                                    (@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
                                      (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
@@ -1414,21 +1432,25 @@ functor Make(M : sig
                                      fl labels widgets ws)
                                    <xml>Add</xml>))}
 
-      <table class="bs-table">
-        <thead>
-          <tr>{t.Header self.Config}</tr>
-        </thead>
-        <tbody>
-          <dyn signal={rs <- signal self.Rows;
-                       return (List.mapX (fn r => <xml><tr>{t.Row self.Config ctx r}</tr></xml>) rs)}/>
-        </tbody>
-      </table>
+      <dyn signal={cfg <- signal self.Config;
+                   return <xml>
+                     <table class="bs-table">
+                       <thead>
+                         <tr>{t.Header cfg}</tr>
+                       </thead>
+                       <tbody>
+                         <dyn signal={rs <- signal self.Rows;
+                                      return (List.mapX (fn r => <xml><tr>{t.Row cfg ctx r}</tr></xml>) rs)}/>
+                       </tbody>
+                     </table>
+                   </xml>}/>
     </xml>
 
     fun notification _ self = <xml>
-      <dyn signal={st <- signal self.Rows;
+      <dyn signal={cfg <- signal self.Config;
+                   st <- signal self.Rows;
                    n <- List.foldlM (fn r n =>
-                                        m <- t.Todos self.Config r;
+                                        m <- t.Todos cfg r;
                                         return (m + n)) 0 st;
                    return (if n = 0 then
                                <xml></xml>
@@ -1462,12 +1484,13 @@ functor Make1(M : sig
     open M
 
     type input = inp
-    type a = {Config : cfg,
+    type a = {Config : source cfg,
               Input : inp,
-              Configs : $(map thd3 r),
-              Rows : source (list st)}
+              Configs : source $(map thd3 r),
+              Rows : source (list st),
+              Changes : ChangeWatcher.t}
 
-    fun create inp =
+    fun rows inp =
         cfg <- t.Configure;
         cfgs <- @Monad.mapR _ [Widget.t'] [thd3]
                  (fn [nm ::_] [p ::_] => @Widget.configure) fl widgets;
@@ -1477,10 +1500,29 @@ functor Make1(M : sig
                                 AND {Option.get (WHERE TRUE) (t.FilterLinks cfg inp)}
                               ORDER BY {{{t.SortBy (sql_order_by_Nil [[]])}}})
                              (fn {Tab = r} => t.Generate cfg r);
-        rs <- source rs;
-        return {Config = cfg, Input = inp, Configs = cfgs, Rows = rs}
+        return (cfg, cfgs, rs)
 
-    fun onload _ = return ()
+    fun create inp =
+        (cfg, cfgs, rs) <- rows inp;
+        cfg <- source cfg;
+        cfgs <- source cfgs;
+        rs <- source rs;
+        ch <- ChangeWatcher.listen title;
+        return {Config = cfg, Input = inp, Configs = cfgs, Rows = rs, Changes = ch}
+
+    fun redo inp =
+        ok <- authorized;
+        if not ok then
+            error <xml>Access denied</xml>
+        else
+            rows inp
+
+    fun onload self =
+        ChangeWatcher.onChange self.Changes
+                               ((cfg, cfgs, rs) <- rpc (redo self.Input);
+                                set self.Config cfg;
+                                set self.Configs cfgs;
+                                set self.Rows rs)
 
     fun add inp r =
         if not allowCreate then
@@ -1491,19 +1533,9 @@ functor Make1(M : sig
                 error <xml>Access denied</xml>
             else
                 @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
+                ChangeWatcher.changed title;
                 cfg <- t.Configure;
                 t.OnCreate cfg inp r
-
-    fun generate r =
-        if not allowCreate then
-            error <xml>Access denied</xml>
-        else
-            authed <- authorized;
-            if not authed then
-                error <xml>Access denied</xml>
-            else
-                cfg <- t.Configure;
-                t.Generate cfg r
 
     fun render ctx self = <xml>
       {if not allowCreate then
@@ -1512,19 +1544,18 @@ functor Make1(M : sig
            Ui.modalButton ctx
                           (CLASS "btn btn-primary")
                           <xml>Create New {[title]}</xml>
-                          (ws <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
+                          (cfgs <- get self.Configs;
+                           ws <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
                                   (fn [nm ::_] [p ::_] => @Widget.create)
-                                  fl widgets self.Configs;
-                           stl <- t.GenerateLocal self.Config self.Input;
+                                  fl widgets cfgs;
+                           cfg <- get self.Config;
+                           stl <- t.GenerateLocal cfg self.Input;
                            return (Ui.modal
                                    (vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : p.2) => current (@Widget.value w v))
                                            fl widgets ws;
                                     rpc (add self.Input vs);
-                                    t.OnCreateLocal vs stl;
-                                    st <- rpc (generate vs);
-                                    rs <- get self.Rows;
-                                    set self.Rows (List.append rs (st :: [])))
+                                    t.OnCreateLocal vs stl)
                                    <xml>Add</xml>
                                    <xml>
                                      {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
@@ -1539,25 +1570,29 @@ functor Make1(M : sig
                                              </div>
                                            </xml>)
                                        fl labels widgets ws}
-                                     {t.WidgetForCreate self.Config stl}
+                                     {t.WidgetForCreate cfg stl}
                                    </xml>
                                    <xml>Add</xml>))}
 
-      <table class="bs-table">
-        <thead>
-          <tr>{t.Header self.Config}</tr>
-        </thead>
-        <tbody>
-          <dyn signal={rs <- signal self.Rows;
-                       return (List.mapX (fn r => <xml><tr>{t.Row self.Config ctx r}</tr></xml>) rs)}/>
-        </tbody>
-      </table>
+      <dyn signal={cfg <- signal self.Config;
+                   return <xml>
+                     <table class="bs-table">
+                       <thead>
+                         <tr>{t.Header cfg}</tr>
+                       </thead>
+                       <tbody>
+                         <dyn signal={rs <- signal self.Rows;
+                                      return (List.mapX (fn r => <xml><tr>{t.Row cfg ctx r}</tr></xml>) rs)}/>
+                       </tbody>
+                     </table>
+                   </xml>}/>
     </xml>
 
     fun notification _ self = <xml>
-      <dyn signal={st <- signal self.Rows;
+      <dyn signal={cfg <- signal self.Config;
+                   st <- signal self.Rows;
                    n <- List.foldlM (fn r n =>
-                                        m <- t.Todos self.Config r;
+                                        m <- t.Todos cfg r;
                                         return (m + n)) 0 st;
                    return (if n = 0 then
                                <xml></xml>
