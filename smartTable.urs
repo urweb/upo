@@ -234,12 +234,13 @@ functor AssignFromBids(M : sig
                            constraint [fthis, user] ~ [preferred]
                            val inj_this : sql_injectable thisT
                            table bid : {fthis : thisT, user : string, preferred : bool}
-                           val title : string
+                           val bidTitle : string
 
                            val label : string
                            val whoami : transaction (option string)
 
                            table tab : ([this = thisT, assignee = option string] ++ r)
+                           val tabTitle : string
                        end) : sig
     type cfg
     type internal

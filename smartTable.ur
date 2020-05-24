@@ -928,12 +928,13 @@ functor AssignFromBids(M : sig
                            constraint [fthis, user] ~ [preferred]
                            val inj_this : sql_injectable thisT
                            table bid : {fthis : thisT, user : string, preferred : bool}
-                           val title : string
+                           val bidTitle : string
 
                            val label : string
                            val whoami : transaction (option string)
 
                            table tab : ([this = thisT, assignee = option string] ++ r)
+                           val tabTitle : string
                        end) = struct
     open M
 
@@ -947,10 +948,11 @@ functor AssignFromBids(M : sig
           | Some _ =>
             dml (UPDATE tab
                  SET {assignee} = {[u]}
-                 WHERE T.{this} = {[v]})
+                 WHERE T.{this} = {[v]});
+            ChangeWatcher.changed tabTitle
 
     val t = {
-        Configure = ChangeWatcher.listen title,
+        Configure = ChangeWatcher.listen bidTitle,
         Generate = fn _ r =>
                       s <- source r.assignee;
                       choices <- List.mapQuery (SELECT bid.{user}, bid.{preferred}
