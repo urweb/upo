@@ -278,6 +278,7 @@ functor LinkedWithEdit(M : sig
                            val inj_this : sql_injectable thisT
                            val inj_that : sql_injectable thatT
                            table link : {fthis : thisT, fthat : thatT}
+                           val title : string
 
                            con tkey :: Name
                            con tr :: {Type}
@@ -292,6 +293,8 @@ functor LinkedWithEdit(M : sig
     type cfg = option (list thatT) (* if present, allowed to add *)
     type internal = option thisT * source (list thatT)
 
+    val changed = ChangeWatcher.changed title
+
     fun add k v =
         authed <- authorized;
         if not authed then
@@ -301,7 +304,8 @@ functor LinkedWithEdit(M : sig
                  WHERE T.{fthis} = {[k]}
                    AND T.{fthat} = {[v]});
             dml (INSERT INTO link({fthis}, {fthat})
-                 VALUES ({[k]}, {[v]}))
+                 VALUES ({[k]}, {[v]}));
+            changed
 
     fun addAll k vs =
         authed <- authorized;
@@ -313,7 +317,8 @@ functor LinkedWithEdit(M : sig
                               WHERE T.{fthis} = {[k]}
                                 AND T.{fthat} = {[v]});
                          dml (INSERT INTO link({fthis}, {fthat})
-                              VALUES ({[k]}, {[v]}))) vs
+                              VALUES ({[k]}, {[v]}))) vs;
+            changed
 
     fun remove k v =
         authed <- authorized;
@@ -322,7 +327,8 @@ functor LinkedWithEdit(M : sig
         else
             dml (DELETE FROM link
                  WHERE T.{fthis} = {[k]}
-                   AND T.{fthat} = {[v]})
+                   AND T.{fthat} = {[v]});
+            changed
 
     val savedLabel = label
     val label = Basis.label
@@ -453,6 +459,7 @@ functor LinkedWithEditAndDefault(M : sig
                                      val inj_this : sql_injectable thisT
                                      val inj_that : sql_injectable thatT
                                      table link : {fthis : thisT, fthat : thatT}
+                                     val title : string
 
                                      con tkey :: Name
                                      con tr :: {Type}
@@ -467,6 +474,8 @@ functor LinkedWithEditAndDefault(M : sig
     type cfg = option (list thatT) (* if present, allowed to add *)
     type internal = option thisT * source (list thatT)
 
+    val changed = ChangeWatcher.changed title
+
     fun add k v =
         authed <- authorized;
         if not authed then
@@ -476,7 +485,8 @@ functor LinkedWithEditAndDefault(M : sig
                  WHERE T.{fthis} = {[k]}
                    AND T.{fthat} = {[v]});
             dml (INSERT INTO link({fthis}, {fthat})
-                 VALUES ({[k]}, {[v]}))
+                 VALUES ({[k]}, {[v]}));
+            changed
 
     fun addAll k vs =
         authed <- authorized;
@@ -488,7 +498,8 @@ functor LinkedWithEditAndDefault(M : sig
                               WHERE T.{fthis} = {[k]}
                                 AND T.{fthat} = {[v]});
                          dml (INSERT INTO link({fthis}, {fthat})
-                              VALUES ({[k]}, {[v]}))) vs
+                              VALUES ({[k]}, {[v]}))) vs;
+            changed
 
     fun remove k v =
         authed <- authorized;
@@ -497,7 +508,8 @@ functor LinkedWithEditAndDefault(M : sig
         else
             dml (DELETE FROM link
                  WHERE T.{fthis} = {[k]}
-                   AND T.{fthat} = {[v]})
+                   AND T.{fthat} = {[v]});
+            changed
 
     val savedLabel = label
     val label = Basis.label
@@ -1280,24 +1292,24 @@ fun taggedWithUser [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
     Todos = fn _ _ => return 0
 }
 
-type linkedToUser_cfg = option string
+type linkedToUser_cfg = option string * ChangeWatcher.client_part
 type linkedToUser_st = unit
 fun linkedToUser [inp ::: Type] [key :: Name] [keyT ::: Type] [r ::: {Type}] [[key] ~ r]
     [ckey :: Name] [user :: Name] [cr ::: {Type}] [ks ::: {{Unit}}] [[ckey] ~ [user]] [[ckey, user] ~ cr]
     (link : sql_table ([ckey = keyT, user = string] ++ cr) ks)
-    (whoami : transaction (option string)) = {
-    Configure = whoami,
+    (whoami : transaction (option string)) title = {
+    Configure = uo <- whoami; ch <- ChangeWatcher.listen title; return (uo, ch),
     Generate = fn _ _ => return (),
     Filter = fn _ _ => None,
-    FilterLinks = fn uo _ => case uo of
-                                 None => Some (WHERE FALSE)
-                               | Some u => Some (WHERE (SELECT COUNT( * ) > 0
-                                                        FROM link
-                                                        WHERE link.{user} = {[u]}
-                                                          AND link.{ckey} = tab.{key}) = {[Some True]}),
+    FilterLinks = fn (uo, _) _ => case uo of
+                                      None => Some (WHERE FALSE)
+                                    | Some u => Some (WHERE (SELECT COUNT( * ) > 0
+                                                             FROM link
+                                                             WHERE link.{user} = {[u]}
+                                                               AND link.{ckey} = tab.{key}) = {[Some True]}),
     SortBy = fn x => x,
     OnCreate = fn _ _ _ => return (),
-    OnLoad = fn _ _ => return (),
+    OnLoad = fn r (_, ch) => ChangeWatcher.onChange ch r.ReloadState,
     GenerateLocal = fn _ _ => return (),
     WidgetForCreate = fn _ _ => <xml></xml>,
     OnCreateLocal = fn _ _ => return (),
@@ -1587,9 +1599,18 @@ functor Make1(M : sig
                 error <xml>Access denied</xml>
             else
                 @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
-                ChangeWatcher.changedBy ch title;
                 cfg <- t.Configure;
                 t.OnCreate cfg inp r
+
+    fun notify ch =
+        if not allowCreate then
+            error <xml>Access denied</xml>
+        else
+            authed <- authorized;
+            if not authed then
+                error <xml>Access denied</xml>
+            else
+                ChangeWatcher.changedBy ch title
 
     fun generate r =
         if not allowCreate then
@@ -1621,6 +1642,7 @@ functor Make1(M : sig
                                            fl widgets ws;
                                     rpc (add self.Input (ChangeWatcher.server self.Changes) vs);
                                     t.OnCreateLocal vs stl;
+                                    rpc (notify (ChangeWatcher.server self.Changes));
                                     st <- rpc (generate vs);
                                     rs <- get self.Rows;
                                     set self.Rows (List.append rs (st :: [])))

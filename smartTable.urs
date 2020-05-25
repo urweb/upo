@@ -101,6 +101,7 @@ functor LinkedWithEdit(M : sig
                            val inj_this : sql_injectable thisT
                            val inj_that : sql_injectable thatT
                            table link : {fthis : thisT, fthat : thatT}
+                           val title : string
 
                            con tkey :: Name
                            con tr :: {Type}
@@ -130,6 +131,7 @@ functor LinkedWithEditAndDefault(M : sig
                                      val inj_this : sql_injectable thisT
                                      val inj_that : sql_injectable thatT
                                      table link : {fthis : thisT, fthat : thatT}
+                                     val title : string
 
                                      con tkey :: Name
                                      con tr :: {Type}
@@ -320,6 +322,7 @@ val linkedToUser : inp ::: Type -> key :: Name -> keyT ::: Type -> r ::: {Type} 
                    => ckey :: Name -> user :: Name -> cr ::: {Type} -> ks ::: {{Unit}} -> [[ckey] ~ [user]] => [[ckey, user] ~ cr]
                    => sql_table ([ckey = keyT, user = string] ++ cr) ks (* connector that must link current user to row *)
                    -> transaction (option string) (* get username, if any *)
+                   -> string (* table title *)
                    -> t inp ([key = keyT] ++ r) linkedToUser_cfg linkedToUser_st
 
 type doubleLinkedToUser_cfg
