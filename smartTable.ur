@@ -938,10 +938,10 @@ functor AssignFromBids(M : sig
                        end) = struct
     open M
 
-    type cfg = ChangeWatcher.t
+    type cfg = ChangeWatcher.client_part
     type internal = option thisT * list (string * bool (* preferred? *)) * source (option string)
 
-    fun assign v u =
+    fun assign ch v u =
         uo <- whoami;
         case uo of
             None => error <xml>Must be logged in</xml>
@@ -949,7 +949,7 @@ functor AssignFromBids(M : sig
             dml (UPDATE tab
                  SET {assignee} = {[u]}
                  WHERE T.{this} = {[v]});
-            ChangeWatcher.changed tabTitle
+            ChangeWatcher.changedBy ch tabTitle
 
     val t = {
         Configure = ChangeWatcher.listen bidTitle,
@@ -970,7 +970,7 @@ functor AssignFromBids(M : sig
         WidgetForCreate = fn _ _ => <xml></xml>,
         OnCreateLocal = fn _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
-        Row = fn uo ctx (v, cs, s) => <xml><td>
+        Row = fn ch ctx (v, cs, s) => <xml><td>
           <dyn signal={sv <- signal s;
                        let
                            val reassign = ss <- source "";
@@ -981,7 +981,7 @@ functor AssignFromBids(M : sig
                                                      case v of
                                                          None => error <xml>Missing bid reference</xml>
                                                        | Some v =>
-                                                         rpc (assign v ssv);
+                                                         rpc (assign (ChangeWatcher.server ch) v ssv);
                                                          set s ssv)
                                                 <xml>Who do you want to assign?</xml>
                                                 <xml><cselect source={ss} class="form-control">
@@ -1391,7 +1391,7 @@ functor Make(M : sig
     type a = {Config : source cfg,
               Configs : source $(map thd3 r),
               Rows : source (list st),
-              Changes : ChangeWatcher.t}
+              Changes : ChangeWatcher.client_part}
 
     val rows =
         cfg <- t.Configure;
@@ -1433,7 +1433,7 @@ functor Make(M : sig
             ChangeWatcher.onChange self.Changes onChange
         end
 
-    fun add r =
+    fun add ch r =
         if not allowCreate then
             error <xml>Access denied</xml>
         else
@@ -1442,9 +1442,10 @@ functor Make(M : sig
                 error <xml>Access denied</xml>
             else
                 @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
-                ChangeWatcher.changed title;
+                ChangeWatcher.changedBy ch title;
                 cfg <- t.Configure;
-                t.OnCreate cfg () r
+                t.OnCreate cfg () r;
+                t.Generate cfg r
 
     fun render ctx self = <xml>
       {if not allowCreate then
@@ -1461,7 +1462,9 @@ functor Make(M : sig
                                    (vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : p.2) => current (@Widget.value w v))
                                            fl widgets ws;
-                                    rpc (add vs))
+                                    st <- rpc (add (ChangeWatcher.server self.Changes) vs);
+                                    rs <- get self.Rows;
+                                    set self.Rows (List.append rs (st :: [])))
                                    <xml>Add</xml>
                                    (@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
                                      (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
@@ -1533,7 +1536,7 @@ functor Make1(M : sig
               Input : inp,
               Configs : source $(map thd3 r),
               Rows : source (list st),
-              Changes : ChangeWatcher.t}
+              Changes : ChangeWatcher.client_part}
 
     fun rows inp =
         cfg <- t.Configure;
@@ -1575,7 +1578,7 @@ functor Make1(M : sig
             ChangeWatcher.onChange self.Changes onChange
         end
 
-    fun add inp r =
+    fun add inp ch r =
         if not allowCreate then
             error <xml>Access denied</xml>
         else
@@ -1584,9 +1587,20 @@ functor Make1(M : sig
                 error <xml>Access denied</xml>
             else
                 @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
-                ChangeWatcher.changed title;
+                ChangeWatcher.changedBy ch title;
                 cfg <- t.Configure;
                 t.OnCreate cfg inp r
+
+    fun generate r =
+        if not allowCreate then
+            error <xml>Access denied</xml>
+        else
+            authed <- authorized;
+            if not authed then
+                error <xml>Access denied</xml>
+            else
+                cfg <- t.Configure;
+                t.Generate cfg r
 
     fun render ctx self = <xml>
       {if not allowCreate then
@@ -1605,8 +1619,11 @@ functor Make1(M : sig
                                    (vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : p.2) => current (@Widget.value w v))
                                            fl widgets ws;
-                                    rpc (add self.Input vs);
-                                    t.OnCreateLocal vs stl)
+                                    rpc (add self.Input (ChangeWatcher.server self.Changes) vs);
+                                    t.OnCreateLocal vs stl;
+                                    st <- rpc (generate vs);
+                                    rs <- get self.Rows;
+                                    set self.Rows (List.append rs (st :: [])))
                                    <xml>Add</xml>
                                    <xml>
                                      {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]

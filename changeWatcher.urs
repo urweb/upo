@@ -7,7 +7,15 @@
  * break parametricity, alpha-equivalence, or some other cherished semantic
  * property. *)
 
+type client_part
+type server_part
+
+(* Server-side *)
+val listen : string -> transaction client_part
 val changed : string -> transaction unit
-type t
-val listen : string -> transaction t                     (* Call this server-side. *)
-val onChange : t -> transaction unit -> transaction unit (* Call this client-side. *)
+val changedBy : server_part -> string -> transaction unit (* Don't send notification to self. *)
+val retire : server_part -> transaction unit              (* No more notifications here. *)
+
+(* Client-side *)
+val onChange : client_part -> transaction unit -> transaction unit
+val server : client_part -> server_part
