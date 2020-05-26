@@ -9,11 +9,3 @@ function startBelowNavbar() {
 
 $(window).resize(startBelowNavbar);
 $(startBelowNavbar);
-
-function activateModal(id) {
-    $('#' + id).modal('show');
-}
-
-function deactivateModal(id) {
-    $('#' + id).modal('hide');
-}

@@ -183,3 +183,6 @@ val context : {
     Tab : option {Count : int, Current : source int}
     (* track which tab we are on and how many there are *)
 } -> context
+
+(* Popper tooltip trigger *)
+val tooltip : id -> transaction unit

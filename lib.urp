@@ -11,8 +11,11 @@ allow meta viewport
 ffi upoFfi
 clientOnly UpoFfi.activateModal
 clientOnly UpoFfi.deactivateModal
+clientOnly UpoFfi.tooltip
 jsFunc UpoFfi.activateModal=activateModal
 jsFunc UpoFfi.deactivateModal=deactivateModal
+jsFunc UpoFfi.tooltip=uw_tooltip
+jsFile upo.js
 
 $/list
 $/char

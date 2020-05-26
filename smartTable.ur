@@ -902,24 +902,39 @@ functor Bid(M : sig
         OnCreateLocal = fn _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo _ (v, s) => <xml><td>
-          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (preferred v); set s Preferred; maybeAlert}>
-            <span dynClass={s <- signal s;
-                            return (case s of
-                                        Preferred => CLASS "glyphicon-2x fas glyphicon-smile"
-                                      | _ => CLASS "glyphicon-2x far glyphicon-smile")}/>
-          </button>
-          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (available v); set s Available; maybeAlert}>
-            <span dynClass={s <- signal s;
-                            return (case s of
-                                        Available => CLASS "glyphicon-2x fas glyphicon-meh"
-                                      | _ => CLASS "glyphicon-2x far glyphicon-meh")}/>
-          </button>
-          <button class="btn" onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (unavailable v); set s Unavailable}>
-            <span dynClass={s <- signal s;
-                            return (case s of
-                                        Unavailable => CLASS "glyphicon-2x fas glyphicon-frown"
-                                      | _ => CLASS "glyphicon-2x far glyphicon-frown")}/>
-          </button>
+          <active code={idp <- fresh;
+                        ida <- fresh;
+                        idu <- fresh;
+                        return <xml>
+                          <button id={idp} class="btn"
+                                  data-toggle="tooltip" data-placement="bottom" title="Preferred"
+                                  onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (preferred v); set s Preferred; maybeAlert}>
+                            <span dynClass={s <- signal s;
+                                            return (case s of
+                                                        Preferred => CLASS "glyphicon-2x fas glyphicon-smile"
+                                                      | _ => CLASS "glyphicon-2x far glyphicon-smile")}/>
+                          </button>
+                          <button id={ida} class="btn"
+                                  data-toggle="tooltip" data-placement="bottom" title="Available"
+                                  onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (available v); set s Available; maybeAlert}>
+                            <span dynClass={s <- signal s;
+                                            return (case s of
+                                                        Available => CLASS "glyphicon-2x fas glyphicon-meh"
+                                                      | _ => CLASS "glyphicon-2x far glyphicon-meh")}/>
+                          </button>
+                          <button id={idu} class="btn"
+                                  data-toggle="tooltip" data-placement="bottom" title="Unavailable"
+                                  onclick={fn _ => case v of None => error <xml>Missing self for Bid</xml> | Some v => rpc (unavailable v); set s Unavailable}>
+                            <span dynClass={s <- signal s;
+                                            return (case s of
+                                                        Unavailable => CLASS "glyphicon-2x fas glyphicon-frown"
+                                                      | _ => CLASS "glyphicon-2x far glyphicon-frown")}/>
+                          </button>
+                          <active code={Ui.tooltip idp;
+                                        Ui.tooltip ida;
+                                        Ui.tooltip idu;
+                                        return <xml></xml>}/>
+                        </xml>}/>
         </td></xml>,
         Todos = fn _ _ => return 0
     }

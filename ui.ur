@@ -419,3 +419,5 @@ fun inFinalTab ctx =
         return (r.Count = 0 || cur = r.Count - 1)
 
 fun context x = x
+
+val tooltip = UpoFfi.tooltip
