@@ -1555,6 +1555,8 @@ functor Make1(M : sig
 
                   val authorized : transaction bool
                   val allowCreate : bool
+                  val notifyWhenEmpty : bool
+                  val notifyWhenNonempty : bool
               end) = struct
     open M
 
@@ -1694,6 +1696,22 @@ functor Make1(M : sig
     </xml>
 
     fun notification _ self = <xml>
+      {if not notifyWhenEmpty then
+           <xml></xml>
+       else <xml>
+         <dyn signal={st <- signal self.Rows;
+                      return (case st of
+                                  [] => <xml><i class="glyphicon glyphicon-lg glyphicon-exclamation-circle"/></xml>
+                                | _ => <xml></xml>)}/>
+       </xml>}
+      {if not notifyWhenNonempty then
+           <xml></xml>
+       else <xml>
+         <dyn signal={st <- signal self.Rows;
+                      return (case st of
+                                  _ :: _ => <xml><i class="glyphicon glyphicon-lg glyphicon-exclamation-circle"/></xml>
+                                | _ => <xml></xml>)}/>
+       </xml>}
       <dyn signal={cfg <- signal self.Config;
                    st <- signal self.Rows;
                    n <- List.foldlM (fn r n =>

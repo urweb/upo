@@ -378,4 +378,6 @@ functor Make1(M : sig
 
                   val authorized : transaction bool
                   val allowCreate : bool
+                  val notifyWhenEmpty : bool
+                  val notifyWhenNonempty : bool
               end) : Ui.S where type input = M.inp
