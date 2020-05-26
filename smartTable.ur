@@ -1307,6 +1307,27 @@ fun taggedWithUser [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
     Todos = fn _ _ => return 0
 }
 
+type taggedWithUserOpt_cfg = option string
+type taggedWithUserOpt_st = unit
+fun taggedWithUserOpt [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
+    (whoami : transaction (option string)) = {
+    Configure = whoami,
+    Generate = fn _ _ => return (),
+    Filter = fn uo _ => case uo of
+                            None => Some (WHERE FALSE)
+                          | Some u => Some (WHERE tab.{user} = {[Some u]}),
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
+    OnLoad = fn _ _ => return (),
+    GenerateLocal = fn _ _ => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
+    Header = fn _ => <xml></xml>,
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
+}
+
 type linkedToUser_cfg = option string * ChangeWatcher.client_part
 type linkedToUser_st = unit
 fun linkedToUser [inp ::: Type] [key :: Name] [keyT ::: Type] [r ::: {Type}] [[key] ~ r]

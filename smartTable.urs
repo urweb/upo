@@ -316,6 +316,12 @@ val taggedWithUser : inp ::: Type -> user :: Name -> r ::: {Type} -> [[user] ~ r
                    => transaction (option string) (* get username, if any *)
                    -> t inp ([user = string] ++ r) taggedWithUser_cfg taggedWithUser_st
 
+type taggedWithUserOpt_cfg
+type taggedWithUserOpt_st
+val taggedWithUserOpt : inp ::: Type -> user :: Name -> r ::: {Type} -> [[user] ~ r]
+                        => transaction (option string) (* get username, if any *)
+                        -> t inp ([user = option string] ++ r) taggedWithUser_cfg taggedWithUser_st
+
 type linkedToUser_cfg
 type linkedToUser_st
 val linkedToUser : inp ::: Type -> key :: Name -> keyT ::: Type -> r ::: {Type} -> [[key] ~ r]
