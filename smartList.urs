@@ -22,6 +22,14 @@ val inputIsOpt : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
                  => sql_injectable_prim inp
                  -> t inp ([col = option inp] ++ r) inputIs_cfg inputIs_st
 
+type inputConnected_cfg
+type inputConnected_st
+val inputConnected : inp ::: Type -> key :: Name -> keyT ::: Type -> r ::: {Type} -> ckey :: Name -> inpCol :: Name -> cothers ::: {Type} -> ckeys ::: {{Unit}}
+                     -> [[key] ~ r] => [[ckey] ~ [inpCol]] => [[ckey, inpCol] ~ cothers]
+                     => sql_injectable inp
+                     -> sql_table ([ckey = keyT, inpCol = inp] ++ cothers) ckeys
+                     -> t inp ([key = keyT] ++ r) inputConnected_cfg inputConnected_st
+
 con columnInHeader_cfg :: Type -> Type
 con columnInHeader_st :: Type -> Type
 val columnInHeader : inp ::: Type -> col :: Name -> colT ::: Type -> r ::: {Type} -> [[col] ~ r]
@@ -161,10 +169,13 @@ val sortbyDesc : inp ::: Type -> col :: Name -> ct ::: Type -> r ::: {Type} -> [
 functor Make(M : sig
                  con r :: {Type}
                  table tab : r
+                 val title : string
 
                  type cfg
                  type st
                  val t : t unit r cfg st
+                 val notifyOnNonempty : bool
+                 val authorized : transaction bool
              end) : Ui.S0
 
 (* This version expects an input of the same type as one of the columns. *)
@@ -172,8 +183,11 @@ functor Make1(M : sig
                   type inp
                   con r :: {Type}
                   table tab : r
+                  val title : string
 
                   type cfg
                   type st
                   val t : t inp r cfg st
+                  val notifyOnNonempty : bool
+                  val authorized : transaction bool
               end) : Ui.S where type input = M.inp

@@ -59,6 +59,25 @@ fun inputIsOpt [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_
     Body = fn () _ => <xml></xml>
 }
 
+type inputConnected_cfg = unit
+type inputConnected_st = unit
+fun inputConnected [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}] [ckey :: Name]
+    [inpCol :: Name] [cothers ::: {Type}] [ckeys ::: {{Unit}}]
+    [[key] ~ r] [[ckey] ~ [inpCol]] [[ckey, inpCol] ~ cothers]
+    (_ : sql_injectable inp)
+    (ctr : sql_table ([ckey = keyT, inpCol = inp] ++ cothers) ckeys) = {
+    Configure = return (),
+    Generate = fn () _ => return (),
+    Filter = fn () inp => Some (WHERE NOT ((SELECT TRUE
+                                            FROM ctr
+                                            WHERE ctr.{ckey} = tab.{key}
+                                              AND ctr.{inpCol} = {[inp]}) IS NULL)),
+    FilterLinks = fn () _ => None,
+    SortBy = fn x => x,
+    Header = fn () _ => <xml></xml>,
+    Body = fn () _ => <xml></xml>
+}
+
 type columnInHeader_cfg (t :: Type) = unit
 type columnInHeader_st (t :: Type) = t
 fun columnInHeader [inp] [col :: Name] [colT ::: Type] [r ::: {Type}] [[col] ~ r]
@@ -422,17 +441,21 @@ val sortbyDesc [inp] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
 functor Make(M : sig
                  con r :: {Type}
                  table tab : r
+                 val title : string
 
                  type cfg
                  type st
                  val t : t unit r cfg st
+                 val notifyOnNonempty : bool
+                 val authorized : transaction bool
              end) = struct
     open M
 
-    type a = {Config : cfg,
-              Rows : list st}
+    type a = {Config : source cfg,
+              Rows : source (list st),
+              Changes : ChangeWatcher.client_part}
 
-    val create =
+    val rows =
         cfg <- t.Configure;
         rs <- List.mapQueryM (SELECT *
                               FROM tab
@@ -440,24 +463,51 @@ functor Make(M : sig
                                 AND {Option.get (WHERE TRUE) (t.FilterLinks cfg ())}
                               ORDER BY {{{t.SortBy (sql_order_by_Nil [[]])}}})
                              (fn {Tab = r} => t.Generate cfg r);
-        return {Config = cfg, Rows = rs}
+        return (cfg, rs)
 
-    fun onload _ = return ()
+    val create =
+        (cfg, rs) <- rows;
+        cfg <- source cfg;
+        rs <- source rs;
+        ch <- ChangeWatcher.listen title;
+        return {Config = cfg, Rows = rs, Changes = ch}
+
+    val relist =
+        b <- authorized;
+        if not b then
+            error <xml>Access denied</xml>
+        else
+            rows
+
+    fun onload self = ChangeWatcher.onChange self.Changes
+                                             ((cfg, rs) <- rpc relist;
+                                              set self.Config cfg;
+                                              set self.Rows rs)
 
     fun render _ self = <xml>
-      {List.mapX (fn r => <xml>
-        <div class="card">
-          <div class="card-header"><h3>
-            {t.Header self.Config r}
-          </h3></div>
-          <div class="card-body">
-            {t.Body self.Config r}
-          </div>
-        </div>
-      </xml>) self.Rows}
+      <dyn signal={cfg <- signal self.Config;
+                   rs <- signal self.Rows;
+                   return (List.mapX (fn r => <xml>
+                     <div class="card">
+                       <div class="card-header"><h3>
+                         {t.Header cfg r}
+                       </h3></div>
+                       <div class="card-body">
+                         {t.Body cfg r}
+                       </div>
+                     </div>
+                   </xml>) rs)}/>
     </xml>
 
-    fun notification _ _ = <xml></xml>
+    fun notification _ self =
+        if not notifyOnNonempty then
+            <xml></xml>
+        else <xml>
+          <dyn signal={rs <- signal self.Rows;
+                       return (case rs of
+                                   _ :: _ => <xml><i class="glyphicon glyphicon-lg glyphicon-exclamation-circle"/></xml>
+                                 | _ => <xml></xml>)}/>
+        </xml>
 
     val ui = {Create = create,
               Onload = onload,
@@ -469,18 +519,23 @@ functor Make1(M : sig
                   type inp
                   con r :: {Type}
                   table tab : r
+                  val title : string
 
                   type cfg
                   type st
                   val t : t inp r cfg st
+                  val notifyOnNonempty : bool
+                  val authorized : transaction bool
              end) = struct
     open M
 
     type input = inp
-    type a = {Config : cfg,
-              Rows : list st}
+    type a = {Input : inp,
+              Config : source cfg,
+              Rows : source (list st),
+              Changes : ChangeWatcher.client_part}
 
-    fun create inp =
+    fun rows inp =
         cfg <- t.Configure;
         rs <- List.mapQueryM (SELECT *
                               FROM tab
@@ -488,24 +543,51 @@ functor Make1(M : sig
                                 AND {Option.get (WHERE TRUE) (t.FilterLinks cfg inp)}
                               ORDER BY {{{t.SortBy (sql_order_by_Nil [[]])}}})
                              (fn {Tab = r} => t.Generate cfg r);
-        return {Config = cfg, Rows = rs}
+        return (cfg, rs)
 
-    fun onload _ = return ()
+    fun create inp =
+        (cfg, rs) <- rows inp;
+        cfg <- source cfg;
+        rs <- source rs;
+        ch <- ChangeWatcher.listen title;
+        return {Input = inp, Config = cfg, Rows = rs, Changes = ch}
+
+    fun relist inp =
+        b <- authorized;
+        if not b then
+            error <xml>Access denied</xml>
+        else
+            rows inp
+
+    fun onload self = ChangeWatcher.onChange self.Changes
+                                             ((cfg, rs) <- rpc (relist self.Input);
+                                              set self.Config cfg;
+                                              set self.Rows rs)
 
     fun render _ self = <xml>
-      {List.mapX (fn r => <xml>
-        <div class="card">
-          <div class="card-header"><h3>
-            {t.Header self.Config r}
-          </h3></div>
-          <div class="card-body">
-            {t.Body self.Config r}
-          </div>
-        </div>
-      </xml>) self.Rows}
+      <dyn signal={cfg <- signal self.Config;
+                   rs <- signal self.Rows;
+                   return (List.mapX (fn r => <xml>
+                     <div class="card">
+                       <div class="card-header"><h3>
+                         {t.Header cfg r}
+                       </h3></div>
+                       <div class="card-body">
+                         {t.Body cfg r}
+                       </div>
+                     </div>
+                   </xml>) rs)}/>
     </xml>
 
-    fun notification _ _ = <xml></xml>
+    fun notification _ self =
+        if not notifyOnNonempty then
+            <xml></xml>
+        else <xml>
+          <dyn signal={rs <- signal self.Rows;
+                       return (case rs of
+                                   _ :: _ => <xml><i class="glyphicon glyphicon-lg glyphicon-exclamation-circle"/></xml>
+                                 | _ => <xml></xml>)}/>
+        </xml>
 
     fun ui inp = {Create = create inp,
                   Onload = onload,
