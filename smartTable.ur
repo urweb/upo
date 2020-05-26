@@ -1020,7 +1020,7 @@ functor AssignFromBids(M : sig
                            return (case sv of
                                        None =>
                                        (case cs of
-                                            [] => <xml><span class="small text-muted">No responses</span></xml>
+                                            [] => <xml><span class="small text-muted">Waiting for response</span></xml>
                                           | _ => <xml><h5>
                                             {let
                                                  val len = List.length cs
@@ -1163,7 +1163,7 @@ functor AssignFromBids2(M : sig
                            return (case sv of
                                        None =>
                                        (case cs of
-                                            [] => <xml><span class="small text-muted">No responses</span></xml>
+                                            [] => <xml><span class="small text-muted">Waiting for response</span></xml>
                                           | _ => <xml><h5>
                                             {let
                                                  val len = List.length cs
