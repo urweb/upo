@@ -1013,7 +1013,7 @@ functor AssignFromBids(M : sig
                                                 <xml>Who do you want to assign?</xml>
                                                 <xml><cselect source={ss} class="form-control">
                                                   <coption/>
-                                                  {List.mapX (fn (u, p) => <xml><coption value={show u}>{[u]}{if p then <xml>*</xml> else <xml></xml>}</coption></xml>) cs}
+                                                  {List.mapX (fn (u, p) => <xml><coption value={show u}>{[u]}{if p then <xml> [preferred]</xml> else <xml></xml>}</coption></xml>) cs}
                                                 </cselect></xml>
                                                 <xml>Assign</xml>)
                        in
@@ -1120,8 +1120,10 @@ functor AssignFromBids2(M : sig
     fun stars n =
         if n <= 0 then
             ""
+        else if n = 1 then
+            " [preferred]"
         else
-            "*" ^ stars (n - 1)
+            " [preferred X" ^ show n ^ "]"
 
     val t = {
         Configure = return (),
