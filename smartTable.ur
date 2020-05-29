@@ -284,13 +284,14 @@ functor LinkedWithEdit(M : sig
                            con tr :: {Type}
                            constraint [tkey] ~ tr
                            table that : ([tkey = thatT] ++ tr)
+                           val thatTitle : string
 
                            val label : string
                            val authorized : transaction bool
                        end) = struct
     open M
 
-    type cfg = option (list thatT) (* if present, allowed to add *)
+    type cfg = option (list thatT * ChangeWatcher.client_part) (* if present, allowed to add *)
     type internal = option thisT * source (list thatT)
 
     val changed = ChangeWatcher.changed title
@@ -342,7 +343,8 @@ functor LinkedWithEdit(M : sig
                                    FROM that
                                    ORDER BY that.{tkey})
                                   (fn r => r.That.tkey);
-              return (Some ts),
+              ch <- ChangeWatcher.listen thatTitle;
+              return (Some (ts, ch)),
         Generate = fn _ r =>
                       ls <- List.mapQuery (SELECT link.{fthat}
                                             FROM link
@@ -354,12 +356,15 @@ functor LinkedWithEdit(M : sig
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
         OnCreate = fn _ _ _ => return (),
-        OnLoad = fn _ _ => return (),
+        OnLoad = fn fs authed =>
+                    case authed of
+                        None => return ()
+                      | Some (_, ch) => ChangeWatcher.onChange ch fs.ReloadState,
         GenerateLocal = fn _ _ => ls <- source []; return (None, ls),
         WidgetForCreate = fn ts (_, ls) =>
           case ts of
               None => <xml></xml>
-            | Some ts =>
+            | Some (ts, _) =>
               <xml>
                 <div class="form-group">
                   <label class="control-label">{[savedLabel]}</label>
@@ -410,7 +415,7 @@ functor LinkedWithEdit(M : sig
                        <dyn signal={ls <- signal ls; return (List.mapX one ls)}/>
                        {case authed of
                             None => <xml></xml>
-                          | Some ts =>
+                          | Some (ts, _) =>
                             case k of
                                 None => error <xml>Missing self for buttons</xml>
                               | Some k =>
@@ -465,13 +470,14 @@ functor LinkedWithEditAndDefault(M : sig
                                      con tr :: {Type}
                                      constraint [tkey] ~ tr
                                      table that : ([tkey = thatT] ++ tr)
+                                     val thatTitle : string
 
                                      val label : string
                                      val authorized : transaction bool
                                  end) = struct
     open M
 
-    type cfg = option (list thatT) (* if present, allowed to add *)
+    type cfg = option (list thatT * ChangeWatcher.client_part) (* if present, allowed to add *)
     type internal = option thisT * source (list thatT)
 
     val changed = ChangeWatcher.changed title
@@ -523,7 +529,8 @@ functor LinkedWithEditAndDefault(M : sig
                                    FROM that
                                    ORDER BY that.{tkey})
                                   (fn r => r.That.tkey);
-              return (Some ts),
+              ch <- ChangeWatcher.listen thatTitle;
+              return (Some (ts, ch)),
         Generate = fn _ r =>
                       ls <- List.mapQuery (SELECT link.{fthat}
                                             FROM link
@@ -535,12 +542,15 @@ functor LinkedWithEditAndDefault(M : sig
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
         OnCreate = fn _ _ _ => return (),
-        OnLoad = fn _ _ => return (),
+        OnLoad = fn fs authed =>
+                    case authed of
+                        None => return ()
+                      | Some (_, ch) => ChangeWatcher.onChange ch fs.ReloadState,
         GenerateLocal = fn _ inp => ls <- source (inp :: []); return (None, ls),
         WidgetForCreate = fn ts (_, ls) =>
           case ts of
               None => <xml></xml>
-            | Some ts =>
+            | Some (ts, _) =>
               <xml>
                 <div class="form-group">
                   <label class="control-label">{[savedLabel]}</label>
@@ -591,7 +601,7 @@ functor LinkedWithEditAndDefault(M : sig
                        <dyn signal={ls <- signal ls; return (List.mapX one ls)}/>
                        {case authed of
                             None => <xml></xml>
-                          | Some ts =>
+                          | Some (ts, _) =>
                             case k of
                                 None => error <xml>Missing self for buttons</xml>
                               | Some k =>

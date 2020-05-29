@@ -107,6 +107,7 @@ functor LinkedWithEdit(M : sig
                            con tr :: {Type}
                            constraint [tkey] ~ tr
                            table that : ([tkey = thatT] ++ tr)
+                           val thatTitle : string
 
                            val label : string
                            val authorized : transaction bool
@@ -137,6 +138,7 @@ functor LinkedWithEditAndDefault(M : sig
                                      con tr :: {Type}
                                      constraint [tkey] ~ tr
                                      table that : ([tkey = thatT] ++ tr)
+                                     val thatTitle : string
 
                                      val label : string
                                      val authorized : transaction bool
