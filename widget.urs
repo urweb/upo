@@ -63,6 +63,10 @@ type intbox
 type intbox_config
 val intbox : t int intbox intbox_config
 
+type opt_intbox
+type opt_intbox_config
+val opt_intbox : t (option int) opt_intbox opt_intbox_config
+
 type timebox
 type timebox_config
 val timebox : t time timebox timebox_config

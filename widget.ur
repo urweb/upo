@@ -106,6 +106,24 @@ val intbox = { Configure = return (),
                AsValue = txt,
                Optional = False }
 
+val opt_intbox = { Configure = return (),
+                   Create = fn () => source "",
+                   Initialize = fn () n => source (show n),
+                   Reset = fn s => set s "",
+                   Set = fn s v => set s (show v),
+                   Reconfigure = fn _ () => return (),
+                   AsWidget = fn s ido =>
+                                 case ido of
+                                     None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
+                                   | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                   AsWidgetSimple = fn s ido =>
+                                 case ido of
+                                     None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
+                                   | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                   Value = fn s => v <- signal s; return (read v),
+                   AsValue = txt,
+                   Optional = True }
+
 val timebox = { Configure = t <- now; return (show t),
                 Create = fn t => s <- source ""; return (t, s),
                 Initialize = fn t n => s <- source (show n); return (t, s),
