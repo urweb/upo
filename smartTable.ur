@@ -1502,9 +1502,28 @@ functor Make(M : sig
                 error <xml>Access denied</xml>
             else
                 @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
-                ChangeWatcher.changedBy ch title;
                 cfg <- t.Configure;
-                t.OnCreate cfg () r;
+                t.OnCreate cfg () r
+
+    fun notify ch =
+        if not allowCreate then
+            error <xml>Access denied</xml>
+        else
+            authed <- authorized;
+            if not authed then
+                error <xml>Access denied</xml>
+            else
+                ChangeWatcher.changedBy ch title
+
+    fun generate r =
+        if not allowCreate then
+            error <xml>Access denied</xml>
+        else
+            authed <- authorized;
+            if not authed then
+                error <xml>Access denied</xml>
+            else
+                cfg <- t.Configure;
                 t.Generate cfg r
 
     fun render ctx self = <xml>
@@ -1518,26 +1537,34 @@ functor Make(M : sig
                            ws <- @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
                                   (fn [nm ::_] [p ::_] => @Widget.create)
                                   fl widgets cfgs;
+                           cfg <- get self.Config;
+                           stl <- t.GenerateLocal cfg ();
                            return (Ui.modal
                                    (vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : p.2) => current (@Widget.value w v))
                                            fl widgets ws;
-                                    st <- rpc (add (ChangeWatcher.server self.Changes) vs);
+                                    rpc (add (ChangeWatcher.server self.Changes) vs);
+                                    t.OnCreateLocal vs stl;
+                                    rpc (notify (ChangeWatcher.server self.Changes));
+                                    st <- rpc (generate vs);
                                     rs <- get self.Rows;
                                     set self.Rows (List.append rs (st :: [])))
                                    <xml>Add</xml>
-                                   (@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
-                                     (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
-                                         (lab : string) (w : Widget.t' p) x =>
-                                         if @Widget.optional w then
-                                             <xml></xml>
-                                         else <xml>
-                                           <div class="form-group">
-                                             <label class="control-label">{[lab]}</label>
-                                             {@Widget.asWidget w x None}
-                                           </div>
-                                         </xml>)
-                                     fl labels widgets ws)
+                                   <xml>
+                                     {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
+                                       (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
+                                           (lab : string) (w : Widget.t' p) x =>
+                                           if @Widget.optional w then
+                                               <xml></xml>
+                                           else <xml>
+                                             <div class="form-group">
+                                               <label class="control-label">{[lab]}</label>
+                                               {@Widget.asWidget w x None}
+                                             </div>
+                                           </xml>)
+                                       fl labels widgets ws}
+                                     {t.WidgetForCreate cfg stl}
+                                   </xml>
                                    <xml>Add</xml>))}
 
       <dyn signal={cfg <- signal self.Config;
