@@ -217,7 +217,7 @@ functor Make(M : sig
                                                     </button>
                                                     <button class="btn btn-secondary"
                                                             onclick={fn _ => set r.Editing None}>
-                                                      <span class="glyphicon glyphicon-remove"/>
+                                                      <span class="glyphicon glyphicon-times"/>
                                                     </button>
                                                   </td>
                                                   {@mapX2 [Widget.t'] [snd3] [_]
