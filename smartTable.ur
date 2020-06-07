@@ -259,8 +259,47 @@ fun doubleLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
                                            ON tab1.{finterm1} = tab2.{finterm2}
                                          WHERE tab1.{fthis} = {[r.this]}
                                          GROUP BY tab2.{fthat}
-                                         ORDER BY tab2.{fthat})
+                                         ORDER BY Count DESC, tab2.{fthat})
                                         (fn r => (r.Tab2.fthat, r.Count)),
+    Filter = fn _ _ => None,
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
+    OnLoad = fn _ _ => return (),
+    GenerateLocal = fn () _ => return [],
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
+    Header = fn () => <xml><th>{[l]}</th></xml>,
+    Row = fn () _ ls => <xml><td>{weightedLinks ls}</td></xml>,
+    Todos = fn _ _ => return 0
+}
+
+type tripleLinked_cfg (t :: Type) = unit
+type tripleLinked_st (t :: Type) = list (t * int)
+fun tripleLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
+    [finterm1 :: Name] [finterm2 :: Name] [finterm3 :: Name] [finterm4 :: Name]
+    [intermT1 ::: Type] [intermT2 ::: Type]
+    [fthat :: Name] [thatT ::: Type]
+    [r ::: {Type}] [fr1 ::: {Type}] [fr2 ::: {Type}] [fr3 ::: {Type}]
+    [ks1 ::: {{Unit}}] [ks2 ::: {{Unit}}] [ks3 ::: {{Unit}}]
+    [[this] ~ r] [[fthis] ~ [finterm1]] [[fthis, finterm1] ~ fr1]
+    [[finterm2] ~ [finterm3]] [[finterm2, finterm3] ~ fr2]
+    [[finterm4] ~ [fthat]] [[finterm4, fthat] ~ fr3]
+    (_ : show thatT) (_ : sql_injectable thisT)
+    (tab1 : sql_table ([fthis = thisT, finterm1 = intermT1] ++ fr1) ks1)
+    (tab2 : sql_table ([finterm2 = intermT1, finterm3 = intermT2] ++ fr2) ks2)
+    (tab3 : sql_table ([finterm4 = intermT2, fthat = thatT] ++ fr3) ks3)
+    (l : string) = {
+    Configure = return (),
+    Generate = fn () r => List.mapQuery (SELECT tab3.{fthat}, COUNT( * ) AS Count
+                                         FROM tab1 JOIN tab2
+                                           ON tab1.{finterm1} = tab2.{finterm2}
+                                           JOIN tab3
+                                           ON tab2.{finterm3} = tab3.{finterm4}
+                                         WHERE tab1.{fthis} = {[r.this]}
+                                         GROUP BY tab3.{fthat}
+                                         ORDER BY Count DESC, tab3.{fthat})
+                                        (fn r => (r.Tab3.fthat, r.Count)),
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
