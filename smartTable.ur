@@ -234,6 +234,46 @@ fun linked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     Todos = fn _ _ => return 0
 }
 
+fun weightedLinks [a] (_ : show a) (ls : list (a * int)) : xbody = <xml>
+  {List.mapX (fn (x, n) => <xml> <span class="badge badge-pill badge-info">{[x]}{[case n of
+                                                                                      1 => ""
+                                                                                    | _ => " x" ^ show n]}</span></xml>) ls}
+</xml>
+
+type doubleLinked_cfg (t :: Type) = unit
+type doubleLinked_st (t :: Type) = list (t * int)
+fun doubleLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
+    [finterm1 :: Name] [finterm2 :: Name] [intermT ::: Type]
+    [fthat :: Name] [thatT ::: Type]
+    [r ::: {Type}] [fr1 ::: {Type}] [fr2 ::: {Type}]
+    [ks1 ::: {{Unit}}] [ks2 ::: {{Unit}}]
+    [[this] ~ r] [[fthis] ~ [finterm1]] [[fthis, finterm1] ~ fr1]
+    [[finterm2] ~ [fthat]] [[finterm2, fthat] ~ fr2]
+    (_ : show thatT) (_ : sql_injectable thisT)
+    (tab1 : sql_table ([fthis = thisT, finterm1 = intermT] ++ fr1) ks1)
+    (tab2 : sql_table ([finterm2 = intermT, fthat = thatT] ++ fr2) ks2)
+    (l : string) = {
+    Configure = return (),
+    Generate = fn () r => List.mapQuery (SELECT tab2.{fthat}, COUNT( * ) AS Count
+                                         FROM tab1 JOIN tab2
+                                           ON tab1.{finterm1} = tab2.{finterm2}
+                                         WHERE tab1.{fthis} = {[r.this]}
+                                         GROUP BY tab2.{fthat}
+                                         ORDER BY tab2.{fthat})
+                                        (fn r => (r.Tab2.fthat, r.Count)),
+    Filter = fn _ _ => None,
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    OnCreate = fn _ _ _ => return (),
+    OnLoad = fn _ _ => return (),
+    GenerateLocal = fn () _ => return [],
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
+    Header = fn () => <xml><th>{[l]}</th></xml>,
+    Row = fn () _ ls => <xml><td>{weightedLinks ls}</td></xml>,
+    Todos = fn _ _ => return 0
+}
+
 type orderedLinked_cfg (t :: Type) = unit
 type orderedLinked_st (t :: Type) = list t
 fun orderedLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]

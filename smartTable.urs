@@ -74,6 +74,21 @@ val linked : inp ::: Type -> this :: Name -> fthis :: Name -> thisT ::: Type
              -> string (* label *)
              -> t inp ([this = thisT] ++ r) (linked_cfg thatT) (linked_st thatT)
 
+con doubleLinked_cfg :: Type -> Type
+con doubleLinked_st :: Type -> Type
+val doubleLinked : inp ::: Type -> this :: Name -> fthis :: Name -> thisT ::: Type
+                   -> finterm1 :: Name -> finterm2 :: Name -> intermT ::: Type
+                   -> fthat :: Name -> thatT ::: Type
+                   -> r ::: {Type} -> fr1 ::: {Type} -> fr2 ::: {Type}
+                   -> ks1 ::: {{Unit}} -> ks2 ::: {{Unit}}
+                   -> [[this] ~ r] => [[fthis] ~ [finterm1]] => [[fthis, finterm1] ~ fr1]
+                   => [[finterm2] ~ [fthat]] => [[finterm2, fthat] ~ fr2]
+                   => show thatT -> sql_injectable thisT
+                   -> sql_table ([fthis = thisT, finterm1 = intermT] ++ fr1) ks1
+                   -> sql_table ([finterm2 = intermT, fthat = thatT] ++ fr2) ks2
+                   -> string (* label *)
+                   -> t inp ([this = thisT] ++ r) (doubleLinked_cfg thatT) (doubleLinked_st thatT)
+
 con orderedLinked_cfg :: Type -> Type
 con orderedLinked_st :: Type -> Type
 val orderedLinked : inp ::: Type -> this :: Name -> fthis :: Name -> thisT ::: Type
