@@ -108,6 +108,22 @@ fun inputConnects [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}]
     Todos = fn _ _ => return 0
 }
 
+val empty [inp] [r] = {
+    Configure = return (),
+    Generate = fn () _ => return (),
+    Filter = fn () _ => None,
+    FilterLinks = fn () _ => None,
+    SortBy = fn sb => sb,
+    OnLoad = fn _ () => return (),
+    OnCreate = fn () _ _ => return (),
+    GenerateLocal = fn () _ => return (),
+    WidgetForCreate = fn () () => <xml></xml>,
+    OnCreateLocal = fn _ () => return (),
+    Header = fn () => <xml></xml>,
+    Row = fn () _ () => <xml></xml>,
+    Todos = fn () () => return 0
+}
+
 fun compose [inp] [r] [cfgb] [cfga] [stb] [sta] (b : t inp r cfgb stb) (a : t inp r cfga sta) = {
     Configure = cfga <- a.Configure;
                 cfgb <- b.Configure;

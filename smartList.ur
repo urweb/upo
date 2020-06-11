@@ -14,6 +14,16 @@ type t (inp :: Type) (r :: {Type}) (cfg :: Type) (st :: Type) = {
      Body : cfg -> st -> xbody
 }
 
+val empty [inp] [r] = {
+    Configure = return (),
+    Generate = fn () _ => return (),
+    Filter = fn () _ => None,
+    FilterLinks = fn () _ => None,
+    SortBy = fn sb => sb,
+    Header = fn () () => <xml></xml>,
+    Body = fn () () => <xml></xml>
+}
+
 fun compose [inp] [r] [cfga] [cfgb] [sta] [stb] (a : t inp r cfga sta) (b : t inp r cfgb stb) = {
     Configure = cfga <- a.Configure;
                 cfgb <- b.Configure;

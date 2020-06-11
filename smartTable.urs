@@ -6,6 +6,7 @@ con t :: Type (* arbitrary input value, to use for filtering *)
     -> Type   (* internal type for server-generated data to render locally *)
     -> Type
 
+val empty : inp ::: Type -> r ::: {Type} -> t inp r unit unit
 val compose : inp ::: Type -> r ::: {Type} -> cfga ::: Type -> cfgb ::: Type
               -> sta ::: Type -> stb ::: Type
               -> t inp r cfga sta -> t inp r cfgb stb -> t inp r (cfga * cfgb) (sta * stb)
