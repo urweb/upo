@@ -41,8 +41,8 @@ fun compose [inp] [r] [cfga] [cfgb] [sta] [stb] (a : t inp r cfga sta) (b : t in
                                            | (x, None) => x
                                            | (Some x, Some y) => Some (WHERE {x} OR {y}),
     SortBy = fn sb => b.SortBy (a.SortBy sb),
-    Header = fn (cfga, cfgb) (x, y) => <xml>{b.Header cfgb y}{a.Header cfga x}</xml>,
-    Body = fn (cfga, cfgb) (x, y) => <xml>{b.Body cfgb y}{a.Body cfga x}</xml>
+    Header = fn (cfga, cfgb) (x, y) => <xml>{a.Header cfga x}{b.Header cfgb y}</xml>,
+    Body = fn (cfga, cfgb) (x, y) => <xml>{a.Body cfga x}{b.Body cfgb y}</xml>
 }
 
 type inputIs_cfg = unit
