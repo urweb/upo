@@ -8,6 +8,7 @@ functor Make(M : sig
                  con fs :: {(Type * Type * Type)}
                  val widgets : $(map Widget.t' fs)
                  table tab : $(map fst3 fs)
+                 val title : string
                  val fl : folder fs
                  val eqs : $(map eq (map fst3 fs))
                  val ords : $(map ord (map fst3 fs))

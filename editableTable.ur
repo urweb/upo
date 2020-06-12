@@ -8,6 +8,7 @@ functor Make(M : sig
                  con fs :: {(Type * Type * Type)}
                  val widgets : $(map Widget.t' fs)
                  table tab : $(map fst3 fs)
+                 val title : string
                  val fl : folder fs
                  val eqs : $(map eq (map fst3 fs))
                  val ords : $(map ord (map fst3 fs))
@@ -43,7 +44,8 @@ functor Make(M : sig
                Perm : permission,
                Rows : source (list row),
                ToAdd : state,
-               Channel : channel action }
+               Channel : channel action,
+               Changes : ChangeWatcher.client_part }
 
     val freshRow = @Monad.mapR2 _ [Widget.t'] [thd3] [snd3]
                     (fn [nm ::_] [p ::_] (w : Widget.t' p) => @Widget.create w) fl widgets
@@ -57,31 +59,44 @@ functor Make(M : sig
                       current (@Widget.value w v))
                   fl widgets
 
+    val makeRows =
+        List.mapQueryM (SELECT *
+                        FROM tab
+                        ORDER BY {{{@Sql.order_by (@@Folder.mp [fst3] [_] fl)
+                          (@@Sql.some_fields [#Tab] [map fst3 fs] [[]] [[]] [[]] [[]] ! !
+                            (@@Folder.mp [fst3] [_] fl)) sql_asc}}})
+                       (fn r =>
+                           editing <- source None;
+                           return {Editing = editing,
+                                   Content = r.Tab})
+
     val create =
         perm <- permission;
         config <- @Monad.mapR _ [Widget.t'] [thd3]
                     (fn [nm ::_] [p ::_] (w : Widget.t' p) => @Widget.configure w) fl widgets;
         toAdd <- freshRow config;
 
-        rows <- List.mapQueryM (SELECT *
-                                FROM tab
-                                ORDER BY {{{@Sql.order_by (@@Folder.mp [fst3] [_] fl)
-                                  (@@Sql.some_fields [#Tab] [map fst3 fs] [[]] [[]] [[]] [[]] ! !
-                                    (@@Folder.mp [fst3] [_] fl)) sql_asc}}})
-                               (fn r =>
-                                   editing <- source None;
-                                   return {Editing = editing,
-                                           Content = r.Tab});
+        rows <- makeRows;
         rows <- source rows;
 
         chan <- channel;
         dml (INSERT INTO listeners(Channel) VALUES ({[chan]}));
 
+        ch <- ChangeWatcher.listen title;
+
         return {Config = config,
                 Perm = perm,
                 Rows = rows,
                 ToAdd = toAdd,
-                Channel = chan}
+                Channel = chan,
+                Changes = ch}
+
+    val refresh =
+        perm <- permission;
+        if perm.Add then
+            makeRows
+        else
+            error <xml>Don't have permission to read rows</xml>
 
     fun onload a =
         let
@@ -110,10 +125,12 @@ functor Make(M : sig
                                                             a) rows)));
                 loop ()
         in
-            spawn (loop ())
+            spawn (loop ());
+            ChangeWatcher.onChange a.Changes (rows <- rpc refresh;
+                                              set a.Rows rows)
         end
 
-    fun add r =
+    fun add ch r =
         perm <- permission;
         (if perm.Add then
              return ()
@@ -125,9 +142,10 @@ functor Make(M : sig
         queryI1 (SELECT * FROM listeners)
         (fn x => send x.Channel (ADD r));
 
-        onAdd r
+        onAdd r;
+        ChangeWatcher.changedBy ch title
 
-    fun del r =
+    fun del ch r =
         perm <- permission;
         (if perm.Delete then
              return ()
@@ -141,9 +159,10 @@ functor Make(M : sig
         queryI1 (SELECT * FROM listeners)
         (fn x => send x.Channel (DEL r));
 
-        onDelete r
+        onDelete r;
+        ChangeWatcher.changedBy ch title
 
-    fun mod r =
+    fun mod ch r =
         perm <- permission;
         (if perm.Modify then
              return ()
@@ -161,7 +180,8 @@ functor Make(M : sig
         queryI1 (SELECT * FROM listeners)
         (fn x => send x.Channel (MOD r));
 
-        onModify r
+        onModify r;
+        ChangeWatcher.changedBy ch title
 
     fun render ctx a = <xml>
       <table class="bs-table">
@@ -183,7 +203,7 @@ functor Make(M : sig
                                                            Ui.modalButton ctx (CLASS "btn btn-secondary")
                                                                           <xml><span class="glyphicon glyphicon-trash"/></xml>
                                                                           (return (Ui.modal
-                                                                                       (rpc (del r.Content))
+                                                                                       (rpc (del (ChangeWatcher.server a.Changes) r.Content))
                                                                                        <xml>Are you sure you want to delete this row?</xml>
                                                                                        <xml/>
                                                                                        <xml>Yes!</xml>))
@@ -211,7 +231,8 @@ functor Make(M : sig
                                                             onclick={fn _ =>
                                                                         vs <- rowOut ws;
                                                                         set r.Editing None;
-                                                                        rpc (mod {Old = r.Content,
+                                                                        rpc (mod (ChangeWatcher.server a.Changes)
+                                                                                 {Old = r.Content,
                                                                                   New = vs})}>
                                                       <span class="glyphicon glyphicon-check"/>
                                                     </button>
@@ -235,7 +256,7 @@ functor Make(M : sig
                              class="btn btn-primary"
                              onclick={fn _ =>
                                          r <- rowOut a.ToAdd;
-                                         rpc (add r)}/></th>
+                                         rpc (add (ChangeWatcher.server a.Changes) r)}/></th>
 
                  {@mapX2 [Widget.t'] [snd3] [_]
                    (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : snd3 p) =>
