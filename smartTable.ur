@@ -559,6 +559,213 @@ functor LinkedWithEdit(M : sig
     }
 end
 
+functor LinkedWithEditForOwner(M : sig
+                                   type inp
+                                   con this :: Name
+                                   con owner :: Name
+                                   con fthis :: Name
+                                   con thisT :: Type
+                                   con fthat :: Name
+                                   con thatT :: Type
+                                   con r :: {Type}
+                                   constraint [this] ~ [owner]
+                                   constraint [this, owner] ~ r
+                                   constraint [fthis] ~ [fthat]
+                                   table tab : ([this = thisT, owner = option string] ++ r)
+                                   val show_that : show thatT
+                                   val read_that : read thatT
+                                   val eq_that : eq thatT
+                                   val inj_this : sql_injectable thisT
+                                   val inj_that : sql_injectable thatT
+                                   table link : {fthis : thisT, fthat : thatT}
+                                   val title : string
+
+                                   con tkey :: Name
+                                   con tr :: {Type}
+                                   constraint [tkey] ~ tr
+                                   table that : ([tkey = thatT] ++ tr)
+                                   val thatTitle : string
+
+                                   val label : string
+                                   val whoami : transaction (option string)
+                       end) = struct
+    open M
+
+    type cfg = option (string * list thatT * ChangeWatcher.client_part) (* if present, allowed to add *)
+    type internal = option thisT * source (list thatT) * bool (* owner? *)
+
+    val changed = ChangeWatcher.changed title
+
+    fun enforce k =
+        uo <- whoami;
+        case uo of
+            None => error <xml>Must be logged in</xml>
+          | Some u =>
+            owner <- oneRowE1 (SELECT COUNT( * ) > 0
+                               FROM tab
+                               WHERE tab.{this} = {[k]}
+                                 AND tab.{owner} = {[Some u]});
+            if not owner then
+                error <xml>Access denied</xml>
+            else
+                return ()
+
+    fun add k v =
+        enforce k;
+        dml (DELETE FROM link
+             WHERE T.{fthis} = {[k]}
+               AND T.{fthat} = {[v]});
+        dml (INSERT INTO link({fthis}, {fthat})
+             VALUES ({[k]}, {[v]}));
+        changed
+
+    fun addAll k vs =
+        enforce k;
+        List.app (fn v =>
+                     dml (DELETE FROM link
+                          WHERE T.{fthis} = {[k]}
+                            AND T.{fthat} = {[v]});
+                     dml (INSERT INTO link({fthis}, {fthat})
+                          VALUES ({[k]}, {[v]}))) vs;
+        changed
+
+    fun remove k v =
+        enforce k;
+        dml (DELETE FROM link
+             WHERE T.{fthis} = {[k]}
+               AND T.{fthat} = {[v]});
+        changed
+
+    val savedLabel = label
+    val label = Basis.label
+
+    val t = {
+        Configure = uo <- whoami;
+          case uo of
+              None => return None
+            | Some u =>
+              ts <- List.mapQuery (SELECT that.{tkey}
+                                   FROM that
+                                   ORDER BY that.{tkey})
+                                  (fn r => r.That.tkey);
+              ch <- ChangeWatcher.listen thatTitle;
+              return (Some (u, ts, ch)),
+        Generate = fn cfg r =>
+                      owner <- (case cfg of
+                                    None => return False
+                                  | Some (u, _, _) =>
+                                    oneRowE1 (SELECT COUNT( * ) > 0
+                                              FROM tab
+                                              WHERE tab.{this} = {[r.this]}
+                                                AND tab.{owner} = {[Some u]}));
+                      ls <- List.mapQuery (SELECT link.{fthat}
+                                            FROM link
+                                            WHERE link.{fthis} = {[r.this]})
+                                          (fn r => r.Link.fthat);
+                      ls <- source ls;
+                      return (Some r.this, ls, owner),
+        Filter = fn _ _ => None,
+        FilterLinks = fn _ _ => None,
+        SortBy = fn x => x,
+        ModifyBeforeCreate = fn _ _ r => r,
+        OnCreate = fn _ _ _ => return (),
+        OnLoad = fn fs authed =>
+                    case authed of
+                        None => return ()
+                      | Some (_, _, ch) => ChangeWatcher.onChange ch fs.ReloadState,
+        GenerateLocal = fn _ _ => ls <- source []; return (None, ls, True),
+        WidgetForCreate = fn ts (_, ls, _) =>
+          case ts of
+              None => <xml></xml>
+            | Some (_, ts, _) =>
+              <xml>
+                <div class="form-group">
+                  <label class="control-label">{[savedLabel]}</label>
+                  <active code={lsV <- get ls;
+                                s2 <- Select2.create (List.mapX (fn t =>
+                                                                    if List.mem t lsV then
+                                                                        <xml><coption selected={True}>{[t]}</coption></xml>
+                                                                    else
+                                                                        <xml><coption>{[t]}</coption></xml>) ts);
+                                return <xml>
+                                  {Select2.render s2}
+                                  <dyn signal={seled <- Select2.selected s2;
+                                               return <xml>
+                                                 <active code={set ls (List.mp readError seled);
+                                                               return <xml></xml>}/>
+                                               </xml>}/>
+                                </xml>}/>
+                </div>
+              </xml>,
+        OnCreateLocal = fn r (_, ls, _) =>
+                           ls <- get ls;
+                           case ls of
+                               [] => return ()
+                             | _ => rpc (addAll r.this ls),
+        Header = fn _ => <xml><th>{[savedLabel]}</th></xml>,
+        Row = fn cfg ctx (k, ls, owner) => let
+                     fun one v = <xml>
+                       <span class="badge badge-pill badge-info p-2">
+                         {[v]}
+                         {if not owner then
+                              <xml></xml>
+                          else
+                              <xml>
+                                <span class="text-white" style="cursor: pointer"
+                                      onclick={fn _ =>
+                                                  case k of
+                                                      None => error <xml>Missing self for buttons</xml>
+                                                    | Some k =>
+                                                      rpc (remove k v);
+                                                      lsV <- get ls;
+                                                      set ls (List.filter (fn v' => v' <> v) lsV)}>
+                                  &times;
+                                </span>
+                              </xml>}
+                       </span>
+                     </xml>
+                 in
+                     <xml><td>
+                       <dyn signal={ls <- signal ls; return (List.mapX one ls)}/>
+                       {if not owner then
+                            <xml></xml>
+                        else
+                            case cfg of
+                                None => <xml></xml>
+                              | Some (_, ts, _) =>
+                                case k of
+                                    None => error <xml>Missing self for buttons</xml>
+                                  | Some k =>
+                                    Ui.modalIcon ctx
+                                                 (CLASS "glyphicon glyphicon-pencil-alt")
+                                                 (lsV <- get ls;
+                                                  s2 <- Select2.create (List.mapX (fn t =>
+                                                                            if List.mem t lsV then
+                                                                                <xml><coption selected={True}>{[t]}</coption></xml>
+                                                                            else
+                                                                                <xml><coption>{[t]}</coption></xml>) ts);
+                                                  return (Ui.modal (seled <- current (Select2.selected s2);
+                                                                    seled <- return (List.mp readError seled);
+                                                                    List.app (fn selectedNow =>
+                                                                                 if List.mem selectedNow lsV then
+                                                                                     return ()
+                                                                                 else
+                                                                                     rpc (add k selectedNow)) seled;
+                                                                    List.app (fn selectedBefore =>
+                                                                                 if List.mem selectedBefore seled then
+                                                                                     return ()
+                                                                                 else
+                                                                                     rpc (remove k selectedBefore)) lsV;
+                                                                    set ls seled)
+                                                                   <xml>Change selection</xml>
+                                                                   (Select2.render s2)
+                                                                   <xml>Save</xml>))}
+                     </td></xml>
+                 end,
+        Todos = fn _ _ => return 0
+    }
+end
+
 functor LinkedWithEditAndDefault(M : sig
                                      con this :: Name
                                      con fthis :: Name
@@ -1426,10 +1633,10 @@ fun taggedWithUser [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
     (whoami : transaction (option string)) = {
     Configure = whoami,
     Generate = fn _ _ => return (),
-    Filter = fn uo _ => case uo of
-                            None => Some (WHERE FALSE)
-                          | Some u => Some (WHERE tab.{user} = {[u]}),
-    FilterLinks = fn _ _ => None,
+    Filter = fn _ _ => None,
+    FilterLinks = fn uo _ => case uo of
+                                 None => Some (WHERE FALSE)
+                               | Some u => Some (WHERE tab.{user} = {[u]}),
     SortBy = fn x => x,
     ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
@@ -1448,10 +1655,10 @@ fun taggedWithUserOpt [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
     (whoami : transaction (option string)) = {
     Configure = whoami,
     Generate = fn _ _ => return (),
-    Filter = fn uo _ => case uo of
-                            None => Some (WHERE FALSE)
-                          | Some u => Some (WHERE tab.{user} = {[Some u]}),
-    FilterLinks = fn _ _ => None,
+    Filter = fn _ _ => None,
+    FilterLinks = fn uo _ => case uo of
+                                 None => Some (WHERE FALSE)
+                               | Some u => Some (WHERE tab.{user} = {[Some u]}),
     SortBy = fn x => x,
     ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),

@@ -151,6 +151,41 @@ functor LinkedWithEdit(M : sig
     val t : t M.inp ([M.this = M.thisT] ++ M.r) cfg internal
 end
 
+functor LinkedWithEditForOwner(M : sig
+                                   type inp
+                                   con this :: Name
+                                   con owner :: Name
+                                   con fthis :: Name
+                                   con thisT :: Type
+                                   con fthat :: Name
+                                   con thatT :: Type
+                                   con r :: {Type}
+                                   constraint [this] ~ [owner]
+                                   constraint [this, owner] ~ r
+                                   constraint [fthis] ~ [fthat]
+                                   table tab : ([this = thisT, owner = option string] ++ r)
+                                   val show_that : show thatT
+                                   val read_that : read thatT
+                                   val eq_that : eq thatT
+                                   val inj_this : sql_injectable thisT
+                                   val inj_that : sql_injectable thatT
+                                   table link : {fthis : thisT, fthat : thatT}
+                                   val title : string
+
+                                   con tkey :: Name
+                                   con tr :: {Type}
+                                   constraint [tkey] ~ tr
+                                   table that : ([tkey = thatT] ++ tr)
+                                   val thatTitle : string
+
+                                   val label : string
+                                   val whoami : transaction (option string)
+                               end) : sig
+    type cfg
+    type internal
+    val t : t M.inp ([M.this = M.thisT, M.owner = option string] ++ M.r) cfg internal
+end
+
 functor LinkedWithEditAndDefault(M : sig
                                      con this :: Name
                                      con fthis :: Name
