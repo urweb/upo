@@ -8,6 +8,7 @@ type t (inp :: Type) (r :: {Type}) (cfg :: Type) (st :: Type) = {
      Filter : cfg -> inp -> option (sql_exp [Tab = r] [] [] bool),
      FilterLinks : cfg -> inp -> option (sql_exp [Tab = r] [] [] bool),
      SortBy : sql_order_by [Tab = r] [] -> sql_order_by [Tab = r] [],
+     ModifyBeforeCreate : cfg -> inp -> $r -> $r,
      OnCreate : cfg -> inp -> $r -> transaction unit,
 
      (* Run on client: *)
@@ -28,6 +29,7 @@ fun inputIs [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_inj
     Filter = fn () inp => Some (WHERE tab.{col} = {[inp]}),
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -46,6 +48,7 @@ fun inputIsOpt [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_
     Filter = fn () inp => Some (WHERE tab.{col} = {[Some inp]}),
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -71,6 +74,7 @@ fun inputConnected [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}] [ckey :: N
                                               AND ctr.{inpCol} = {[inp]}) IS NULL)),
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -93,6 +97,7 @@ fun inputConnects [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}]
     Filter = fn () _ => None,
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn () inp r =>
                   dml (DELETE FROM ctr
                        WHERE T.{ckey} = {[r.key]}
@@ -114,6 +119,7 @@ val empty [inp] [r] = {
     Filter = fn () _ => None,
     FilterLinks = fn () _ => None,
     SortBy = fn sb => sb,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnLoad = fn _ () => return (),
     OnCreate = fn () _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -141,6 +147,7 @@ fun compose [inp] [r] [cfgb] [cfga] [stb] [sta] (b : t inp r cfgb stb) (a : t in
                                            | (x, None) => x
                                            | (Some x, Some y) => Some (WHERE {x} OR {y}),
     SortBy = fn sb => b.SortBy (a.SortBy sb),
+    ModifyBeforeCreate = fn (cfgb, cfga) inp r => a.ModifyBeforeCreate cfga inp (b.ModifyBeforeCreate cfgb inp r),
     OnLoad = fn fs (cfgb, cfga) => b.OnLoad fs cfgb; a.OnLoad fs cfga,
     OnCreate = fn (cfgb, cfga) inp r => b.OnCreate cfgb inp r; a.OnCreate cfga inp r,
     GenerateLocal = fn (cfgb, cfga) inp => b <- b.GenerateLocal cfgb inp; a <- a.GenerateLocal cfga inp; return (b, a),
@@ -160,6 +167,7 @@ fun column [inp ::: Type] [col :: Name] [colT ::: Type] [r ::: {Type}] [[col] ~ 
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return None,
@@ -178,6 +186,7 @@ fun html [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (lbl : string) 
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return <xml></xml>,
@@ -199,6 +208,7 @@ fun iconButton [inp ::: Type] [cols ::: {Type}] [r ::: {Type}] [cols ~ r]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn _ _ => return None,
@@ -240,6 +250,7 @@ fun linked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return [],
@@ -280,6 +291,7 @@ fun doubleLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return [],
@@ -319,6 +331,7 @@ fun tripleLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return [],
@@ -347,6 +360,7 @@ fun orderedLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return [],
@@ -450,6 +464,7 @@ functor LinkedWithEdit(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        ModifyBeforeCreate = fn _ _ r => r,
         OnCreate = fn _ _ _ => return (),
         OnLoad = fn fs authed =>
                     case authed of
@@ -636,6 +651,7 @@ functor LinkedWithEditAndDefault(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        ModifyBeforeCreate = fn _ _ r => r,
         OnCreate = fn _ _ _ => return (),
         OnLoad = fn fs authed =>
                     case authed of
@@ -795,6 +811,7 @@ functor LinkedWithFollow(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        ModifyBeforeCreate = fn _ _ r => r,
         OnCreate = fn _ _ _ => return (),
         OnLoad = fn _ _ => return (),
         GenerateLocal = fn _ _ => return [],
@@ -888,6 +905,7 @@ functor Like(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        ModifyBeforeCreate = fn _ _ r => r,
         OnCreate = fn _ _ _ => return (),
         OnLoad = fn _ _ => return (),
         GenerateLocal = fn _ _ => s <- source False; return (None, s),
@@ -1000,6 +1018,7 @@ functor Bid(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        ModifyBeforeCreate = fn _ _ r => r,
         OnCreate = fn _ _ _ => return (),
         OnLoad = fn _ _ => return (),
         GenerateLocal = fn _ _ => s <- source Unavailable; return (None, s),
@@ -1096,6 +1115,7 @@ functor AssignFromBids(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        ModifyBeforeCreate = fn _ _ r => r,
         OnCreate = fn _ _ _ => return (),
         OnLoad = fn fs ch => ChangeWatcher.onChange ch fs.ReloadState,
         GenerateLocal = fn _ _ => s <- source None; return (None, [], s),
@@ -1239,6 +1259,7 @@ functor AssignFromBids2(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        ModifyBeforeCreate = fn _ _ r => r,
         OnCreate = fn _ _ _ => return (),
         OnLoad = fn _ _ => return (),
         GenerateLocal = fn () _ => s <- source None; return (None, [], s),
@@ -1299,6 +1320,7 @@ val nonnull [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r
     Filter = fn _ _ => Some (WHERE NOT (tab.{col} IS NULL)),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -1317,6 +1339,7 @@ val isnull [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r]
     Filter = fn _ _ => Some (WHERE tab.{col} IS NULL),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -1335,6 +1358,7 @@ val past [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col} < CURRENT_TIMESTAMP),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -1350,6 +1374,7 @@ val pastOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col} < {sql_nullable (SQL CURRENT_TIMESTAMP)}),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -1368,6 +1393,7 @@ val future [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col} > CURRENT_TIMESTAMP),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -1383,6 +1409,7 @@ val futureOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col} > {sql_nullable (SQL CURRENT_TIMESTAMP)}),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -1404,6 +1431,7 @@ fun taggedWithUser [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
                           | Some u => Some (WHERE tab.{user} = {[u]}),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn _ _ => return (),
@@ -1425,6 +1453,7 @@ fun taggedWithUserOpt [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
                           | Some u => Some (WHERE tab.{user} = {[Some u]}),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn _ _ => return (),
@@ -1451,6 +1480,7 @@ fun linkedToUser [inp ::: Type] [key :: Name] [keyT ::: Type] [r ::: {Type}] [[k
                                                              WHERE link.{user} = {[u]}
                                                                AND link.{ckey} = tab.{key}) = {[Some True]}),
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn r (_, ch) => ChangeWatcher.onChange ch r.ReloadState,
     GenerateLocal = fn _ _ => return (),
@@ -1482,6 +1512,7 @@ fun doubleLinkedToUser [inp ::: Type] [key :: Name] [keyT ::: Type] [r ::: {Type
                                                           AND link2.{ikey2} = link1.{ikey}
                                                           AND link2.{user} = {[u]}) = {[Some True]}),
     SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn _ _ => return (),
@@ -1489,6 +1520,26 @@ fun doubleLinkedToUser [inp ::: Type] [key :: Name] [keyT ::: Type] [r ::: {Type
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
+}
+
+type owner_cfg = option string
+type owner_st = option string
+fun owner [inp ::: Type] [owner :: Name] [r ::: {Type}] [[owner] ~ r]
+    (whoami : transaction (option string)) (lbl : string) = {
+    Configure = whoami,
+    Generate = fn _ r => return r.owner,
+    Filter = fn _ _ => None,
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    ModifyBeforeCreate = fn uo _ r => r -- owner ++ {owner = uo},
+    OnCreate = fn _ _ _ => return (),
+    OnLoad = fn _ _ => return (),
+    GenerateLocal = fn uo _ => return uo,
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
+    Header = fn _ => <xml><th>{[lbl]}</th></xml>,
+    Row = fn _ _ v => <xml><td>{[v]}</td></xml>,
     Todos = fn _ _ => return 0
 }
 
@@ -1500,6 +1551,7 @@ val sortby [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = sql_order_by_Cons (SQL tab.{col}) sql_asc,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -1515,6 +1567,7 @@ val sortbyDesc [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] 
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = sql_order_by_Cons (SQL tab.{col}) sql_desc,
+    ModifyBeforeCreate = fn _ _ r => r,
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -1596,8 +1649,8 @@ functor Make(M : sig
             if not authed then
                 error <xml>Access denied</xml>
             else
-                @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
                 cfg <- t.Configure;
+                @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab (t.ModifyBeforeCreate cfg () r);
                 t.OnCreate cfg () r
 
     fun notify ch =
@@ -1639,6 +1692,7 @@ functor Make(M : sig
                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : p.2) => current (@Widget.value w v))
                                            fl widgets ws;
                                     rpc (add (ChangeWatcher.server self.Changes) vs);
+                                    vs <- return (t.ModifyBeforeCreate cfg () vs);
                                     t.OnCreateLocal vs stl;
                                     rpc (notify (ChangeWatcher.server self.Changes));
                                     st <- rpc (generate vs);
@@ -1770,8 +1824,8 @@ functor Make1(M : sig
             if not authed then
                 error <xml>Access denied</xml>
             else
-                @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab r;
                 cfg <- t.Configure;
+                @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab (t.ModifyBeforeCreate cfg inp r);
                 t.OnCreate cfg inp r
 
     fun notify ch =
@@ -1813,6 +1867,7 @@ functor Make1(M : sig
                                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (v : p.2) => current (@Widget.value w v))
                                            fl widgets ws;
                                     rpc (add self.Input (ChangeWatcher.server self.Changes) vs);
+                                    vs <- return (t.ModifyBeforeCreate cfg self.Input vs);
                                     t.OnCreateLocal vs stl;
                                     rpc (notify (ChangeWatcher.server self.Changes));
                                     st <- rpc (generate vs);

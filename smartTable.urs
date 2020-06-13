@@ -377,6 +377,13 @@ val doubleLinkedToUser : inp ::: Type -> key :: Name -> keyT ::: Type -> r ::: {
                          -> transaction (option string) (* get username, if any *)
                          -> t inp ([key = keyT] ++ r) doubleLinkedToUser_cfg doubleLinkedToUser_st
 
+type owner_cfg
+type owner_st
+val owner : inp ::: Type -> owner :: Name -> r ::: {Type} -> [[owner] ~ r]
+            => transaction (option string) (* get user *)
+            -> string
+            -> t inp ([owner = option string] ++ r) owner_cfg owner_st
+
 type sortby_cfg
 type sortby_st
 val sortby : inp ::: Type -> col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
