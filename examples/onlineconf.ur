@@ -13,7 +13,7 @@ fun headers0 () =
     in
         hs
     end
-              
+
 table user : { Username : string,
                Email : string,
                ClaimCode : option int,
@@ -30,7 +30,7 @@ task initialize = fn () =>
                      else
                          dml (INSERT INTO user(Username, Email, ClaimCode, Admin)
                               VALUES ('Adam Chlipala', 'adam.chlipala@gmail.com', NULL, TRUE))
-  
+
 table slot : { Begin : time,
                End : time }
   PRIMARY KEY Begin
@@ -60,7 +60,7 @@ structure Slots = FillTimeRange.Make(struct
                                          val final = addSeconds OnlineconfSecret.start (5 * 3600)
                                          val duration = 3600
                                      end)
-             
+
 table timePreference : { User : string,
                          Slot : time,
                          Preferred : bool }
@@ -83,13 +83,33 @@ table chat : { Title : string,
                Active : bool }
   PRIMARY KEY Title,
   CONSTRAINT Creator FOREIGN KEY Creator REFERENCES user(Username) ON UPDATE CASCADE
-      
+
 open Explorer
+
+cookie claimCode : int
+
+val claimed =
+    code <- getCookie claimCode;
+    (case code of
+         None => return ()
+       | Some code =>
+         ex <- oneRowE1 (SELECT COUNT( * ) > 0
+                         FROM user
+                         WHERE user.ClaimCode = {[Some code]});
+         if not ex then
+             error <xml>No such claim code</xml>
+         else
+             dml (UPDATE user
+                  SET ClaimCode = NULL
+                  WHERE ClaimCode = {[Some code]});
+             clearCookie claimCode);
+    redirect (bless "/main")
 
 structure Auth = Google.ThreeLegged(struct
                                         open OnlineconfSecret
                                         val https = False
                                         val scopes = Google.Scope.empty
+                                        val onCompletion = claimed
                                     end)
 structure G = Google.Make(Auth)
 
@@ -117,7 +137,7 @@ val requireAdmin =
         return ()
     else
         error <xml>Access denied</xml>
-                     
+
 val whoamiAdmin =
     addro <- G.emailAddress;
     case addro of
@@ -194,7 +214,7 @@ structure AssignTalks = UsersFromPreferences.Make(struct
                                                       con choice = #Title
                                                       val choice = paper
                                                       val labels = {Speaker = "Speaker"}
-                                                                   
+
                                                       con user = #User
                                                       con slot = #Title
                                                       con preferred = #Preferred
@@ -202,7 +222,7 @@ structure AssignTalks = UsersFromPreferences.Make(struct
 
                                                       val whoami = whoamiAdmin
                                                   end)
-                
+
 structure UsersEnterAvailability = Preferences.Make(struct
                                                         con choice = #Begin
                                                         val choice = slot
@@ -233,29 +253,6 @@ structure AssignTalkTimes = ChoicesFromPreferences.Make(struct
                                                             val authorize = amAdmin
                                                         end)
 
-cookie claimCode : int
-                            
-val claimed =
-    code <- getCookie claimCode;
-    case code of
-        None => error <xml>Missing claim-code cookie</xml>
-      | Some code =>
-        ex <- oneRowE1 (SELECT COUNT( * ) > 0
-                        FROM user
-                        WHERE user.ClaimCode = {[Some code]});
-        if not ex then
-            error <xml>No such claim code</xml>
-        else
-            addro <- G.emailAddress;
-            case addro of
-                None => error <xml>Not actually logged into Google!</xml>
-              | Some addr =>
-                dml (UPDATE user
-                     SET Email = {[addr]}, ClaimCode = NULL
-                     WHERE ClaimCode = {[Some code]});
-                clearCookie claimCode;
-                redirect (bless "/main")
-    
 fun claim code =
     ex <- oneRowE1 (SELECT COUNT( * ) > 0
                     FROM user
@@ -264,7 +261,7 @@ fun claim code =
         error <xml>No such claim code</xml>
     else
         setCookie claimCode {Value = code, Expires = None, Secure = False};
-        Auth.authorize {ReturnTo = url claimed}
+        Auth.authorize
 
 fun addUser name email =
     code <- rand;
@@ -280,8 +277,8 @@ fun addUser name email =
         </xml>
     in
         sendEmail hs htmlm
-    end           
-        
+    end
+
 structure HotcrpImport : Ui.S0 = struct
     type a = source string
 
@@ -320,7 +317,7 @@ structure HotcrpImport : Ui.S0 = struct
                                                VALUES ({[p.Title]}, {[name]}, {[i]}))
                                       end) (Option.get [] p.Authors))
                  (Json.fromJson s)
-                   
+
     fun render _ s = <xml>
       <ctextarea source={s} class="form-control"/>
       <button class="btn btn-primary"
@@ -329,15 +326,20 @@ structure HotcrpImport : Ui.S0 = struct
       </button>
     </xml>
 
+    fun notification _ _ = <xml></xml>
+
     val ui = {Create = create,
               Onload = onload,
-              Render = render}
+              Render = render,
+              Notification = notification}
 end
 
 structure PaperList = SmartList.Make(struct
                                          con sortBy = #TalkBegins
                                          val tab = paper
-                                         val wher = (WHERE NOT (tab.TalkBegins IS NULL))
+                                         val title = "Paper"
+                                         val notifyOnNonempty = False
+                                         val authorized = return True
 
                                          val t = SmartList.iconButtonInHeader
                                                      whoami
@@ -365,12 +367,15 @@ structure PaperList = SmartList.Make(struct
                                                  |> SmartList.compose (SmartList.columnInHeader [#Title])
                                                  |> SmartList.compose (SmartList.columnInBody [#TalkBegins] "Begins")
                                                  |> SmartList.compose (SmartList.orderedLinked [#Title] [#Paper] [#User] author "Authors")
+                                                 |> SmartList.compose (SmartList.nonnull [#TalkBegins])
                                      end)
 
 structure ChatList = SmartList.Make(struct
                                         con sortBy = #Title
                                         val tab = chat
-                                        val wher = (WHERE tab.Active)
+                                        val title = "Chat"
+                                        val notifyOnNonempty = False
+                                        val authorized = return True
 
                                         val t = SmartList.iconButtonInHeader
                                                     whoami
@@ -386,6 +391,7 @@ structure ChatList = SmartList.Make(struct
                                                             Some (glyphicon_video_camera, bless join))
                                                 |> SmartList.compose (SmartList.columnInHeader [#Title])
                                                 |> SmartList.compose (SmartList.columnInBody [#Creator] "Creator")
+                                                |> SmartList.compose (SmartList.isTrue [#Active])
                                     end)
 
 structure CreateChat = SmartInsert.Make(struct
@@ -460,13 +466,12 @@ val updateChatStatuses =
                  SET Active = FALSE
                  WHERE ZoomMeetingId = {[id]}))
 
-fun login () =
-    Auth.authorize {ReturnTo = url (main ())}
+fun login () = Auth.authorize
 
 and logout () =
     Auth.logout;
     redirect (url (main ()))
-    
+
 and main () =
     u <- whoami;
     case u of

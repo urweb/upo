@@ -119,6 +119,11 @@ type isnull_st
 val isnull : inp ::: Type -> col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
     => t inp ([col = option ct] ++ r) isnull_cfg isnull_st
 
+type isTrue_cfg
+type isTrue_st
+val isTrue : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
+             => t inp ([col = bool] ++ r) isTrue_cfg isTrue_st
+
 type past_cfg
 type past_st
 val past : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]

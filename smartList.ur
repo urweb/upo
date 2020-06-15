@@ -313,6 +313,18 @@ val isnull [inp] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
     Body = fn _ _ => <xml></xml>
 }
 
+type isTrue_cfg = unit
+type isTrue_st = unit
+val isTrue [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
+    Configure = return (),
+    Generate = fn _ _ => return (),
+    Filter = fn _ _ => Some (WHERE tab.{col}),
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    Header = fn _ _ => <xml></xml>,
+    Body = fn _ _ => <xml></xml>
+}
+
 type past_cfg = unit
 type past_st = unit
 val past [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
