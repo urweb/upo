@@ -224,18 +224,18 @@ structure AssignTalks = UsersFromPreferences.Make(struct
                                                       val whoami = whoamiAdmin
                                                   end)
 
-structure UsersEnterAvailability = Preferences.Make(struct
-                                                        con choice = #Begin
-                                                        val choice = slot
+structure UsersEnterAvailability = TimePreferences.Make(struct
+                                                            val times = slot
 
-                                                        con user = #User
-                                                        con slot = #Slot
-                                                        con preferred = #Preferred
-                                                        val pref = timePreference
+                                                            con user = #User
+                                                            con tcol = #Slot
+                                                            con preferred = #Preferred
+                                                            val prefs = timePreference
+                                                            val title = "TimePreference"
 
-                                                        val whoami = whoami
-                                                        fun eligible _ = (WHERE TRUE)
-                                                    end)
+                                                            val whoami = whoami
+                                                            val addon = CalendarAddons.empty
+                                                        end)
 
 structure AssignTalkTimes = ChoicesFromPreferences.Make(struct
                                                             con choice = #Begin
