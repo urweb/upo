@@ -190,6 +190,9 @@ functor ShowExternalCalendar(M : sig
                                  val events : calendar_id -> {Min : option time, Max : option time}
                                               -> transaction (list {Summary : option string, Start : option time, End : option time})
                                  (* Get all events (in some time wondow) from a calendar. *)
+
+                                 val label : string
+                                 val idPrefix : string
                              end) = struct
     val calendars = M.calendars
 
@@ -200,11 +203,13 @@ functor ShowExternalCalendar(M : sig
                                      {Min = Some tm,
                                       Max = Some (addSeconds tm (30 * 24 * 60 * 60))}) cals
 
+    val prefix = M.idPrefix ^ "_"
+
     val t = {
         ExtraEvents = fn _ => return [],
         AboveCalendar = fn ctx cal => Ui.modalButton ctx
                                                      (CLASS "btn btn-primary")
-                                                     <xml>Show events from your Google Calendar(s)</xml>
+                                                     <xml>{[M.label]}</xml>
                                       (cals <- rpc calendars;
                                        cals <- List.mapM (fn (id, sum) =>
                                                              chosen <- source False;
@@ -223,7 +228,7 @@ functor ShowExternalCalendar(M : sig
                                                              case id of
                                                                  None => return ()
                                                                | Some id =>
-                                                                 if String.isPrefix {Full = id, Prefix = "google_"} then
+                                                                 if String.isPrefix {Full = id, Prefix = prefix} then
                                                                      FullCalendar.removeEvent ev
                                                                  else
                                                                      return ()) oldEvs;
@@ -234,7 +239,7 @@ functor ShowExternalCalendar(M : sig
                                                 FullCalendar.addEvents cal (List.mapi (fn i ev =>
                                                                                           case ev.Start of
                                                                                               None => error <xml>Impossible</xml>
-                                                                                            | Some start => {Id = Some ("google_" ^ show i),
+                                                                                            | Some start => {Id = Some (prefix ^ show i),
                                                                                                              AllDay = False,
                                                                                                              Start = start,
                                                                                                              End = ev.End,

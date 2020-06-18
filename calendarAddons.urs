@@ -85,6 +85,11 @@ functor ShowExternalCalendar(M : sig
                                  val events : calendar_id -> {Min : option time, Max : option time}
                                               -> transaction (list {Summary : option string, Start : option time, End : option time})
                                  (* Get all events (in some time wondow) from a calendar. *)
+
+                                 val label : string
+                                 (* Text on button to show calendars *)
+                                 val idPrefix : string
+                                 (* Used for internal ID generation *)
                              end) : sig
     val t : t M.r
 end
