@@ -76,6 +76,7 @@ table speakingInterest : { Title : string,
   CONSTRAINT User FOREIGN KEY User REFERENCES user(Username) ON UPDATE CASCADE ON DELETE CASCADE
 
 table chat : { Title : string,
+               Starts : option time,
                Creator : string,
                ZoomMeetingId : int,
                StartUrl : string,
@@ -391,12 +392,13 @@ structure ChatList = SmartList.Make(struct
                                                             Some (glyphicon_video_camera, bless join))
                                                 |> SmartList.compose (SmartList.columnInHeader [#Title])
                                                 |> SmartList.compose (SmartList.columnInBody [#Creator] "Creator")
+                                                |> SmartList.compose (SmartList.columnInBody [#Starts] "Starts")
                                                 |> SmartList.compose (SmartList.isTrue [#Active])
                                     end)
 
 structure CreateChat = SmartInsert.Make(struct
                                             val tab = chat
-                                            val labels = {Title = "Title"}
+                                            val labels = {Title = "Title", Starts = "Starts"}
 
                                             fun custom r =
                                                 uo <- whoami;
@@ -414,6 +416,31 @@ structure CreateChat = SmartInsert.Make(struct
                                                                 JoinUrl = join,
                                                                 Active = True}
                                                       | _ => error <xml>Missing field in record for new Zoom meeting!</xml>
+                                        end)
+
+structure Calendar = SmartCalendar.Make(struct
+                                            structure T = CalendarAddons.EventSource(struct
+                                                                                         val source = paper
+                                                                                         val title = "Paper"
+                                                                                         val prefix = "Talk: "
+                                                                                         val background = False
+                                                                                         val textColor = None
+                                                                                         val backgroundColor = None
+                                                                                         val addons = CalendarAddons.empty
+                                                                                     end)
+
+                                            structure C = CalendarAddons.EventSource(struct
+                                                                                         val source = chat
+                                                                                         val title = "Chat"
+                                                                                         val prefix = "Chat: "
+                                                                                         val background = True
+                                                                                         val textColor = Some "blue"
+                                                                                         val backgroundColor = Some "gray"
+                                                                                         val addons = CalendarAddons.empty
+                                                                                     end)
+
+                                            val addon = T.t |> CalendarAddons.compose C.t
+                                            val whoami = whoami
                                         end)
 
 val maybeCreateOneChannel =
@@ -485,7 +512,8 @@ and main () =
                 </xml>)
       | Some u =>
         Theme.tabbed "OnlineConf"
-        ((Some "Paper list", PaperList.ui),
+        ((Some "Calendar", Calendar.ui),
+         (Some "Paper list", PaperList.ui),
          (Some "Speaker interest", SpeakerInterest.ui u),
          (Some "Availability", UsersEnterAvailability.ui u),
          (Some "Chat list", ChatList.ui),

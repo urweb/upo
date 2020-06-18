@@ -1,0 +1,45 @@
+ffi fullCalendarFfi
+jsFunc FullCalendarFfi.replace=uw_fullcalendar_replace
+jsFunc FullCalendarFfi.refresh=uw_fullcalendar_refresh
+jsFunc FullCalendarFfi.addEvent=uw_fullcalendar_addEvent
+jsFunc FullCalendarFfi.addEvents=uw_fullcalendar_addEvents
+jsFunc FullCalendarFfi.removeEvent=uw_fullcalendar_removeEvent
+jsFunc FullCalendarFfi.eventStart=uw_fullcalendar_eventStart
+jsFunc FullCalendarFfi.eventTitle=uw_fullcalendar_eventTitle
+jsFunc FullCalendarFfi.eventRendering=uw_fullcalendar_eventRendering
+jsFunc FullCalendarFfi.eventId=uw_fullcalendar_eventId
+jsFunc FullCalendarFfi.getEventById=uw_fullcalendar_getEventById
+jsFunc FullCalendarFfi.events=uw_fullcalendar_events
+jsFunc FullCalendarFfi.unselect=uw_fullcalendar_unselect
+clientOnly FullCalendarFfi.replace
+clientOnly FullCalendarFfi.refresh
+clientOnly FullCalendarFfi.addEvent
+clientOnly FullCalendarFfi.addEvents
+clientOnly FullCalendarFfi.removeEvent
+clientOnly FullCalendarFfi.eventStart
+clientOnly FullCalendarFfi.eventTitle
+clientOnly FullCalendarFfi.eventRendering
+clientOnly FullCalendarFfi.eventId
+clientOnly FullCalendarFfi.getEventById
+clientOnly FullCalendarFfi.events
+clientOnly FullCalendarFfi.unselect
+benignEffectful FullCalendarFfi.replace
+benignEffectful FullCalendarFfi.refresh
+benignEffectful FullCalendarFfi.addEvent
+benignEffectful FullCalendarFfi.addEvents
+benignEffectful FullCalendarFfi.removeEvent
+benignEffectful FullCalendarFfi.eventStart
+benignEffectful FullCalendarFfi.eventTitle
+benignEffectful FullCalendarFfi.eventRendering
+benignEffectful FullCalendarFfi.eventId
+benignEffectful FullCalendarFfi.getEventById
+benignEffectful FullCalendarFfi.events
+benignEffectful FullCalendarFfi.unselect
+script https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/4.2.0/core/main.min.js
+script https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/4.2.0/daygrid/main.min.js
+script https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/4.2.0/interaction/main.min.js
+script https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/4.2.0/timegrid/main.min.js
+jsFile fullCalendarUrweb.js
+
+$/list
+fullCalendar
