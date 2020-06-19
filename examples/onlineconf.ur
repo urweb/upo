@@ -237,22 +237,25 @@ structure UsersEnterAvailability = TimePreferences.Make(struct
                                                             val addon = CalendarAddons.empty
                                                         end)
 
-structure AssignTalkTimes = ChoicesFromPreferences.Make(struct
-                                                            con choice = #Begin
-                                                            val choice = slot
+structure AssignTalkTimes = AssignTimes.Make(struct
+                                                 val times = slot
+                                                 fun others tm = {End = addSeconds tm (60 * 60)}
 
-                                                            con user = #User
-                                                            con slot = #Slot
-                                                            con preferred = #Preferred
-                                                            val pref = timePreference
+                                                 con user = #User
+                                                 con btime = #Slot
+                                                 con preferred = #Preferred
+                                                 val bid = timePreference
+                                                 val bidTitle = "TimePreference"
 
-                                                            con item = #Title
-                                                            con users = [Speaker]
-                                                            val item = paper
-                                                            val labels = {Speaker = "Speaker"}
+                                                 con this = #Title
+                                                 con ttime = #TalkBegins
+                                                 val t = paper
+                                                 val tTitle = "Paper"
+                                                 val assignees = {Speaker = "Speaker"}
 
-                                                            val authorize = amAdmin
-                                                        end)
+                                                 val whoami = whoami
+                                                 val addon = CalendarAddons.empty
+                                             end)
 
 fun claim code =
     ex <- oneRowE1 (SELECT COUNT( * ) > 0
