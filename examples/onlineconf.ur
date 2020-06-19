@@ -421,6 +421,12 @@ structure CreateChat = SmartInsert.Make(struct
                                                       | _ => error <xml>Missing field in record for new Zoom meeting!</xml>
                                         end)
 
+structure ScheduleChats = SetTimes.Make(struct
+                                            val t = chat
+                                            val whoami = whoami
+                                            val addon = CalendarAddons.empty
+                                        end)
+
 structure Calendar = SmartCalendar.Make(struct
                                             structure T = CalendarAddons.EventSource(struct
                                                                                          val source = paper
@@ -521,6 +527,7 @@ and main () =
          (Some "Availability", UsersEnterAvailability.ui u),
          (Some "Chat list", ChatList.ui),
          (Some "Create chat", CreateChat.ui),
+         (Some "Schedule chats", ScheduleChats.ui),
          (Some "Log out", Ui.h4 <xml>
            <form>
              <submit class="btn btn-primary" action={logout} value="Log out"/>
