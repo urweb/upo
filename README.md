@@ -65,6 +65,8 @@ Here is one sequence of commands to set up these and some dependencies used in c
 
         # Building one example
         cd upo/examples
+        cp onlineConfSecret_template.ur onlineConfSecret.ur
+        # Read above file and fill in parameters.
         urweb onlineconf
         createdb onlineconf
         psql -f onlineconf.sql onlineconf
