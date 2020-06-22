@@ -9,7 +9,7 @@ fun sendEmail hs htmsg =
 fun headers0 () =
     let
         val hs = Mail.empty
-        val hs = Mail.from "OnlineConf <adam.chlipala@gmail.com>" hs
+        val hs = Mail.from ("OnlineConf <" ^ OnlineconfSecret.admin_email ^ ">") hs
     in
         hs
     end
@@ -29,7 +29,7 @@ task initialize = fn () =>
                          return ()
                      else
                          dml (INSERT INTO user(Username, Email, ClaimCode, Admin)
-                              VALUES ('Adam Chlipala', 'adam.chlipala@gmail.com', NULL, TRUE))
+                              VALUES ({[OnlineconfSecret.admin_name]}, {[OnlineconfSecret.admin_email]}, NULL, TRUE))
 
 table slot : { Begin : time,
                End : time }
