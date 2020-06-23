@@ -226,7 +226,7 @@ functor Make(M : THEME) = struct
                        tbar
                        ((@foldR2 [fn a => option string * t a] [ident]
                           [fn _ => xbody * int]
-                         (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (labl : option string, r) st (bod, n) =>
+                         (fn [nm ::_] [a ::_] [r ::_] [[nm] ~ r] (labl : option string, r : t a) st (bod, n) =>
                              (case labl of
                                   None => bod
                                 | Some labl => <xml>
@@ -235,7 +235,7 @@ functor Make(M : THEME) = struct
                                                                   classes nav_item bs_active
                                                               else
                                                                   nav_item)}
-                                      onclick={fn _ => set curTab n}><a class="nav-link">{[labl]}</a></li>
+                                      onclick={fn _ => set curTab n}><a class="nav-link">{[labl]} {r.Notification ctx st}</a></li>
                                       {bod}
                                 </xml>,
                               n-1))
