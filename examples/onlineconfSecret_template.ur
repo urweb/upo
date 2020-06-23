@@ -1,5 +1,9 @@
 (* Everything will compile if you leave the settings below blank, but related operations will fail at runtime. *)
 
+(* Default admin account *)
+val admin_name = "Adam Chlipala"
+val admin_email = "adam.chlipala@gmail.com"
+
 (* Zoom *)
 (* Register an "account-level JWT app" with Zoom and enter its details here. *)
 val api_key = ""
