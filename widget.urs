@@ -59,6 +59,10 @@ type checkbox
 type checkbox_config
 val checkbox : t bool checkbox checkbox_config
 
+type opt_checkbox
+type opt_checkbox_config
+val opt_checkbox : t (option bool) opt_checkbox opt_checkbox_config
+
 type intbox
 type intbox_config
 val intbox : t int intbox intbox_config

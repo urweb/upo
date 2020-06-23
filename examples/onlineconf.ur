@@ -77,11 +77,11 @@ table speakingInterest : { Title : string,
 
 table chat : { Title : string,
                Starts : option time,
-               Creator : string,
-               ZoomMeetingId : int,
-               StartUrl : string,
-               JoinUrl : string,
-               Active : bool }
+               Creator : option string,
+               ZoomMeetingId : option int,
+               StartUrl : option string,
+               JoinUrl : option string,
+               Active : option bool }
   PRIMARY KEY Title,
   CONSTRAINT Creator FOREIGN KEY Creator REFERENCES user(Username) ON UPDATE CASCADE
 
@@ -363,63 +363,73 @@ structure PaperList = SmartList.Make(struct
                                                                  else if speaker = u then
                                                                      case start of
                                                                          None => None
-                                                                       | Some start => Some (glyphicon_play_circle_o, bless start)
+                                                                       | Some start => Some (glyphicon_play_circle, bless start)
                                                                  else
                                                                      case join of
                                                                          None => None
-                                                                       | Some join => Some (glyphicon_video_camera, bless join))
+                                                                       | Some join => Some (glyphicon_video, bless join))
                                                  |> SmartList.compose (SmartList.columnInHeader [#Title])
                                                  |> SmartList.compose (SmartList.columnInBody [#TalkBegins] "Begins")
                                                  |> SmartList.compose (SmartList.orderedLinked [#Title] [#Paper] [#User] author "Authors")
                                                  |> SmartList.compose (SmartList.nonnull [#TalkBegins])
                                      end)
 
-structure ChatList = SmartList.Make(struct
-                                        con sortBy = #Title
-                                        val tab = chat
-                                        val title = "Chat"
-                                        val notifyOnNonempty = False
-                                        val authorized = return True
+structure ChatList = SmartTable.Make(struct
+                                         val tab = chat
+                                         val title = "Chat"
+                                         val notifyOnNonempty = False
+                                         val authorized = return True
+                                         val allowCreate = True
+                                         val labels = {Title = "Title",
+                                                       Starts = "Starts",
+                                                       Creator = "Creator",
+                                                       ZoomMeetingId = "Zoom meeting ID",
+                                                       StartUrl = "Start URL",
+                                                       JoinUrl = "Join URL",
+                                                       Active = "Active?"}
 
-                                        val t = SmartList.iconButtonInHeader
-                                                    whoami
-                                                    (fn u tm {Active = actv,
-                                                              Creator = creator,
-                                                              StartUrl = start,
-                                                              JoinUrl = join} =>
-                                                        if not actv then
-                                                            None
-                                                        else if Some creator = u then
-                                                            Some (glyphicon_play_circle_o, bless start)
-                                                        else
-                                                            Some (glyphicon_video_camera, bless join))
-                                                |> SmartList.compose (SmartList.columnInHeader [#Title])
-                                                |> SmartList.compose (SmartList.columnInBody [#Creator] "Creator")
-                                                |> SmartList.compose (SmartList.columnInBody [#Starts] "Starts")
-                                                |> SmartList.compose (SmartList.isTrue [#Active])
-                                    end)
+                                         val t = SmartTable.iconButton
+                                                     whoami
+                                                     (fn u tm {Active = actv,
+                                                               Creator = creator,
+                                                               StartUrl = start,
+                                                               JoinUrl = join} =>
+                                                         case (actv, start, join) of
+                                                             (Some True, Some start, Some join) =>
+                                                             if creator = u then
+                                                                 Some (glyphicon_play_circle, bless start)
+                                                             else
+                                                                 Some (glyphicon_video, bless join)
+                                                           | _ => None)
+                                                     "Zoom"
+                                                 |> SmartTable.compose (SmartTable.column [#Starts] "Starts")
+                                                 |> SmartTable.compose (SmartTable.owner [#Creator] whoami "Creator")
+                                                 |> SmartTable.compose (SmartTable.column [#Title] "Title")
+                                     end)
 
-structure CreateChat = SmartInsert.Make(struct
-                                            val tab = chat
-                                            val labels = {Title = "Title", Starts = "Starts"}
-
-                                            fun custom r =
-                                                uo <- whoami;
-                                                case uo of
-                                                    None => error <xml>Must be logged in.</xml>
-                                                  | Some u =>
-                                                    m <- Z.Meetings.create ({Topic = r.Title,
-                                                                             Typ = Zoom.Instant}
-                                                                                ++ Api.optionals {});
-                                                    case (m.Id, m.StartUrl, m.JoinUrl) of
-                                                        (Some id, Some start, Some join) =>
-                                                        return {Creator = u,
-                                                                ZoomMeetingId = id,
-                                                                StartUrl = start,
-                                                                JoinUrl = join,
-                                                                Active = True}
-                                                      | _ => error <xml>Missing field in record for new Zoom meeting!</xml>
-                                        end)
+task periodic 10 = fn () =>
+                      tm <- now;
+                      soon <- return (addSeconds tm ((-30) * 60)); (* Check for chats about to start in under half an hour. *)
+                      chatReady <- oneOrNoRows1 (SELECT chat.Title, chat.Starts
+                                                 FROM chat
+                                                 WHERE chat.ZoomMeetingId IS NULL
+                                                   AND NOT (chat.Starts IS NULL)
+                                                   AND chat.Starts > {[Some soon]}
+                                                 ORDER BY chat.Starts
+                                                 LIMIT 1);
+                      case chatReady of
+                          None => return ()
+                        | Some r =>
+                          m <- Z.Meetings.create ({Topic = r.Title,
+                                                   Typ = Zoom.Instant,
+                                                   StartTime = r.Starts}
+                                                      ++ Api.optionals {});
+                          dml (UPDATE chat
+                               SET ZoomMeetingId = {[m.Id]},
+                                 StartUrl = {[m.StartUrl]},
+                                 JoinUrl = {[m.JoinUrl]},
+                                 Active = {[Some True]}
+                               WHERE Title = {[r.Title]})
 
 structure ScheduleChats = SetTimes.Make(struct
                                             val t = chat
@@ -492,15 +502,18 @@ val updateChatStatuses =
     requireAdmin;
     queryI1 (SELECT chat.ZoomMeetingId
              FROM chat
-             WHERE chat.Active)
-    (fn {ZoomMeetingId = id} =>
-        m <- Z.Meetings.get id;
-        if (case m of None => False | Some m => case m.Status of Some Zoom.Waiting => True | Some Zoom.Started => True | _ => False) then
-            return ()
-        else
-            dml (UPDATE chat
-                 SET Active = FALSE
-                 WHERE ZoomMeetingId = {[id]}))
+             WHERE COALESCE(chat.Active, FALSE))
+    (fn {ZoomMeetingId = ido} =>
+        case ido of
+            None => error <xml>No Zoom meeting ID set.</xml>
+          | Some id =>
+            m <- Z.Meetings.get id;
+            if (case m of None => False | Some m => case m.Status of Some Zoom.Waiting => True | Some Zoom.Started => True | _ => False) then
+                return ()
+            else
+                dml (UPDATE chat
+                     SET Active = {[Some False]}
+                     WHERE ZoomMeetingId = {[ido]}))
 
 fun login () = Auth.authorize
 
@@ -526,7 +539,6 @@ and main () =
          (Some "Speaker interest", SpeakerInterest.ui u),
          (Some "Availability", UsersEnterAvailability.ui u),
          (Some "Chat list", ChatList.ui),
-         (Some "Create chat", CreateChat.ui),
          (Some "Schedule chats", ScheduleChats.ui),
          (Some "Log out", Ui.h4 <xml>
            <form>

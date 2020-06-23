@@ -88,6 +88,24 @@ val checkbox = { Configure = return (),
                  AsValue = txt,
                  Optional = False }
 
+val opt_checkbox = { Configure = return (),
+                     Create = fn () => source False,
+                     Initialize = fn () v => source (Option.get False v),
+                     Reset = fn s => set s False,
+                     Set = fn s v => set s (Option.get False v),
+                     Reconfigure = fn _ () => return (),
+                     AsWidget = fn s ido =>
+                                   case ido of
+                                       None => <xml><ccheckbox class={Bootstrap4.form_control} source={s}/></xml>
+                                     | Some id => <xml><ccheckbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                     AsWidgetSimple = fn s ido =>
+                                   case ido of
+                                       None => <xml><ccheckbox class={Bootstrap4.form_control} source={s}/></xml>
+                                     | Some id => <xml><ccheckbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                     Value = fn st => b <- signal st; return (Some b),
+                     AsValue = txt,
+                     Optional = True }
+
 val intbox = { Configure = return (),
                Create = fn () => source "",
                Initialize = fn () n => source (show n),

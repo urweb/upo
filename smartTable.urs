@@ -426,6 +426,16 @@ val sortby : inp ::: Type -> col :: Name -> ct ::: Type -> r ::: {Type} -> [[col
 val sortbyDesc : inp ::: Type -> col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
                  => t inp ([col = ct] ++ r) sortby_cfg sortby_st
 
+type isTrue_cfg
+type isTrue_st
+val isTrue : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
+             => t inp ([col = bool] ++ r) isTrue_cfg isTrue_st
+
+type isTrueOpt_cfg
+type isTrueOpt_st
+val isTrueOpt : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
+                => t inp ([col = option bool] ++ r) isTrueOpt_cfg isTrueOpt_st
+
 functor Make(M : sig
                  con r :: {(Type * Type * Type)}
                  table tab : (map fst3 r)

@@ -1785,6 +1785,44 @@ val sortbyDesc [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] 
     Todos = fn _ _ => return 0
 }
 
+type isTrue_cfg = unit
+type isTrue_st = unit
+val isTrue [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
+    Configure = return (),
+    Generate = fn _ _ => return (),
+    Filter = fn _ _ => Some (WHERE tab.{col}),
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
+    OnCreate = fn _ _ _ => return (),
+    OnLoad = fn _ _ => return (),
+    GenerateLocal = fn () _ => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
+    Header = fn _ => <xml></xml>,
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
+}
+
+type isTrueOpt_cfg = unit
+type isTrueOpt_st = unit
+val isTrueOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
+    Configure = return (),
+    Generate = fn _ _ => return (),
+    Filter = fn _ _ => Some (WHERE COALESCE(tab.{col}, FALSE)),
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
+    OnCreate = fn _ _ _ => return (),
+    OnLoad = fn _ _ => return (),
+    GenerateLocal = fn () _ => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
+    Header = fn _ => <xml></xml>,
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
+}
+
 functor Make(M : sig
                  con r :: {(Type * Type * Type)}
                  table tab : (map fst3 r)
