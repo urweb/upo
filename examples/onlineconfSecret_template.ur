@@ -9,6 +9,10 @@ val admin_email = "adam.chlipala@gmail.com"
 val api_key = ""
 val api_secret = ""
 
+(* Slack *)
+(* Set up an app/bot and put its authentication token here. *)
+val token = ""
+
 (* Google *)
 (* Register a Google API OAuth app and put its details here. *)
 val client_id = ""

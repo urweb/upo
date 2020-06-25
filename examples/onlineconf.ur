@@ -3,8 +3,9 @@
 open Bootstrap4
 structure Theme = Ui.Make(Default)
 structure Z = Zoom.Make(Zoom.TwoLegged(OnlineconfSecret))
+structure S = Slack.Make(Slack.TwoLegged(OnlineconfSecret))
 
-fun sendEmail hs htmsg =
+(*fun sendEmail hs htmsg =
     Mail.send "smtp://localhost" False None "" "" hs (Widget.textFromHtml (show htmsg)) (Some htmsg)
 fun headers0 () =
     let
@@ -12,7 +13,7 @@ fun headers0 () =
         val hs = Mail.from ("OnlineConf <" ^ OnlineconfSecret.admin_email ^ ">") hs
     in
         hs
-    end
+    end*)
 
 table user : { Username : string,
                Email : string,
@@ -42,7 +43,8 @@ table paper : { Title : string,
                 ZoomMeetingId : option string,
                 StartUrl : option string,
                 JoinUrl : option string,
-                ShareUrl : option string }
+                ShareUrl : option string,
+                SlackChannelId : option string }
   PRIMARY KEY Title,
   CONSTRAINT Speaker FOREIGN KEY Speaker REFERENCES user(Username) ON UPDATE CASCADE,
   CONSTRAINT TalkBegins FOREIGN KEY TalkBegins REFERENCES slot(Begin)
@@ -58,7 +60,7 @@ structure Slots = FillTimeRange.Make(struct
                                          val slot = slot
                                          val initial = OnlineconfSecret.start
                                          val final = addSeconds OnlineconfSecret.start (5 * 3600)
-                                         val duration = 3600
+                                         val duration = 5400
                                      end)
 
 table timePreference : { User : string,
@@ -184,6 +186,7 @@ structure Exp = Make(struct
                                      |> ignored [#Paper] [#StartUrl] None
                                      |> ignored [#Paper] [#JoinUrl] None
                                      |> ignored [#Paper] [#ShareUrl] None
+                                     |> ignored [#Paper] [#SlackChannelId] None
 
                                      |> text [#Slot] [#Begin] "Begins"
                                      |> text [#Slot] [#End] "Ends"
@@ -270,7 +273,7 @@ fun claim code =
 fun addUser name email =
     code <- rand;
     dml (INSERT INTO user(Username, Email, ClaimCode, Admin)
-         VALUES ({[name]}, {[email]}, {[Some code]}, FALSE));
+         VALUES ({[name]}, {[email]}, {[Some code]}, FALSE))(*;
     let
         val hs = headers0 ()
         val hs = Mail.subject "Claim your OnlineConf account" hs
@@ -281,7 +284,7 @@ fun addUser name email =
         </xml>
     in
         sendEmail hs htmlm
-    end
+    end*)
 
 structure HotcrpImport : Ui.S0 = struct
     type a = source string
@@ -299,9 +302,9 @@ structure HotcrpImport : Ui.S0 = struct
                          return ()
                      else
                          dml (INSERT INTO paper(Title, Abstract, Speaker, TalkBegins,
-                                  ZoomMeetingId, StartUrl, JoinUrl, ShareUrl)
+                                  ZoomMeetingId, StartUrl, JoinUrl, ShareUrl, SlackChannelId)
                               VALUES ({[p.Title]}, {[p.Abstract]}, NULL, NULL,
-                                  NULL, NULL, NULL, NULL));
+                                  NULL, NULL, NULL, NULL, NULL));
                          List.appi (fn i a =>
                                        let
                                           val name = case (a.First, a.Last) of
@@ -368,6 +371,12 @@ structure PaperList = SmartList.Make(struct
                                                                      case join of
                                                                          None => None
                                                                        | Some join => Some (glyphicon_video, bless join))
+                                                 |> SmartList.compose (SmartList.iconButtonInHeader
+                                                                           whoami
+                                                                           (fn u tm {SlackChannelId = chid} =>
+                                                                               case chid of
+                                                                                   None => None
+                                                                                 | Some chid => Some (glyphicon_comment, S.Conversations.url {Channel = chid, Team = None})))
                                                  |> SmartList.compose (SmartList.columnInHeader [#Title])
                                                  |> SmartList.compose (SmartList.columnInBody [#TalkBegins] "Begins")
                                                  |> SmartList.compose (SmartList.orderedLinked [#Title] [#Paper] [#User] author "Authors")
@@ -462,8 +471,7 @@ structure Calendar = SmartCalendar.Make(struct
                                             val whoami = whoami
                                         end)
 
-val maybeCreateOneChannel =
-    requireAdmin;
+task periodic 1 = fn () =>
     tm <- now;
     create_threshold <- return (addSeconds tm (24 * 60 * 60));
     next <- oneOrNoRows1 (SELECT paper.Title, paper.TalkBegins
@@ -471,7 +479,8 @@ val maybeCreateOneChannel =
                           WHERE NOT (paper.TalkBegins IS NULL)
                             AND paper.ZoomMeetingId IS NULL
                             AND paper.TalkBegins < {[Some create_threshold]}
-                          ORDER BY paper.TalkBegins);
+                          ORDER BY paper.TalkBegins
+                          LIMIT 1);
     case next of
         None => return ()
       | Some next =>
@@ -484,8 +493,7 @@ val maybeCreateOneChannel =
              SET ZoomMeetingId = {[m.Uuid]}, StartUrl = {[m.StartUrl]}, JoinUrl = {[m.JoinUrl]}
              WHERE Title = {[next.Title]})
 
-val checkForFinishedRecordings =
-    requireAdmin;
+task periodic 60 = fn () =>
     rs <- Z.CloudRecordings.list;
     List.app (fn r =>
                  case List.search (fn f =>
@@ -498,8 +506,7 @@ val checkForFinishedRecordings =
                           SET ShareUrl = {[r.ShareUrl]}
                           WHERE ZoomMeetingId = {[Some id]})) rs
 
-val updateChatStatuses =
-    requireAdmin;
+task periodic 60 = fn () =>
     queryI1 (SELECT chat.ZoomMeetingId
              FROM chat
              WHERE COALESCE(chat.Active, FALSE))
@@ -514,6 +521,21 @@ val updateChatStatuses =
                 dml (UPDATE chat
                      SET Active = {[Some False]}
                      WHERE ZoomMeetingId = {[ido]}))
+
+task periodic 1 = fn () =>
+    next <- oneOrNoRowsE1 (SELECT (paper.Title)
+                           FROM paper
+                           WHERE NOT (paper.TalkBegins IS NULL)
+                             AND paper.SlackChannelId IS NULL
+                           ORDER BY paper.TalkBegins
+                           LIMIT 1);
+    case next of
+        None => return ()
+      | Some next =>
+        ch <- S.Conversations.create (Slack.suggestChannelName next);
+        dml (UPDATE paper
+             SET SlackChannelId = {[Some ch.Id]}
+             WHERE Title = {[next]})
 
 fun login () = Auth.authorize
 
@@ -562,21 +584,6 @@ and admin () =
         ((Some "HotCRP import", HotcrpImport.ui),
          (Some "Assign talks", AssignTalks.ui),
          (Some "Assign talk times", AssignTalkTimes.ui),
-         (Some "Provision next",
-          Ui.const <xml>
-            <button class="btn btn-primary"
-                    onclick={fn _ => rpc maybeCreateOneChannel}>
-              Maybe create a channel
-            </button>
-            <button class="btn btn-primary"
-                    onclick={fn _ => rpc checkForFinishedRecordings}>
-              Check for finished recordings
-            </button>
-            <button class="btn btn-primary"
-                    onclick={fn _ => rpc updateChatStatuses}>
-              Update chat statuses
-            </button>
-          </xml>),
          (Some "Log out", Ui.h4 <xml>
            <form>
              <submit class="btn btn-primary" action={logout} value="Log out"/>
