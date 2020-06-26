@@ -87,15 +87,14 @@ functor Make(M : sig
               Notification = notification}
 
     task clientLeaves = fn self =>
-                           uo <- oneRowE1 (SELECT DISTINCT (connected.User)
-                                           FROM connected
-                                           WHERE connected.Client = {[self]});
+                           uo <- oneOrNoRowsE1 (SELECT DISTINCT (connected.User)
+                                                FROM connected
+                                                WHERE connected.Client = {[self]});
                            case uo of
-                               None => return ()
-                             | Some u =>
+                               Some (Some u) =>
                                userElsewhere <- oneRowE1 (SELECT COUNT( * ) > 0
                                                           FROM connected
-                                                          WHERE connected.User = {[uo]}
+                                                          WHERE connected.User = {[Some u]}
                                                             AND connected.Client <> {[self]});
                                if userElsewhere then
                                    return ()
@@ -104,4 +103,6 @@ functor Make(M : sig
                                             FROM connected
                                             WHERE connected.Client <> {[self]})
                                            (fn r => send r.Channel (Left u))
+                             | _ => return ()
+
 end
