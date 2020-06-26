@@ -376,7 +376,7 @@ structure PaperList = SmartList.Make(struct
                                                                            (fn u tm {SlackChannelId = chid} =>
                                                                                case chid of
                                                                                    None => None
-                                                                                 | Some chid => Some (glyphicon_comment, S.Conversations.url {Channel = chid, Team = None})))
+                                                                                 | Some chid => Some (glyphicon_comment, Slack.channelUrl {Channel = chid, Team = None})))
                                                  |> SmartList.compose (SmartList.columnInHeader [#Title])
                                                  |> SmartList.compose (SmartList.columnInBody [#TalkBegins] "Begins")
                                                  |> SmartList.compose (SmartList.orderedLinked [#Title] [#Paper] [#User] author "Authors")
