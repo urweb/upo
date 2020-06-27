@@ -463,6 +463,29 @@ functor Moderate(M : sig
     val t : t M.inp ([M.key = M.keyT, M.hide = option bool] ++ M.r) cfg internal
 end
 
+functor ExternalAction(M : sig
+                           type inp
+                           con key :: Name
+                           type keyT
+                           con performed :: Name
+                           con r :: {Type}
+                           constraint [key] ~ [performed]
+                           constraint [key, performed] ~ r
+                           val show_key : show keyT
+                           val inj_key : sql_injectable keyT
+
+                           table tab : ([key = keyT, performed = option bool] ++ r)
+                           val title : string
+
+                           val label : string
+                           val authorized : transaction bool
+                           val perform : $([key = keyT, performed = option bool] ++ r) -> transaction unit
+                       end) : sig
+    type cfg
+    type internal
+    val t : t M.inp ([M.key = M.keyT, M.performed = option bool] ++ M.r) cfg internal
+end
+
 functor Upvote(M : sig
                 type inp
                 con this :: Name

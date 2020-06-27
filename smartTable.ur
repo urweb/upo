@@ -1927,6 +1927,93 @@ functor Moderate(M : sig
     }
 end
 
+functor ExternalAction(M : sig
+                           type inp
+                           con key :: Name
+                           type keyT
+                           con performed :: Name
+                           con r :: {Type}
+                           constraint [key] ~ [performed]
+                           constraint [key, performed] ~ r
+                           val show_key : show keyT
+                           val inj_key : sql_injectable keyT
+
+                           table tab : ([key = keyT, performed = option bool] ++ r)
+                           val title : string
+
+                           val label : string
+                           val authorized : transaction bool
+                           val perform : $([key = keyT, performed = option bool] ++ r) -> transaction unit
+                       end) = struct
+    open M
+
+    type cfg = unit
+    type internal = option keyT * bool
+
+    val changed = ChangeWatcher.changed title
+
+    fun activate k =
+        auth <- authorized;
+        if not auth then
+            error <xml>Access denied</xml>
+        else
+            r <- oneRow1 (SELECT * FROM tab WHERE tab.{key} = {[k]});
+            perform r;
+            dml (UPDATE tab
+                 SET {performed} = {[Some True]}
+                 WHERE T.{key} = {[k]});
+            changed
+
+    fun rollback k =
+        auth <- authorized;
+        if not auth then
+            error <xml>Access denied</xml>
+        else
+            dml (UPDATE tab
+                 SET {performed} = NULL
+                 WHERE T.{key} = {[k]});
+            changed
+
+    val t  = {
+        Configure = return (),
+        Generate = fn () r => return (Some r.key, Option.get False r.performed),
+        Filter = fn _ _ => None,
+        FilterLinks = fn _ _ => None,
+        SortBy = fn x => x,
+        ModifyBeforeCreate = fn _ _ r => r,
+        OnCreate = fn _ _ _ => return (),
+        OnLoad = fn _ _ => return (),
+        GenerateLocal = fn () _ => return (None, False),
+        WidgetForCreate = fn _ _ => <xml></xml>,
+        OnCreateLocal = fn _ _ => return (),
+        Header = fn _ => <xml><th>{[label]}</th></xml>,
+        Row = fn () ctx (k, performed) => <xml><td>
+          {if performed then
+               <xml><i class="glyphicon glyphicon-check"/></xml>
+           else
+               <xml></xml>}
+          {Ui.modalIcon ctx (CLASS "glyphicon glyphicon-pencil-alt")
+                        (return (Ui.modal (case k of
+                                               None => error <xml>No key set</xml>
+                                             | Some k =>
+                                               if performed then
+                                                   rpc (rollback k)
+                                               else
+                                                   rpc (activate k))
+                                          <xml>Are you sure?</xml>
+                                          <xml>You would {if performed then
+                                                              <xml>revert</xml>
+                                                          else
+                                                              <xml>perform</xml>} action <b>{[label]}</b> for this entry: <b>{[k]}</b>.</xml>
+                                          (if performed then
+                                               <xml>Revert</xml>
+                                           else
+                                               <xml>Perform</xml>)))}
+        </td></xml>,
+        Todos = fn _ _ => return 0
+    }
+end
+
 functor Upvote(M : sig
                 type inp
                 con this :: Name
