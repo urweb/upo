@@ -46,6 +46,12 @@ val column : inp ::: Type -> col :: Name -> colT ::: Type -> r ::: {Type} -> [[c
              -> string (* label *)
              -> t inp ([col = colT] ++ r) (column_cfg colT) (column_st colT)
 
+type checkmarks_cfg
+type checkmarks_st
+val checkmarks : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
+               => string (* label *)
+               -> t inp ([col = option bool] ++ r) checkmarks_cfg checkmarks_st
+
 type html_cfg
 type html_st
 val html : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]

@@ -197,6 +197,28 @@ fun html [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (lbl : string) 
     Todos = fn _ _ => return 0
 }
 
+type checkmarks_cfg = unit
+type checkmarks_st = bool
+fun checkmarks [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (lbl : string) = {
+    Configure = return (),
+    Generate = fn () r => return (Option.get False r.col),
+    Filter = fn _ _ => None,
+    FilterLinks = fn _ _ => None,
+    SortBy = sql_order_by_Cons (SQL COALESCE(tab.{col}, FALSE)) sql_asc,
+    ModifyBeforeCreate = fn _ _ r => r,
+    OnCreate = fn _ _ _ => return (),
+    OnLoad = fn _ _ => return (),
+    GenerateLocal = fn () _ => return False,
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
+    Header = fn () => <xml><th>{[lbl]}</th></xml>,
+    Row = fn () _ v => <xml><td>{if v then
+                                     <xml><i class="glyphicon glyphicon-check"/></xml>
+                                 else
+                                     <xml></xml>}</td></xml>,
+    Todos = fn _ _ => return 0
+}
+
 type iconButton_cfg (cols :: {Type}) = option string * time
 type iconButton_st (cols :: {Type}) = option $cols
 fun iconButton [inp ::: Type] [cols ::: {Type}] [r ::: {Type}] [cols ~ r]
@@ -1979,7 +2001,7 @@ functor ExternalAction(M : sig
         Generate = fn () r => return (Some r.key, Option.get False r.performed),
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
-        SortBy = fn x => x,
+        SortBy = sql_order_by_Cons (SQL COALESCE(tab.{performed}, FALSE)) sql_asc,
         ModifyBeforeCreate = fn _ _ r => r,
         OnCreate = fn _ _ _ => return (),
         OnLoad = fn _ _ => return (),
