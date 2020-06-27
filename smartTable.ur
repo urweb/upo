@@ -1823,6 +1823,110 @@ val isTrueOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Todos = fn _ _ => return 0
 }
 
+type isNotTrueOpt_cfg = unit
+type isNotTrueOpt_st = unit
+val isNotTrueOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
+    Configure = return (),
+    Generate = fn _ _ => return (),
+    Filter = fn _ _ => Some (WHERE NOT COALESCE(tab.{col}, FALSE)),
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
+    OnCreate = fn _ _ _ => return (),
+    OnLoad = fn _ _ => return (),
+    GenerateLocal = fn () _ => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
+    Header = fn _ => <xml></xml>,
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
+}
+
+functor Moderate(M : sig
+                     type inp
+                     con key :: Name
+                     type keyT
+                     con hide :: Name
+                     con r :: {Type}
+                     constraint [key] ~ [hide]
+                     constraint [key, hide] ~ r
+                     val show_key : show keyT
+                     val inj_key : sql_injectable keyT
+
+                     table tab : ([key = keyT, hide = option bool] ++ r)
+                     val title : string
+
+                     val authorized : transaction bool
+
+                     val label : string
+                 end) = struct
+    open M
+
+    type cfg = unit
+    type internal = option keyT * bool
+
+    val changed = ChangeWatcher.changed title
+
+    fun hide k =
+        auth <- authorized;
+        if not auth then
+            error <xml>Access denied</xml>
+        else
+            dml (UPDATE tab
+                 SET {hide} = {[Some True]}
+                 WHERE T.{key} = {[k]});
+            changed
+
+    fun unhide k =
+        auth <- authorized;
+        if not auth then
+            error <xml>Access denied</xml>
+        else
+            dml (UPDATE tab
+                 SET {hide} = NULL
+                 WHERE T.{key} = {[k]});
+            changed
+
+    val t  = {
+        Configure = return (),
+        Generate = fn () r => return (Some r.key, Option.get False r.hide),
+        Filter = fn _ _ => None,
+        FilterLinks = fn _ _ => None,
+        SortBy = sql_order_by_Cons (SQL tab.{hide}) sql_desc,
+        ModifyBeforeCreate = fn _ _ r => r,
+        OnCreate = fn _ _ _ => return (),
+        OnLoad = fn _ _ => return (),
+        GenerateLocal = fn () _ => return (None, False),
+        WidgetForCreate = fn _ _ => <xml></xml>,
+        OnCreateLocal = fn _ _ => return (),
+        Header = fn _ => <xml><th>{[label]}</th></xml>,
+        Row = fn () ctx (k, hidden) => <xml><td>
+          {if hidden then
+               <xml><b>Hidden</b></xml>
+           else
+               <xml>Shown</xml>}
+          {Ui.modalIcon ctx (CLASS "glyphicon glyphicon-pencil-alt")
+                        (return (Ui.modal (case k of
+                                               None => error <xml>No key set</xml>
+                                             | Some k =>
+                                               if hidden then
+                                                   rpc (unhide k)
+                                               else
+                                                   rpc (hide k))
+                                          <xml>Are you sure?</xml>
+                                          <xml>You would <b>{if hidden then
+                                                                 <xml>unhide</xml>
+                                                             else
+                                                                 <xml>hide</xml>}</b> this entry: <b>{[k]}</b>.</xml>
+                                          (if hidden then
+                                               <xml>Unhide</xml>
+                                           else
+                                               <xml>Hide</xml>)))}
+        </td></xml>,
+        Todos = fn _ _ => return 0
+    }
+end
+
 functor Upvote(M : sig
                 type inp
                 con this :: Name

@@ -436,6 +436,33 @@ type isTrueOpt_st
 val isTrueOpt : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
                 => t inp ([col = option bool] ++ r) isTrueOpt_cfg isTrueOpt_st
 
+type isNotTrueOpt_cfg
+type isNotTrueOpt_st
+val isNotTrueOpt : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
+                   => t inp ([col = option bool] ++ r) isNotTrueOpt_cfg isNotTrueOpt_st
+
+functor Moderate(M : sig
+                     type inp
+                     con key :: Name
+                     type keyT
+                     con hide :: Name
+                     con r :: {Type}
+                     constraint [key] ~ [hide]
+                     constraint [key, hide] ~ r
+                     val show_key : show keyT
+                     val inj_key : sql_injectable keyT
+
+                     table tab : ([key = keyT, hide = option bool] ++ r)
+                     val title : string
+
+                     val authorized : transaction bool
+                     val label : string
+                 end) : sig
+    type cfg
+    type internal
+    val t : t M.inp ([M.key = M.keyT, M.hide = option bool] ++ M.r) cfg internal
+end
+
 functor Upvote(M : sig
                 type inp
                 con this :: Name
