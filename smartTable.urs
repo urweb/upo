@@ -436,6 +436,27 @@ type isTrueOpt_st
 val isTrueOpt : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
                 => t inp ([col = option bool] ++ r) isTrueOpt_cfg isTrueOpt_st
 
+functor Upvote(M : sig
+                type inp
+                con this :: Name
+                con fthis :: Name
+                con thisT :: Type
+                con user :: Name
+                con r :: {Type}
+                constraint [this] ~ r
+                constraint [fthis] ~ [user]
+                val inj_this : sql_injectable thisT
+                table vote : {fthis : thisT, user : string}
+                val title : string
+
+                val label : string
+                val whoami : transaction (option string)
+            end) : sig
+    type cfg
+    type internal
+    val t : t M.inp ([M.this = M.thisT] ++ M.r) cfg internal
+end
+
 functor Make(M : sig
                  con r :: {(Type * Type * Type)}
                  table tab : (map fst3 r)
@@ -458,20 +479,32 @@ functor Make(M : sig
 (* This version expects an explicit input. *)
 functor Make1(M : sig
                   type inp
+                  con key :: Name
+                  type keyT
+                  type key2
+                  type key3
                   con r :: {(Type * Type * Type)}
-                  table tab : (map fst3 r)
+                  constraint [key] ~ r
+                  con keyName :: Name
+                  con otherKeys :: {{Unit}}
+                  constraint [keyName] ~ otherKeys
+                  val tab : sql_table ([key = keyT] ++ map fst3 r) ([keyName = [key]] ++ otherKeys)
                   val title : string
 
                   type cfg
                   type st
-                  val t : t inp (map fst3 r) cfg st
-                  val widgets : $(map Widget.t' r)
-                  val fl : folder r
-                  val labels : $(map (fn _ => string) r)
-                  val injs : $(map (fn p => sql_injectable p.1) r)
+                  val t : t inp ([key = keyT] ++ map fst3 r) cfg st
+                  val widgets : $(map Widget.t' ([key = (keyT, key2, key3)] ++ r))
+                  val fl : folder ([key = (keyT, key2, key3)] ++ r)
+                  val labels : $(map (fn _ => string) ([key = (keyT, key2, key3)] ++ r))
+                  val injs : $(map (fn p => sql_injectable p.1) ([key = (keyT, key2, key3)] ++ r))
 
                   val authorized : transaction bool
                   val allowCreate : bool
                   val notifyWhenEmpty : bool
                   val notifyWhenNonempty : bool
+
+                  con buttons :: {Unit}
+                  val buttonsFl : folder buttons
               end) : Ui.S where type input = M.inp
+                                             * $(mapU (unit -> {M.key : M.keyT} -> string (* label *) * url) M.buttons)
