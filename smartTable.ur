@@ -29,7 +29,7 @@ fun inputIs [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_inj
     Filter = fn () inp => Some (WHERE tab.{col} = {[inp]}),
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
-    ModifyBeforeCreate = fn _ _ r => r,
+    ModifyBeforeCreate = fn _ inp r => r -- col ++ {col = inp},
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -48,7 +48,7 @@ fun inputIsOpt [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_
     Filter = fn () inp => Some (WHERE tab.{col} = {[Some inp]}),
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
-    ModifyBeforeCreate = fn _ _ r => r,
+    ModifyBeforeCreate = fn _ inp r => r -- col ++ {col = Some inp},
     OnCreate = fn _ _ _ => return (),
     OnLoad = fn _ _ => return (),
     GenerateLocal = fn () _ => return (),
@@ -1892,7 +1892,7 @@ functor Moderate(M : sig
         Generate = fn () r => return (Some r.key, Option.get False r.hide),
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
-        SortBy = sql_order_by_Cons (SQL tab.{hide}) sql_desc,
+        SortBy = sql_order_by_Cons (SQL tab.{hide}) sql_asc,
         ModifyBeforeCreate = fn _ _ r => r,
         OnCreate = fn _ _ _ => return (),
         OnLoad = fn _ _ => return (),
@@ -2022,27 +2022,40 @@ functor Upvote(M : sig
 end
 
 functor Make(M : sig
+                 con key :: Name
+                 type keyT
+                 type key2
+                 type key3
                  con r :: {(Type * Type * Type)}
-                 table tab : (map fst3 r)
+                 constraint [key] ~ r
+                 con keyName :: Name
+                 con otherKeys :: {{Unit}}
+                 constraint [keyName] ~ otherKeys
+                 val tab : sql_table ([key = keyT] ++ map fst3 r) ([keyName = [key]] ++ otherKeys)
                  val title : string
 
                  type cfg
                  type st
-                 val t : t unit (map fst3 r) cfg st
-                 val widgets : $(map Widget.t' r)
-                 val fl : folder r
-                 val labels : $(map (fn _ => string) r)
-                 val injs : $(map (fn p => sql_injectable p.1) r)
+                 val t : t unit ([key = keyT] ++ map fst3 r) cfg st
+                 val widgets : $(map Widget.t' ([key = (keyT, key2, key3)] ++ r))
+                 val fl : folder ([key = (keyT, key2, key3)] ++ r)
+                 val labels : $(map (fn _ => string) ([key = (keyT, key2, key3)] ++ r))
+                 val injs : $(map (fn p => sql_injectable p.1) ([key = (keyT, key2, key3)] ++ r))
 
                  val authorized : transaction bool
                  val allowCreate : bool
+
+                 con buttons :: {Unit}
+                 val buttonsFl : folder buttons
              end) = struct
     open M
 
+    type input = $(mapU (unit -> {key : keyT} -> string * url) buttons)
     type a = {Config : source cfg,
-              Configs : source $(map thd3 r),
-              Rows : source (list st),
-              Changes : ChangeWatcher.client_part}
+              Configs : source $([key = key3] ++ map thd3 r),
+              Rows : source (list (keyT * st)),
+              Changes : ChangeWatcher.client_part,
+              Buttons : source $(mapU (unit -> {key : keyT} -> string * url) buttons)}
 
     val rows =
         cfg <- t.Configure;
@@ -2053,16 +2066,17 @@ functor Make(M : sig
                               WHERE {Option.get (WHERE TRUE) (t.Filter cfg ())}
                                 AND {Option.get (WHERE TRUE) (t.FilterLinks cfg ())}
                               ORDER BY {{{t.SortBy (sql_order_by_Nil [[]])}}})
-                             (fn {Tab = r} => t.Generate cfg r);
+                             (fn {Tab = r} => st <- t.Generate cfg r; return (r.key, st));
         return (cfg, cfgs, rs)
 
-    val create =
+    fun create btns =
         (cfg, cfgs, rs) <- rows;
         cfg <- source cfg;
         cfgs <- source cfgs;
         rs <- source rs;
         ch <- ChangeWatcher.listen title;
-        return {Config = cfg, Configs = cfgs, Rows = rs, Changes = ch}
+        btns <- source btns;
+        return {Config = cfg, Configs = cfgs, Rows = rs, Changes = ch, Buttons = btns}
 
     val redo =
         ok <- authorized;
@@ -2093,7 +2107,7 @@ functor Make(M : sig
                 error <xml>Access denied</xml>
             else
                 cfg <- t.Configure;
-                @@Sql.easy_insert [map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab (t.ModifyBeforeCreate cfg () r);
+                @@Sql.easy_insert [[key = keyT] ++ map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab (t.ModifyBeforeCreate cfg () r);
                 t.OnCreate cfg () r
 
     fun notify ch =
@@ -2140,7 +2154,7 @@ functor Make(M : sig
                                     rpc (notify (ChangeWatcher.server self.Changes));
                                     st <- rpc (generate vs);
                                     rs <- get self.Rows;
-                                    set self.Rows (List.append rs (st :: [])))
+                                    set self.Rows (List.append rs ((vs.key, st) :: [])))
                                    <xml>Add</xml>
                                    <xml>
                                      {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
@@ -2159,15 +2173,30 @@ functor Make(M : sig
                                    </xml>
                                    <xml>Add</xml>))}
 
-      <dyn signal={cfg <- signal self.Config;
+      <dyn signal={btns <- signal self.Buttons;
+                   cfg <- signal self.Config;
                    return <xml>
                      <table class="bs-table">
                        <thead>
-                         <tr>{t.Header cfg}</tr>
+                         <tr>{if @Row.isEmpty buttonsFl then <xml></xml> else <xml><th/></xml>}{t.Header cfg}</tr>
                        </thead>
                        <tbody>
                          <dyn signal={rs <- signal self.Rows;
-                                      return (List.mapX (fn r => <xml><tr>{t.Row cfg ctx r}</tr></xml>) rs)}/>
+                                      return (List.mapX (fn (k, r) => <xml><tr>
+                                        {if @Row.isEmpty buttonsFl then
+                                             <xml></xml>
+                                         else <xml><td>
+                                           {@mapUX [unit -> {key : keyT} -> string * url] [body]
+                                             (fn [nm ::_] [r ::_] [[nm] ~ r] make =>
+                                                 let
+                                                     val (label, url) = make () {key = k}
+                                                 in
+                                                     <xml><a class="btn btn-sm btn-primary" href={url}>{[label]}</a></xml>
+                                                 end)
+                                             buttonsFl btns}
+                                         </td></xml>}
+                                        {t.Row cfg ctx r}
+                                      </tr></xml>) rs)}/>
                        </tbody>
                      </table>
                    </xml>}/>
@@ -2176,7 +2205,7 @@ functor Make(M : sig
     fun notification _ self = <xml>
       <dyn signal={cfg <- signal self.Config;
                    st <- signal self.Rows;
-                   n <- List.foldlM (fn r n =>
+                   n <- List.foldlM (fn (_, r) n =>
                                         m <- t.Todos cfg r;
                                         return (m + n)) 0 st;
                    return (if n = 0 then
@@ -2185,10 +2214,10 @@ functor Make(M : sig
                                <xml><span class="badge badge-pill badge-warning">{[n]}</span></xml>)}/>
     </xml>
 
-    val ui = {Create = create,
-              Onload = onload,
-              Render = render,
-              Notification = notification}
+    fun ui btns = {Create = create btns,
+                   Onload = onload,
+                   Render = render,
+                   Notification = notification}
 end
 
 functor Make1(M : sig

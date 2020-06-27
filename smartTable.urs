@@ -485,23 +485,34 @@ functor Upvote(M : sig
 end
 
 functor Make(M : sig
+                 con key :: Name
+                 type keyT
+                 type key2
+                 type key3
                  con r :: {(Type * Type * Type)}
-                 table tab : (map fst3 r)
+                 constraint [key] ~ r
+                 con keyName :: Name
+                 con otherKeys :: {{Unit}}
+                 constraint [keyName] ~ otherKeys
+                 val tab : sql_table ([key = keyT] ++ map fst3 r) ([keyName = [key]] ++ otherKeys)
                  val title : string
 
                  type cfg
                  type st
-                 val t : t unit (map fst3 r) cfg st
-                 val widgets : $(map Widget.t' r)
-                 val fl : folder r
-                 val labels : $(map (fn _ => string) r)
-                 val injs : $(map (fn p => sql_injectable p.1) r)
+                 val t : t unit ([key = keyT] ++ map fst3 r) cfg st
+                 val widgets : $(map Widget.t' ([key = (keyT, key2, key3)] ++ r))
+                 val fl : folder ([key = (keyT, key2, key3)] ++ r)
+                 val labels : $(map (fn _ => string) ([key = (keyT, key2, key3)] ++ r))
+                 val injs : $(map (fn p => sql_injectable p.1) ([key = (keyT, key2, key3)] ++ r))
 
                  val authorized : transaction bool
                  val allowCreate : bool
+
+                 con buttons :: {Unit}
+                 val buttonsFl : folder buttons
                  (* Note: creation is streamlined and
                   * omits showing widgets that are marked optional. *)
-             end) : Ui.S0
+             end) : Ui.S where type input = $(mapU (unit -> {M.key : M.keyT} -> string (* label *) * url) M.buttons)
 
 (* This version expects an explicit input. *)
 functor Make1(M : sig
