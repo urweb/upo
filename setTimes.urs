@@ -20,4 +20,5 @@ functor Make(M : sig
                  val whoami : transaction (option string)
 
                  val addon : CalendarAddons.t ([key = keyT, tm = option time] ++ others)
+                 val schedAddon : SchedulingAddons.t keyT
              end) : Ui.S0

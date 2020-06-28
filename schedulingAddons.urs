@@ -2,6 +2,7 @@
 
 con t :: Type (* key of table whose rows we are scheduling *) -> Type
 
+val times : key ::: Type -> t key -> option (sql_query [] [] [] [Time = time])
 val unpreferred : key ::: Type -> tabs ::: {{Type}} -> tname1 :: Name -> tname2 :: Name
                   -> [[tname1] ~ [tname2]] => [[tname1, tname2] ~ tabs]
                   => t key
