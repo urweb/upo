@@ -30,9 +30,7 @@ functor Make(M : sig
                  constraint [this, ttime] ~ assignees
                  constraint [this, ttime] ~ r
                  constraint assignees ~ r
-                 constraint [T] ~ [Times]
-                 constraint [T, Times] ~ [Preferred]
-                 constraint [T, Times, Preferred] ~ assignees
+                 constraint [T, Times, Preferred, SubPreferred, SubUnpreferred] ~ assignees
                  table t : ([this = thisT, ttime = option time] ++ mapU (option string) assignees ++ r)
                  val tTitle : string
 
@@ -46,4 +44,5 @@ functor Make(M : sig
                  val whoami : transaction (option string)
 
                  val addon : CalendarAddons.t ([this = thisT, ttime = option time] ++ mapU (option string) assignees ++ r)
+                 val schedAddon : SchedulingAddons.t thisT
              end) : Ui.S0

@@ -31,9 +31,7 @@ functor Make(M : sig
                  constraint [this, ttime] ~ assignees
                  constraint [this, ttime] ~ r
                  constraint assignees ~ r
-                 constraint [T] ~ [Times]
-                 constraint [T, Times] ~ [Preferred]
-                 constraint [T, Times, Preferred] ~ assignees
+                 constraint [T, Times, Preferred, SubPreferred, SubUnpreferred] ~ assignees
                  table t : ([this = thisT, ttime = option time] ++ mapU (option string) assignees ++ r)
                  val tTitle : string
 
@@ -47,11 +45,18 @@ functor Make(M : sig
                  val whoami : transaction (option string)
 
                  val addon : CalendarAddons.t ([this = thisT, ttime = option time] ++ mapU (option string) assignees ++ r)
+                 val schedAddon : SchedulingAddons.t thisT
              end) = struct
 
     open M
 
-    type a = source {Times : list (time * list (thisT * $(mapU string assignees) * int * source (option time))),
+    type prefs = {
+         Preferred : int,
+         SubPreferred : int,
+         SubUnpreferred : int
+    }
+
+    type a = source {Times : list (time * list (thisT * $(mapU string assignees) * prefs * source (option time))),
                      Events : list (thisT * source (option time)),
                      Calendar : FullCalendar.t,
                      Context : source (option Ui.context),
@@ -60,17 +65,17 @@ functor Make(M : sig
                      BidChanges : ChangeWatcher.client_part,
                      Empty : source bool}
 
-    fun stars n =
+    fun stars r =
         let
             val numAssignees = @fold [fn _ => int] (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] n => n + 1) 0 fl
-            val unpreferred = numAssignees - n
+            val unpreferred = numAssignees - r.Preferred
             fun one cls n =
                 if n <= 0 then
                     <xml></xml>
                 else
-                    <xml> <i class={classes (CLASS "glyphicon glyphicon-lg") cls}/> {[n]}</xml>
+                    <xml> <i class={classes glyphicon cls}/> {[n]}</xml>
         in
-            <xml>{one glyphicon_smile n}{one glyphicon_meh unpreferred}</xml>
+            <xml>{one (CLASS "glyphicon-lg glyphicon-smile") r.Preferred}{one (CLASS "glyphicon-lg glyphicon-meh") unpreferred}{one glyphicon_smile r.SubPreferred}{one glyphicon_meh r.SubUnpreferred}</xml>
         end
 
     fun setTime ch k tmo =
@@ -122,11 +127,13 @@ functor Make(M : sig
 
     val create =
         let
-            fun collectTimes r (acc : list (time * list (thisT * $(mapU string assignees) * int))) =
+            fun collectTimes r (acc : list (time * list (thisT * $(mapU string assignees) * prefs))) =
                 let
                     val k = r.T.this
                     val tm = r.Times.key
-                    val pref = r.Preferred
+                    val pref = {Preferred = r.Preferred,
+                                SubPreferred = r.SubPreferred,
+                                SubUnpreferred = r.SubUnpreferred}
                     val assignees = @foldUR [option string] [fn r => option $(mapU string r)]
                                     (fn [nm ::_] [r ::_] [[nm] ~ r] o acc =>
                                         case o of
@@ -199,6 +206,8 @@ functor Make(M : sig
                                                                                                   + (IF COALESCE({{nm}}.{preferred}, FALSE) THEN 1 ELSE 0)))
                                                                                            (fn [irrel ::_] [others ::_] [others ~ []] [irrel ~ others] => (SQL 0))
                                                                                            fl [_] [[]] ! !),
+                                                                         SubPreferred = sql_window (sql_exp_weaken (SchedulingAddons.preferred [#SubPreferred] [#SubUnpreferred] schedAddon (SQL t.{this}) (SQL times.{key}))),
+                                                                         SubUnpreferred = sql_window (sql_exp_weaken (SchedulingAddons.unpreferred [#SubPreferred] [#SubUnpreferred] schedAddon (SQL t.{this}) (SQL times.{key}))),
                                                                          Complete = sql_window
                                                                                          (@fold [fn assignees => irrel :: {{Type}} -> others :: {Unit} -> [others ~ assignees] => [irrel ~ others ++ assignees]
                                                                                                     => sql_exp (mapU [btime = option time, user = option string, preferred = option bool] (others ++ assignees) ++ irrel)
@@ -214,7 +223,7 @@ functor Make(M : sig
                                                                                                   AND NOT ({{nm}}.{preferred} IS NULL)))
                                                                                            (fn [irrel ::_] [others ::_] [others ~ []] [irrel ~ others] => (SQL TRUE))
                                                                                            fl [_] [[]] ! !)}}}}}
-                                            ORDER BY times.{key} DESC, Preferred, Complete, t.{this} DESC)
+                                            ORDER BY times.{key} DESC, Preferred, Complete, SubPreferred, SubUnpreferred, t.{this} DESC)
                                            (fn r acc => return (collectTimes r acc)) [];
                               evs <- List.mapQueryM (SELECT t.{this}, t.{ttime}
                                                      FROM t)
@@ -301,10 +310,11 @@ functor Make(M : sig
                                                                                      <xml><ul class="list-group">
                                                                                        {List.mapX (fn (k, assignees, np, _, s) => <xml><li class="list-group-item">
                                                                                          <ccheckbox source={s}/>
-                                                                                         {[k]}{stars np}
+                                                                                         {[k]}
                                                                                          {@mapUX [string] [body]
                                                                                            (fn [nm ::_] [r ::_] [[nm] ~ r] u => <xml> [{[u]}]</xml>)
                                                                                            fl assignees}
+                                                                                         {stars np}
                                                                                          </li></xml>) choices}
                                                                                      </ul></xml>
                                                                                      <xml>Save</xml>))}
