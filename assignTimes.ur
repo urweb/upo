@@ -61,12 +61,17 @@ functor Make(M : sig
                      Empty : source bool}
 
     fun stars n =
-        if n <= 0 then
-            ""
-        else if n = 1 then
-            " [preferred]"
-        else
-            " [preferred X" ^ show n ^ "]"
+        let
+            val numAssignees = @fold [fn _ => int] (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] n => n + 1) 0 fl
+            val unpreferred = numAssignees - n
+            fun one cls n =
+                if n <= 0 then
+                    <xml></xml>
+                else
+                    <xml> <i class={classes (CLASS "glyphicon glyphicon-lg") cls}/> {[n]}</xml>
+        in
+            <xml>{one glyphicon_smile n}{one glyphicon_meh unpreferred}</xml>
+        end
 
     fun setTime ch k tmo =
         uo <- whoami;
@@ -296,7 +301,7 @@ functor Make(M : sig
                                                                                      <xml><ul class="list-group">
                                                                                        {List.mapX (fn (k, assignees, np, _, s) => <xml><li class="list-group-item">
                                                                                          <ccheckbox source={s}/>
-                                                                                         {[k]}{[stars np]}
+                                                                                         {[k]}{stars np}
                                                                                          {@mapUX [string] [body]
                                                                                            (fn [nm ::_] [r ::_] [[nm] ~ r] u => <xml> [{[u]}]</xml>)
                                                                                            fl assignees}
