@@ -342,17 +342,17 @@ functor Make(M : sig
                                     None => return <xml></xml>
                                   | Some choices =>
                                     let
-                                        fun renderEvent (k, assignees) = <xml>
+                                        fun renderEvent (k, prefs, assignees) = <xml>
                                           {[k]}{@mapUX [string] [body]
                                                  (fn [nm ::_] [r ::_] [[nm] ~ r] u => <xml> [{[u]}]</xml>)
-                                                 fl assignees}
+                                                 fl assignees}{stars prefs}
                                         </xml>
                                     in
                                         return <xml>
-                                          <dyn signal={evs <- List.mapPartialM (fn (k, assignees, _, tmS) =>
+                                          <dyn signal={evs <- List.mapPartialM (fn (k, assignees, prefs, tmS) =>
                                                                                    tm' <- signal tmS;
                                                                                    return (if tm' = Some tm then
-                                                                                               Some (k, assignees)
+                                                                                               Some (k, prefs, assignees)
                                                                                            else
                                                                                                None)) choices;
                                                        return (case evs of

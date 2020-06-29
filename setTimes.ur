@@ -187,12 +187,14 @@ functor Make(M : sig
                                                         Body = <xml>
                                                           <active code={tm <- FullCalendar.eventStart ev;
                                                                         return <xml>
-                                                                          <dyn signal={settables <- List.mapPartialM (fn (k, (_, s)) =>
+                                                                          <dyn signal={settables <- List.mapPartialM (fn (k, (tms, s)) =>
                                                                                                                          tmo <- signal s;
                                                                                                                          return (if tmo <> Some tm then
                                                                                                                                      None
                                                                                                                                  else
-                                                                                                                                     Some <xml><b>{[k]}</b></xml>)) settable;
+                                                                                                                                     Some <xml><b>{[k]}{case List.assoc tm tms of
+                                                                                                                                                            None => <xml></xml>
+                                                                                                                                                          | Some prefs => stars prefs}</b></xml>)) settable;
                                                                                        unsettables <- return (List.mapPartial (fn (k, tm') =>
                                                                                                                                   if tm' <> tm then
                                                                                                                                       None
