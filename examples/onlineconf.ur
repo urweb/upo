@@ -258,6 +258,7 @@ structure AssignTalkTimes = AssignTimes.Make(struct
 
                                                  val whoami = whoami
                                                  val addon = CalendarAddons.empty
+                                                 val schedAddon = SchedulingAddons.empty
                                              end)
 
 fun claim code =
@@ -396,6 +397,7 @@ structure ChatList = SmartTable.Make(struct
                                                        StartUrl = "Start URL",
                                                        JoinUrl = "Join URL",
                                                        Active = "Active?"}
+                                         con buttons = []
 
                                          val t = SmartTable.iconButton
                                                      whoami
@@ -444,6 +446,7 @@ structure ScheduleChats = SetTimes.Make(struct
                                             val t = chat
                                             val whoami = whoami
                                             val addon = CalendarAddons.empty
+                                            val schedAddon = SchedulingAddons.empty
                                         end)
 
 structure Calendar = SmartCalendar.Make(struct
@@ -560,7 +563,7 @@ and main () =
          (Some "Paper list", PaperList.ui),
          (Some "Speaker interest", SpeakerInterest.ui u),
          (Some "Availability", UsersEnterAvailability.ui u),
-         (Some "Chat list", ChatList.ui),
+         (Some "Chat list", ChatList.ui ()),
          (Some "Schedule chats", ScheduleChats.ui),
          (Some "Log out", Ui.h4 <xml>
            <form>
