@@ -175,6 +175,18 @@ structure PapersAdmin = SmartTable.Make(struct
                                                            ShareUrl = "Share URL",
                                                            SlackChannelId = "Slack channel ID" }
 
+                                            structure Speaker = SmartTable.AssignFromBids(struct
+                                                                                              con this = #Title
+                                                                                              val bid = speakingInterest
+                                                                                              val bidTitle = "SpeakingInterest"
+
+                                                                                              val label = "Speaker"
+                                                                                              val whoami = whoami
+
+                                                                                              val tab = paper
+                                                                                              val tabTitle = "Paper"
+                                                                                          end)
+
                                             val t = SmartTable.sortby [#Title]
                                                  |> SmartTable.compose (SmartTable.iconButton
                                                                             (return None)
@@ -208,7 +220,7 @@ structure PapersAdmin = SmartTable.Make(struct
                                                                                               | Some join => Some (glyphicon_video, bless join))
                                                                             "Zoom")
                                                  |> SmartTable.compose (SmartTable.column [#TalkBegins] "Time")
-                                                 |> SmartTable.compose (SmartTable.column [#Speaker] "Speaker")
+                                                 |> SmartTable.compose Speaker.t
                                                  |> SmartTable.compose (SmartTable.orderedLinked [#Title] [#Paper] [#User] author "Authors")
                                                  |> SmartTable.compose (SmartTable.column [#Title] "Title")
 
@@ -235,19 +247,6 @@ structure SpeakerInterest = Preferences.Make(struct
                                                                             AND author.User = {[u]}) = {[Some True]})
                                              end)
 
-structure AssignTalks = UsersFromPreferences.Make(struct
-                                                      con choice = #Title
-                                                      val choice = paper
-                                                      val labels = {Speaker = "Speaker"}
-
-                                                      con user = #User
-                                                      con slot = #Title
-                                                      con preferred = #Preferred
-                                                      val prefs = {Speaker = speakingInterest}
-
-                                                      val whoami = whoamiAdmin
-                                                  end)
-
 structure UsersEnterAvailability = TimePreferences.Make(struct
                                                             val times = slot
 
@@ -261,26 +260,26 @@ structure UsersEnterAvailability = TimePreferences.Make(struct
                                                             val addon = CalendarAddons.empty
                                                         end)
 
-structure AssignTalkTimes = AssignTimes.Make(struct
-                                                 val times = slot
-                                                 fun others tm = {End = addSeconds tm (60 * 60)}
+structure Schedule = AssignTimes.Make(struct
+                                          val times = slot
+                                          fun others tm = {End = addSeconds tm (60 * 60)}
 
-                                                 con user = #User
-                                                 con btime = #Slot
-                                                 con preferred = #Preferred
-                                                 val bid = timePreference
-                                                 val bidTitle = "TimePreference"
+                                          con user = #User
+                                          con btime = #Slot
+                                          con preferred = #Preferred
+                                          val bid = timePreference
+                                          val bidTitle = "TimePreference"
 
-                                                 con this = #Title
-                                                 con ttime = #TalkBegins
-                                                 val t = paper
-                                                 val tTitle = "Paper"
-                                                 val assignees = {Speaker = "Speaker"}
+                                          con this = #Title
+                                          con ttime = #TalkBegins
+                                          val t = paper
+                                          val tTitle = "Paper"
+                                          val assignees = {Speaker = "Speaker"}
 
-                                                 val whoami = whoami
-                                                 val addon = CalendarAddons.empty
-                                                 val schedAddon = SchedulingAddons.empty
-                                             end)
+                                          val whoami = whoami
+                                          val addon = CalendarAddons.empty
+                                          val schedAddon = SchedulingAddons.empty
+                                      end)
 
 fun claim code =
     ex <- oneRowE1 (SELECT COUNT( * ) > 0
@@ -607,8 +606,7 @@ and admin () =
         Theme.tabbed "OnlineConf Admin"
                      ((Some "HotCRP import", HotcrpImport.ui),
                       (Some "Papers", PapersAdmin.ui ()),
-                      (Some "Assign talks", AssignTalks.ui),
-                      (Some "Assign talk times", AssignTalkTimes.ui),
+                      (Some "Schedule", Schedule.ui),
                       (Some "Log out", Ui.h4 <xml>
                         <form>
                           <submit class="btn btn-primary" action={logout} value="Log out"/>
