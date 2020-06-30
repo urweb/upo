@@ -231,21 +231,39 @@ structure PapersAdmin = SmartTable.Make(struct
                                             con buttons = []
                                         end)
 
-structure SpeakerInterest = Preferences.Make(struct
-                                                 con choice = #Title
-                                                 val choice = paper
+structure SpeakerInterest = SmartTable.Make(struct
+                                                con sortBy = #TalkBegins
+                                                val tab = paper
+                                                val title = "Paper"
+                                                val allowCreate = False
+                                                val notifyOnNonempty = False
+                                                val authorized = return True
+                                                val labels = { Title = "Title",
+                                                               Abstract = "Abstract",
+                                                               Speaker = "Speaker",
+                                                               TalkBegins = "Talk begins",
+                                                               ZoomMeetingId = "Zoom meeting ID",
+                                                               StartUrl = "Start URL",
+                                                               JoinUrl = "Join URL",
+                                                               ShareUrl = "Share URL",
+                                                               SlackChannelId = "Slack channel ID" }
 
-                                                 con user = #User
-                                                 con slot = #Title
-                                                 con preferred = #Preferred
-                                                 val pref = speakingInterest
+                                                structure Bids = SmartTable.Bid(struct
+                                                                                    con this = #Title
+                                                                                    val bid = speakingInterest
+                                                                                    val title = "SpeakingInterest"
 
-                                                 val whoami = whoami
-                                                 fun eligible u = (WHERE (SELECT COUNT( * ) > 0
-                                                                          FROM author
-                                                                          WHERE author.Paper = Choice.Title
-                                                                            AND author.User = {[u]}) = {[Some True]})
-                                             end)
+                                                                                    val label = "Want to speak?"
+                                                                                    val whoami = whoami
+                                                                                    val response = None
+                                                                                end)
+
+                                                val t = SmartTable.sortby [#Title]
+                                                     |> SmartTable.compose (SmartTable.linkedToUser [#Title] [#Paper] [#User] author whoami "Author")
+                                                     |> SmartTable.compose Bids.t
+                                                     |> SmartTable.compose (SmartTable.orderedLinked [#Title] [#Paper] [#User] author "Authors")
+                                                     |> SmartTable.compose (SmartTable.column [#Title] "Title")
+                                      end)
 
 structure UsersEnterAvailability = TimePreferences.Make(struct
                                                             val times = slot
@@ -362,47 +380,59 @@ structure HotcrpImport : Ui.S0 = struct
               Notification = notification}
 end
 
-structure PaperList = SmartList.Make(struct
-                                         con sortBy = #TalkBegins
-                                         val tab = paper
-                                         val title = "Paper"
-                                         val notifyOnNonempty = False
-                                         val authorized = return True
+structure PaperList = SmartTable.Make(struct
+                                          con sortBy = #TalkBegins
+                                          val tab = paper
+                                          val title = "Paper"
+                                          val notifyOnNonempty = False
+                                          val allowCreate = False
+                                          val authorized = return True
+                                          val labels = { Title = "Title",
+                                                         Abstract = "Abstract",
+                                                         Speaker = "Speaker",
+                                                         TalkBegins = "Talk begins",
+                                                         ZoomMeetingId = "Zoom meeting ID",
+                                                         StartUrl = "Start URL",
+                                                         JoinUrl = "Join URL",
+                                                         ShareUrl = "Share URL",
+                                                         SlackChannelId = "Slack channel ID" }
 
-                                         val t = SmartList.iconButtonInHeader
-                                                     whoami
-                                                     (fn u tm {TalkBegins = begins,
-                                                               Speaker = speaker,
-                                                               StartUrl = start,
-                                                               JoinUrl = join,
-                                                               ShareUrl = share} =>
-                                                         case share of
-                                                             Some share => Some (glyphicon_film, bless share)
-                                                           | None =>
-                                                             case begins of
-                                                                 None => None
-                                                               | Some begins =>
-                                                                 if begins > addSeconds tm (15 * 60) then
-                                                                     None
-                                                                 else if speaker = u then
-                                                                     case start of
-                                                                         None => None
-                                                                       | Some start => Some (glyphicon_play_circle, bless start)
-                                                                 else
-                                                                     case join of
-                                                                         None => None
-                                                                       | Some join => Some (glyphicon_video, bless join))
-                                                 |> SmartList.compose (SmartList.iconButtonInHeader
-                                                                           whoami
-                                                                           (fn u tm {SlackChannelId = chid} =>
-                                                                               case chid of
-                                                                                   None => None
-                                                                                 | Some chid => Some (glyphicon_comment, Slack.channelUrl {Channel = chid, Team = None})))
-                                                 |> SmartList.compose (SmartList.columnInHeader [#Title])
-                                                 |> SmartList.compose (SmartList.columnInBody [#TalkBegins] "Begins")
-                                                 |> SmartList.compose (SmartList.orderedLinked [#Title] [#Paper] [#User] author "Authors")
-                                                 |> SmartList.compose (SmartList.nonnull [#TalkBegins])
-                                     end)
+                                          val t = SmartTable.sortby [#Title]
+                                                  |> SmartTable.compose (SmartTable.iconButton
+                                                                             whoami
+                                                                             (fn u tm {SlackChannelId = chid} =>
+                                                                                 case chid of
+                                                                                     None => None
+                                                                                   | Some chid => Some (glyphicon_comment, Slack.channelUrl {Channel = chid, Team = None}))
+                                                                             "Slack")
+                                                  |> SmartTable.compose (SmartTable.iconButton
+                                                                             whoami
+                                                                             (fn u tm {TalkBegins = begins,
+                                                                                       Speaker = speaker,
+                                                                                       StartUrl = start,
+                                                                                       JoinUrl = join,
+                                                                                       ShareUrl = share} =>
+                                                                                 case share of
+                                                                                     Some share => Some (glyphicon_film, bless share)
+                                                                                   | None =>
+                                                                                     case begins of
+                                                                                         None => None
+                                                                                       | Some begins =>
+                                                                                         if begins > addSeconds tm (15 * 60) then
+                                                                                             None
+                                                                                         else if speaker = u then
+                                                                                             case start of
+                                                                                                 None => None
+                                                                                               | Some start => Some (glyphicon_play_circle, bless start)
+                                                                                         else
+                                                                                             case join of
+                                                                                                 None => None
+                                                                                               | Some join => Some (glyphicon_video, bless join))
+                                                                             "Zoom")
+                                                  |> SmartTable.compose (SmartTable.column [#TalkBegins] "Begins")
+                                                  |> SmartTable.compose (SmartTable.orderedLinked [#Title] [#Paper] [#User] author "Authors")
+                                                  |> SmartTable.compose (SmartTable.column [#Title] "Title")
+                                      end)
 
 structure ChatList = SmartTable.Make(struct
                                          val tab = chat
@@ -580,8 +610,8 @@ and main () =
       | Some u =>
         Theme.tabbed "OnlineConf"
         ((Some "Calendar", Calendar.ui),
-         (Some "Paper list", PaperList.ui),
-         (Some "Speaker interest", SpeakerInterest.ui u),
+         (Some "Paper list", PaperList.ui ()),
+         (Some "Speaker interest", SpeakerInterest.ui ()),
          (Some "Availability", UsersEnterAvailability.ui u),
          (Some "Chat list", ChatList.ui ()),
          (Some "Schedule chats", ScheduleChats.ui),
