@@ -162,41 +162,62 @@ fun authorize [a] [b] (act : Explorer.action a b) =
         Explorer.Read _ => return True
       | _ => amAdmin
 
-structure Exp = Make(struct
-                         structure Theme = Default
+structure PapersAdmin = SmartTable.Make(struct
+                                            val tab = paper
+                                            val title = "Paper"
+                                            val labels = { Title = "Title",
+                                                           Abstract = "Abstract",
+                                                           Speaker = "Speaker",
+                                                           TalkBegins = "Talk begins",
+                                                           ZoomMeetingId = "Zoom meeting ID",
+                                                           StartUrl = "Start URL",
+                                                           JoinUrl = "Join URL",
+                                                           ShareUrl = "Share URL",
+                                                           SlackChannelId = "Slack channel ID" }
 
-                         val title = "Papers"
+                                            val t = SmartTable.sortby [#Title]
+                                                 |> SmartTable.compose (SmartTable.iconButton
+                                                                            (return None)
+                                                                            (fn _ _ {SlackChannelId = chid} =>
+                                                                                case chid of
+                                                                                    Some chid => Some (glyphicon_comment, Slack.channelUrl {Channel = chid, Team = None})
+                                                                                  | None => None)
+                                                                            "Slack")
+                                                 |> SmartTable.compose (SmartTable.iconButton
+                                                                            whoami
+                                                                            (fn u tm {TalkBegins = begins,
+                                                                                      Speaker = speaker,
+                                                                                      StartUrl = start,
+                                                                                      JoinUrl = join,
+                                                                                      ShareUrl = share} =>
+                                                                                case share of
+                                                                                    Some share => Some (glyphicon_film, bless share)
+                                                                                  | None =>
+                                                                                    case begins of
+                                                                                        None => None
+                                                                                      | Some begins =>
+                                                                                        if begins > addSeconds tm (15 * 60) then
+                                                                                            None
+                                                                                        else if speaker = u then
+                                                                                            case start of
+                                                                                                None => None
+                                                                                              | Some start => Some (glyphicon_play_circle, bless start)
+                                                                                        else
+                                                                                            case join of
+                                                                                                None => None
+                                                                                              | Some join => Some (glyphicon_video, bless join))
+                                                                            "Zoom")
+                                                 |> SmartTable.compose (SmartTable.column [#TalkBegins] "Time")
+                                                 |> SmartTable.compose (SmartTable.column [#Speaker] "Speaker")
+                                                 |> SmartTable.compose (SmartTable.orderedLinked [#Title] [#Paper] [#User] author "Authors")
+                                                 |> SmartTable.compose (SmartTable.column [#Title] "Title")
 
-                         val t = none
-                                     |> one [#User] [#Username] user "Users" (return <xml></xml>) (Default (WHERE TRUE))
-                                     |> one [#Paper] [#Title] paper "Papers" (return <xml></xml>) (Default (WHERE TRUE))
-                                     |> one [#Slot] [#Begin] slot "Time slots" (return <xml></xml>) (Default (WHERE TRUE))
-
-                                     |> text [#User] [#Username] "Name"
-                                     |> ignored [#User] [#Email] "bogus@bogus.com"
-                                     |> ignored [#User] [#ClaimCode] None
-                                     |> ignored [#User] [#Admin] False
-
-                                     |> text [#Paper] [#Title] "Title"
-                                     |> manyToManyOrdered [#Paper] [#Title] [#Paper] [#User] [#Username] [#User] author "Authors" "Papers" {}
-                                     |> foreign [#Paper] [#Speaker] [#User] [#Username] "Speaker" "Speaker for"
-                                     |> foreign [#Paper] [#TalkBegins] [#Slot] [#Begin] "Talk begins" "Talks"
-                                     |> text [#Paper] [#Abstract] "Abstract"
-                                     |> ignored [#Paper] [#ZoomMeetingId] None
-                                     |> ignored [#Paper] [#StartUrl] None
-                                     |> ignored [#Paper] [#JoinUrl] None
-                                     |> ignored [#Paper] [#ShareUrl] None
-                                     |> ignored [#Paper] [#SlackChannelId] None
-
-                                     |> text [#Slot] [#Begin] "Begins"
-                                     |> text [#Slot] [#End] "Ends"
-
-                         val authorize = authorize
-
-                         val preTabs = {}
-                         val postTabs = {}
-                         val hiddenTabs = {}
-                     end)
+                                            val authorized = amAdmin
+                                            val allowCreate = False
+                                            val notifyWhenNonempty = False
+                                            val notifyWhenEmpty = False
+                                            con buttons = []
+                                        end)
 
 structure SpeakerInterest = Preferences.Make(struct
                                                  con choice = #Title
@@ -584,11 +605,12 @@ and admin () =
                 </xml>)
       | Some u =>
         Theme.tabbed "OnlineConf Admin"
-        ((Some "HotCRP import", HotcrpImport.ui),
-         (Some "Assign talks", AssignTalks.ui),
-         (Some "Assign talk times", AssignTalkTimes.ui),
-         (Some "Log out", Ui.h4 <xml>
-           <form>
-             <submit class="btn btn-primary" action={logout} value="Log out"/>
-           </form>
-         </xml>))
+                     ((Some "HotCRP import", HotcrpImport.ui),
+                      (Some "Papers", PapersAdmin.ui ()),
+                      (Some "Assign talks", AssignTalks.ui),
+                      (Some "Assign talk times", AssignTalkTimes.ui),
+                      (Some "Log out", Ui.h4 <xml>
+                        <form>
+                          <submit class="btn btn-primary" action={logout} value="Log out"/>
+                        </form>
+                      </xml>))
