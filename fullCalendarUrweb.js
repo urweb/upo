@@ -104,7 +104,7 @@ function uw_fullcalendar_replace(id, settings) {
         setSize();
 
         return cal;
-    } else er("Fullcalendar: couldn't find location of calendar");
+    } else er("FullCalendar: couldn't find location of calendar");
 }
 
 function fceventin(data) {
@@ -123,21 +123,46 @@ function fceventin(data) {
     return edata;
 }
 
+var fctextcolor_cache_valid = false;
+var fctextcolor_cache = null;
+
+function fctextcolor() {
+    if (fctextcolor_cache_valid)
+        return fctextcolor_cache;
+
+    fctextcolor_cache_valid = true;
+    var styleSheets = window.document.styleSheets;
+    for (var i = 0; i < styleSheets.length; i++) {
+        var classes = null;
+        try {
+            classes = styleSheets[i].rules || styleSheets[i].cssRules;
+        } catch (e) { }
+        if (!classes)
+            continue;
+        for (var x = 0; x < classes.length; x++) {
+            if (classes[x].selectorText == '.fc-text-color') {
+                fctextcolor_cache = classes[x].style.color;
+                return fctextcolor_cache;
+            }
+        }
+    }
+}
+
 function fceventpost(data, ev) {
     if (data["_TextColor"])
         listen(data["_TextColor"],
-               function(v) { ev.setProp('textColor', v || '#328e23'); });
+               function(v) { ev.setProp('textColor', v || fctextcolor()); });
     else
-        ev.setProp('textColor', '#328e23');
+        ev.setProp('textColor', fctextcolor());
     if (data["_BackgroundColor"]) listen(data["_BackgroundColor"],
                                          function(v) { ev.setProp('backgroundColor', v); });
 }
 
 function fceventpostCopout(data, dataOut) {
     if (data["_TextColor"])
-        dataOut['textColor'] = scur(data["_TextColor"]) || '#328e23';
+        dataOut['textColor'] = scur(data["_TextColor"]) || fctextcolor();
     else
-        dataOut['textColor'] = '#328e23';
+        dataOut['textColor'] = fctextcolor();
     if (data["_BackgroundColor"])
         dataOut['backgroundColor'] = scur(data["_BackgroundColor"]);
 }
