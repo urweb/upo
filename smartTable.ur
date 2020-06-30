@@ -2219,7 +2219,7 @@ functor Make(M : sig
                 @@Sql.easy_insert [[key = keyT] ++ map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab (t.ModifyBeforeCreate cfg () r);
                 t.OnCreate cfg () r
 
-    fun notify ch =
+    val notify =
         if not allowCreate then
             error <xml>Access denied</xml>
         else
@@ -2227,7 +2227,7 @@ functor Make(M : sig
             if not authed then
                 error <xml>Access denied</xml>
             else
-                ChangeWatcher.changedBy ch title
+                ChangeWatcher.changed title
 
     fun generate r =
         if not allowCreate then
@@ -2260,10 +2260,7 @@ functor Make(M : sig
                                     rpc (add (ChangeWatcher.server self.Changes) vs);
                                     vs <- return (t.ModifyBeforeCreate cfg () vs);
                                     t.OnCreateLocal vs stl;
-                                    rpc (notify (ChangeWatcher.server self.Changes));
-                                    st <- rpc (generate vs);
-                                    rs <- get self.Rows;
-                                    set self.Rows (List.append rs ((vs.key, st) :: [])))
+                                    rpc notify)
                                    <xml>Add</xml>
                                    <xml>
                                      {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
@@ -2423,7 +2420,7 @@ functor Make1(M : sig
                 @@Sql.easy_insert [[key = keyT] ++ map fst3 r] [_] injs (@@Folder.mp [fst3] [_] fl) tab (t.ModifyBeforeCreate cfg inp r);
                 t.OnCreate cfg inp r
 
-    fun notify ch =
+    val notify =
         if not allowCreate then
             error <xml>Access denied</xml>
         else
@@ -2431,7 +2428,7 @@ functor Make1(M : sig
             if not authed then
                 error <xml>Access denied</xml>
             else
-                ChangeWatcher.changedBy ch title
+                ChangeWatcher.changed title
 
     fun generate r =
         if not allowCreate then
@@ -2464,10 +2461,7 @@ functor Make1(M : sig
                                     rpc (add self.Input (ChangeWatcher.server self.Changes) vs);
                                     vs <- return (t.ModifyBeforeCreate cfg self.Input vs);
                                     t.OnCreateLocal vs stl;
-                                    rpc (notify (ChangeWatcher.server self.Changes));
-                                    st <- rpc (generate vs);
-                                    rs <- get self.Rows;
-                                    set self.Rows (List.append rs ((vs.key, st) :: [])))
+                                    rpc notify)
                                    <xml>Add</xml>
                                    <xml>
                                      {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
