@@ -2130,6 +2130,124 @@ functor Upvote(M : sig
     }
 end
 
+functor Upload(M : sig
+                   type inp
+                   con this :: Name
+                   type thisT
+                   con r :: {Type}
+                   constraint [this] ~ r
+                   val inj_this : sql_injectable thisT
+
+                   con fthis :: Name
+                   con user :: Name
+                   con when :: Name
+                   constraint [fthis] ~ [user]
+                   constraint [fthis, user] ~ [when]
+                   constraint [fthis, user, when] ~ [FileName, FileType, FileData]
+                   table upload : {fthis : thisT, user : string, when : time, FileName : string, FileType : string, FileData : blob}
+                   val title : string
+
+                   val label : string
+                   val whoami : transaction (option string)
+               end) = struct
+    open M
+
+    type cfg = option string * ChangeWatcher.client_part
+    type internal = option thisT * option {user : string, when : time, FileName : string}
+
+    val changed = ChangeWatcher.changed title
+
+    fun save k h =
+        uo <- whoami;
+        case uo of
+            None => error <xml>Access denied</xml>
+          | Some u =>
+            r <- AjaxUpload.claim h;
+            case r of
+                AjaxUpload.NotFound => error <xml>Upload not found</xml>
+              | AjaxUpload.Found r =>
+                case r.Filename of
+                    None => error <xml>No filename indicated with upload</xml>
+                  | Some fname =>
+                    dml (DELETE FROM upload
+                         WHERE T.{fthis} = {[k]});
+                    dml (INSERT INTO upload({fthis}, {user}, {when},
+                             FileName, FileType, FileData)
+                         VALUES ({[k]}, {[u]}, CURRENT_TIMESTAMP,
+                             {[fname]}, {[r.MimeType]}, {[r.Content]}));
+                    changed
+
+    fun download k =
+        uo <- whoami;
+        case uo of
+            None => error <xml>Access denied</xml>
+          | Some _ =>
+            r <- oneRow1 (SELECT upload.FileName, upload.FileType, upload.FileData
+                          FROM upload
+                          WHERE upload.{fthis} = {[k]}
+                          ORDER BY upload.{when} DESC
+                          LIMIT 1);
+            setHeader (blessResponseHeader "Content-Disposition")
+                      ("attachment; filename=" ^ r.FileName);
+            returnBlob r.FileData (blessMime r.FileType)
+
+    datatype upload_state = Initial | Uploading | Failed | Succeeded of AjaxUpload.handle
+
+    val t = {
+        Configure = uo <- whoami; ch <- ChangeWatcher.listen title; return (uo, ch),
+        Generate = fn (uo, _) r =>
+                      f <- oneOrNoRows1 (SELECT upload.{user}, upload.{when}, upload.FileName
+                                         FROM upload
+                                         WHERE upload.{fthis} = {[r.this]}
+                                         ORDER BY upload.{when} DESC
+                                         LIMIT 1);
+                      return (Some r.this, f),
+        Filter = fn _ _ => None,
+        FilterLinks = fn _ _ => None,
+        SortBy = fn x => x,
+        ModifyBeforeCreate = fn _ _ r => r,
+        OnCreate = fn _ _ _ => return (),
+        OnLoad = fn fs (_, ch) => ChangeWatcher.onChange ch fs.ReloadState,
+        GenerateLocal = fn _ _ => return (None, None),
+        WidgetForCreate = fn _ _ => <xml></xml>,
+        OnCreateLocal = fn _ _ => return (),
+        Header = fn _ => <xml><th>{[label]}</th></xml>,
+        Row = fn (uo, _) ctx (k, r) => <xml><td>
+          {case (k, r) of
+               (Some k, Some r) => <xml>
+                 <a class="badge badge-pill" link={download k}><tt>{[r.FileName]}</tt> by {[r.user]} at {[r.when]}</a>
+               </xml>
+               | _ => <xml></xml>}
+          {Ui.modalIcon ctx (CLASS "glyphicon glyphicon-pencil-alt")
+                        (h <- source Initial;
+                         return (Ui.modal
+                                     (h <- get h;
+                                      case h of
+                                          Succeeded h =>
+                                          (case k of
+                                               None => error <xml>Missing SmartTable key</xml>
+                                             | Some k => rpc (save k h))
+                                        | _ => return ())
+                                     <xml>Upload {[title]}</xml>
+                                 <xml>
+                                   <active code={AjaxUpload.render {SubmitLabel = None,
+                                                                    OnBegin = set h Uploading,
+                                                                    OnError = set h Failed,
+                                                                    OnSuccess = fn hv => set h (Succeeded hv)}}/>
+                                   <hr/>
+                                   <dyn signal={h <- signal h;
+                                                return (case h of
+                                                            Initial => <xml></xml>
+                                                          | Uploading => <xml><h4 class="text-info">Uploading....</h4></xml>
+                                                          | Failed => <xml><h4 class="text-warning">Upload failed!</h4></xml>
+                                                          | Succeeded _ => <xml><h4 class="text-success">Upload succeeded!</h4></xml>)}/>
+                                 </xml>
+                                 <xml>Save</xml>))}
+        </td></xml>,
+        Todos = fn _ _ => return 0
+    }
+end
+
 functor Make(M : sig
                  con key :: Name
                  type keyT

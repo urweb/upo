@@ -513,6 +513,31 @@ functor Upvote(M : sig
     val t : t M.inp ([M.this = M.thisT] ++ M.r) cfg internal
 end
 
+functor Upload(M : sig
+                   type inp
+                   con this :: Name
+                   type thisT
+                   con r :: {Type}
+                   constraint [this] ~ r
+                   val inj_this : sql_injectable thisT
+
+                   con fthis :: Name
+                   con user :: Name
+                   con when :: Name
+                   constraint [fthis] ~ [user]
+                   constraint [fthis, user] ~ [when]
+                   constraint [fthis, user, when] ~ [FileName, FileType, FileData]
+                   table upload : {fthis : thisT, user : string, when : time, FileName : string, FileType : string, FileData : blob}
+                   val title : string
+
+                   val label : string
+                   val whoami : transaction (option string)
+               end) : sig
+    type cfg
+    type internal
+    val t : t M.inp ([M.this = M.thisT] ++ M.r) cfg internal
+end
+
 functor Make(M : sig
                  con key :: Name
                  type keyT
