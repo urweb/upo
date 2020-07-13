@@ -229,11 +229,15 @@ functor Make(M : sig
                                                                                          </li></xml>) choices}
                                                                                      </ul></xml>
                                                                                      <xml>Save</xml>))}
-                                                     <dyn signal={count <- List.foldlM (fn (_, _, tmS) acc =>
+                                                     <dyn signal={count <- List.foldlM (fn (_, np, tmS) acc =>
                                                                                            tm' <- signal tmS;
                                                                                            return (case tm' of
-                                                                                                       None => 1 + acc
-                                                                                                     | Some _ => acc)) 0 choices;
+                                                                                                       Some _ => acc
+                                                                                                     | None =>
+                                                                                                       if np.SubPreferred + np.SubUnpreferred > 0 then
+                                                                                                           1 + acc
+                                                                                                       else
+                                                                                                           acc)) 0 choices;
                                                                   return (if count = 0 then
                                                                               <xml></xml>
                                                                           else
