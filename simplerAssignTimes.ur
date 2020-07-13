@@ -205,6 +205,7 @@ functor Make(M : sig
                                                                                              tm' <- get tmS;
                                                                                              s <- source (tm' = Some tm);
                                                                                              return (k, np, tmS, s)) choices;
+                                                                    showUnpreferred <- source False;
                                                                     return (Ui.modal (List.app (fn (k, _, tmS, s) =>
                                                                                                    tm' <- get tmS;
                                                                                                    b <- get s;
@@ -221,13 +222,26 @@ functor Make(M : sig
                                                                                                        else
                                                                                                            return ()) choices)
                                                                                      <xml>What should we schedule here?</xml>
-                                                                                     <xml><ul class="list-group">
-                                                                                       {List.mapX (fn (k, np, _, s) => <xml><li class="list-group-item">
-                                                                                         <ccheckbox source={s}/>
-                                                                                         {[k]}
-                                                                                         {stars np}
-                                                                                         </li></xml>) choices}
-                                                                                     </ul></xml>
+                                                                                     <xml><dyn signal={su <- signal showUnpreferred;
+                                                                                                       return <xml>
+                                                                                                         <ul class="list-group">
+                                                                                                           {List.mapX (fn (k, np, _, s) =>
+                                                                                                                          if su || np.SubPreferred + np.SubUnpreferred > 0 then <xml>
+                                                                                                                            <li class="list-group-item">
+                                                                                                                              <ccheckbox source={s}/>
+                                                                                                                              {[k]}
+                                                                                                                              {stars np}
+                                                                                                                            </li></xml>
+                                                                                                                          else <xml></xml>) choices}
+                                                                                                         </ul>
+                                                                                                         <button class="btn btn-primary"
+                                                                                                                 onclick={fn _ => set showUnpreferred (not su)}>
+                                                                                                           {if su then
+                                                                                                                <xml>Hide</xml>
+                                                                                                            else
+                                                                                                                <xml>Show</xml>} choices where no one likes this time
+                                                                                                         </button>
+                                                                                                       </xml>}/></xml>
                                                                                      <xml>Save</xml>))}
                                                      <dyn signal={count <- List.foldlM (fn (_, np, tmS) acc =>
                                                                                            tm' <- signal tmS;
