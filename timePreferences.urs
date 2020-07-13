@@ -21,4 +21,5 @@ functor Make(M : sig
                  val whoami : transaction (option string)
 
                  val addon : CalendarAddons.t [key = time]
+                 val slotDuration : option string
              end) : Ui.S where type input = string

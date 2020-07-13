@@ -1,7 +1,5 @@
 open Bootstrap4
 
-val eventLengthInSeconds = 60 * 90
-
 functor Make(M : sig
                  con key :: Name
                  con kother :: {Type}
@@ -22,8 +20,15 @@ functor Make(M : sig
                  val whoami : transaction (option string)
 
                  val addon : CalendarAddons.t [key = time]
+                 val slotDuration : option string
              end) = struct
     open M
+
+    val halvedDuration = Option.mp FullCalendar.halveDuration slotDuration
+
+    val eventLengthInSeconds = case slotDuration of
+                                   None => 60 * 90
+                                 | Some d => FullCalendar.durationToSeconds d
 
     datatype level = Unavailable | Available | Preferred
 
@@ -86,8 +91,8 @@ functor Make(M : sig
         ctx <- source None;
         cal <- FullCalendar.create {DefaultDate = firstFuture,
                                     AllDaySlot = False,
-                                    SlotDuration = None,
-                                    SnapDuration = None,
+                                    SlotDuration = halvedDuration,
+                                    SnapDuration = slotDuration,
                                     Content = Some (fn cal ev =>
                                                        {Header = <xml>
                                                          <active code={start <- FullCalendar.eventStart ev;
