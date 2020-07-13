@@ -3,6 +3,8 @@ type event
 type settings = {
      DefaultDate : option time,
      AllDaySlot : bool,
+     SlotDuration : option string,
+     SnapDuration : option string,
      Content : option (event -> transaction {Header : xbody, Body : xbody}),
      OnSelect : option (time -> time -> transaction unit),
      OnDrop : option ((* before *) event -> (* after *) event -> transaction unit)

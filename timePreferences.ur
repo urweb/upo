@@ -86,6 +86,8 @@ functor Make(M : sig
         ctx <- source None;
         cal <- FullCalendar.create {DefaultDate = firstFuture,
                                     AllDaySlot = False,
+                                    SlotDuration = None,
+                                    SnapDuration = None,
                                     Content = Some (fn cal ev =>
                                                        {Header = <xml>
                                                          <active code={start <- FullCalendar.eventStart ev;

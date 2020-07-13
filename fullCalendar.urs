@@ -3,6 +3,8 @@ type event
 type settings = {
      DefaultDate : option time,
      AllDaySlot : bool,
+     SlotDuration : option string,
+     SnapDuration : option string,
      Content : option (t -> event -> {Header : xbody, Body : xbody}),
      OnSelect : option (t -> time -> time -> transaction unit),
      OnDrop : option (t -> (* before *) event -> (* after *) event -> transaction unit)
@@ -40,3 +42,8 @@ val eventRendering : event -> transaction rendering
 val eventId : event -> transaction (option string)
 val getEventById : t -> string -> transaction (option event)
 val unselect : t -> transaction unit
+
+val durationToSeconds : string -> int
+val secondsToDuration : int -> string
+val halveDuration : string -> string
+(* actually returns the largest smaller even divisor *)

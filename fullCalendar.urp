@@ -42,4 +42,5 @@ script https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/4.2.0/timegrid/main.m
 jsFile fullCalendarUrweb.js
 
 $/list
+$/string
 fullCalendar

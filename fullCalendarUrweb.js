@@ -34,6 +34,11 @@ function uw_fullcalendar_replace(id, settings) {
             allDaySlot: settings["_AllDaySlot"]
         };
 
+        if (settings["_SlotDuration"])
+            props.slotDuration = settings["_SlotDuration"];
+        if (settings["_SnapDuration"])
+            props.snapDuration = settings["_SnapDuration"];
+
         if (settings["_DefaultDate"])
             props.defaultDate = fctimein(settings["_DefaultDate"]);
 

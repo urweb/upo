@@ -261,6 +261,8 @@ functor Make(M : sig
                                                           [] => None
                                                         | (tm, _) :: _ => Some tm,
                                         AllDaySlot = False,
+                                        SlotDuration = None,
+                                        SnapDuration = None,
                                         Content = Some (fn cal ev => {Header = <xml>
               <dyn signal={ctx <- signal ctx;
                            case ctx of

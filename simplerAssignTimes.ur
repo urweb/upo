@@ -1,7 +1,5 @@
 open Bootstrap4
 
-val eventLengthInSeconds = 60 * 90
-
 functor Make(M : sig
                  con key :: Name
                  con others :: {Type}
@@ -32,9 +30,15 @@ functor Make(M : sig
 
                  val addon : CalendarAddons.t ([this = thisT, ttime = option time] ++ r)
                  val schedAddon : SchedulingAddons.t thisT
+                 val slotDuration : option string
              end) = struct
-
     open M
+
+    val halvedDuration = Option.mp FullCalendar.halveDuration slotDuration
+
+    val eventLengthInSeconds = case slotDuration of
+                                   None => 60 * 90
+                                 | Some d => FullCalendar.durationToSeconds d
 
     type prefs = {
          SubPreferred : int,
@@ -169,6 +173,8 @@ functor Make(M : sig
                                                           [] => None
                                                         | (tm, _) :: _ => Some tm,
                                         AllDaySlot = False,
+                                        SlotDuration = halvedDuration,
+                                        SnapDuration = slotDuration,
                                         Content = Some (fn cal ev => {Header = <xml>
               <dyn signal={ctx <- signal ctx;
                            case ctx of

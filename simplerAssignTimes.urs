@@ -30,4 +30,5 @@ functor Make(M : sig
 
                  val addon : CalendarAddons.t ([this = thisT, ttime = option time] ++ r)
                  val schedAddon : SchedulingAddons.t thisT
+                 val slotDuration : option string
              end) : Ui.S0

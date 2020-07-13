@@ -9,6 +9,8 @@ type t = {Show : xbody,
 type settings = {
      DefaultDate : option time,
      AllDaySlot : bool,
+     SlotDuration : option string,
+     SnapDuration : option string,
      Content : option (t -> event -> {Header : xbody, Body : xbody}),
      OnSelect : option (t -> time -> time -> transaction unit),
      OnDrop : option (t -> event -> event -> transaction unit)
@@ -138,3 +140,37 @@ fun getEventById cal id =
           | Some ev =>
             ev <- source (Some ev);
             return (Some ev)
+
+fun durationToSeconds s =
+    case String.split s #":" of
+        None => error <xml>Bad duration format: {[s]}</xml>
+      | Some (h, m) =>
+        case (read h, read m) of
+            (Some h, Some m) => 60 * (60 * h + m)
+          | _ => error <xml>Bad duration format: {[s]}</xml>
+
+fun pad n s =
+    if String.length s >= n then
+        s
+    else
+        "0" ^ pad (n - 1) s
+
+fun secondsToDuration n =
+    let
+        val n = n / 60
+    in
+        pad 2 (show (n / 60)) ^ ":" ^ pad 2 (show (n % 60))
+    end
+
+fun halveDuration s =
+    let
+        val n = durationToSeconds s
+
+        fun divider i =
+            if n / i % 60 = 0 then
+                n / i
+            else
+                divider (i + 1)
+    in
+        secondsToDuration (divider 2)
+    end

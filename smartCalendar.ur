@@ -17,6 +17,8 @@ functor Make(M : sig
                                                       None => Some tm
                                                     | Some tm' => Some (max tm tm'),
                                     AllDaySlot = False,
+                                    SlotDuration = None,
+                                    SnapDuration = None,
                                     Content = None,
                                     OnSelect = None,
                                     OnDrop = None};
