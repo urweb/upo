@@ -393,6 +393,46 @@ fun orderedLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     Todos = fn _ _ => return 0
 }
 
+fun linksWithUrls [a] (_ : show a) (ls : list (a * option url)) : xbody = <xml>
+  {List.mapX (fn (x, uo) =>
+                 case uo of
+                     None => <xml> <span class="badge badge-pill badge-info">{[x]}</span></xml>
+                   | Some u => <xml> <a class="badge badge-pill badge-info" href={u}>{[x]}</a></xml>) ls}
+</xml>
+
+type orderedLinkedWithUrl_cfg (t :: Type) = unit
+type orderedLinkedWithUrl_st (t :: Type) = list (t * option url)
+fun orderedLinkedWithUrl [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
+    [fthat :: Name] [thatT ::: Type]
+    [r ::: {Type}] [fr ::: {Type}] [ks ::: {{Unit}}]
+    [lthat :: Name] [lurl :: Name] [lr ::: {Type}] [lks ::: {{Unit}}]
+    [[this] ~ r] [[fthis] ~ [fthat]] [[fthis, fthat] ~ [SeqNum]] [[fthis, fthat, SeqNum] ~ fr]
+    [[lthat] ~ [lurl]] [[lthat, lurl] ~ lr]
+    ( _ : show thatT) (_ : sql_injectable thisT)
+    (tab : sql_table ([fthis = thisT, fthat = thatT, SeqNum = int] ++ fr) ks)
+    (ltab : sql_table ([lthat = thatT, lurl = string] ++ lr) lks)
+    (l : string) = {
+    Configure = return (),
+    Generate = fn () r => List.mapQuery (SELECT tab.{fthat}, ltab.{lurl}
+                                         FROM tab JOIN ltab
+                                           ON tab.{fthat} = ltab.{lthat}
+                                         WHERE tab.{fthis} = {[r.this]}
+                                         ORDER BY tab.SeqNum)
+                                        (fn r => (r.Tab.fthat, checkUrl r.Ltab.lurl)),
+    Filter = fn _ _ => None,
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
+    OnCreate = fn _ _ _ => return (),
+    OnLoad = fn _ _ => return (),
+    GenerateLocal = fn () _ => return [],
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
+    Header = fn () => <xml><th>{[l]}</th></xml>,
+    Row = fn () _ ls => <xml><td>{linksWithUrls ls}</td></xml>,
+    Todos = fn _ _ => return 0
+}
+
 functor LinkedWithEdit(M : sig
                            type inp
                            con this :: Name

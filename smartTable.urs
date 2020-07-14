@@ -125,6 +125,20 @@ val orderedLinked : inp ::: Type -> this :: Name -> fthis :: Name -> thisT ::: T
                     -> string (* label *)
                     -> t inp ([this = thisT] ++ r) (orderedLinked_cfg thatT) (orderedLinked_st thatT)
 
+con orderedLinkedWithUrl_cfg :: Type -> Type
+con orderedLinkedWithUrl_st :: Type -> Type
+val orderedLinkedWithUrl : inp ::: Type -> this :: Name -> fthis :: Name -> thisT ::: Type
+                           -> fthat :: Name -> thatT ::: Type
+                           -> r ::: {Type} -> fr ::: {Type} -> ks ::: {{Unit}}
+                           -> lthat :: Name -> lurl :: Name -> lr ::: {Type} -> lks ::: {{Unit}}
+                           -> [[this] ~ r] => [[fthis] ~ [fthat]] => [[fthis, fthat] ~ [SeqNum]] => [[fthis, fthat, SeqNum] ~ fr]
+                           => [[lthat] ~ [lurl]] => [[lthat, lurl] ~ lr]
+                           => show thatT -> sql_injectable thisT
+                           -> sql_table ([fthis = thisT, fthat = thatT, SeqNum = int] ++ fr) ks
+                           -> sql_table ([lthat = thatT, lurl = string] ++ lr) lks
+                           -> string (* label *)
+                           -> t inp ([this = thisT] ++ r) (orderedLinkedWithUrl_cfg thatT) (orderedLinkedWithUrl_st thatT)
+
 functor LinkedWithEdit(M : sig
                            type inp
                            con this :: Name
