@@ -30,7 +30,7 @@ function uw_fullcalendar_replace(id, settings) {
             navLinks: true,
             selectable: settings["_OnSelect"] != null,
             selectMirror: settings["_OnSelect"] != null,
-            minTime: "06:00:00",
+//          minTime: "06:00:00",
             allDaySlot: settings["_AllDaySlot"]
         };
 
