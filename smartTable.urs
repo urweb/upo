@@ -114,6 +114,21 @@ val tripleLinked : inp ::: Type -> this :: Name -> fthis :: Name -> thisT ::: Ty
                    -> string (* label *)
                    -> t inp ([this = thisT] ++ r) (tripleLinked_cfg thatT) (tripleLinked_st thatT)
 
+con linkedWithUrl_cfg :: Type -> Type
+con linkedWithUrl_st :: Type -> Type
+val linkedWithUrl : inp ::: Type -> this :: Name -> fthis :: Name -> thisT ::: Type
+                    -> fthat :: Name -> thatT ::: Type
+                    -> r ::: {Type} -> fr ::: {Type} -> ks ::: {{Unit}}
+                    -> lthat :: Name -> lurl :: Name -> lr ::: {Type} -> lks ::: {{Unit}}
+                    -> [[this] ~ r] => [[fthis] ~ [fthat]] => [[fthis, fthat] ~ fr]
+                    => [[lthat] ~ [lurl]] => [[lthat, lurl] ~ lr]
+                    => show thatT -> sql_injectable thisT
+                    -> sql_table ([fthis = thisT, fthat = thatT] ++ fr) ks
+                    -> sql_table ([lthat = thatT, lurl = string] ++ lr) lks
+                    -> string (* title for first link *)
+                    -> string (* label *)
+                    -> t inp ([this = thisT] ++ r) (linkedWithUrl_cfg thatT) (linkedWithUrl_st thatT)
+
 con orderedLinked_cfg :: Type -> Type
 con orderedLinked_st :: Type -> Type
 val orderedLinked : inp ::: Type -> this :: Name -> fthis :: Name -> thisT ::: Type

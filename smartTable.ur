@@ -400,6 +400,39 @@ fun linksWithUrls [a] (_ : show a) (ls : list (a * option url)) : xbody = <xml>
                    | Some u => <xml> <a class="badge badge-pill badge-info" href={u}>{[x]}</a></xml>) ls}
 </xml>
 
+type linkedWithUrl_cfg (t :: Type) = ChangeWatcher.client_part
+type linkedWithUrl_st (t :: Type) = list (t * option url)
+fun linkedWithUrl [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
+    [fthat :: Name] [thatT ::: Type]
+    [r ::: {Type}] [fr ::: {Type}] [ks ::: {{Unit}}]
+    [lthat :: Name] [lurl :: Name] [lr ::: {Type}] [lks ::: {{Unit}}]
+    [[this] ~ r] [[fthis] ~ [fthat]] [[fthis, fthat] ~ fr]
+    [[lthat] ~ [lurl]] [[lthat, lurl] ~ lr]
+    ( _ : show thatT) (_ : sql_injectable thisT)
+    (tab : sql_table ([fthis = thisT, fthat = thatT] ++ fr) ks)
+    (ltab : sql_table ([lthat = thatT, lurl = string] ++ lr) lks)
+    (title : string) (l : string) = {
+    Configure = ChangeWatcher.listen title,
+    Generate = fn _ r => List.mapQuery (SELECT tab.{fthat}, ltab.{lurl}
+                                         FROM tab JOIN ltab
+                                           ON tab.{fthat} = ltab.{lthat}
+                                         WHERE tab.{fthis} = {[r.this]}
+                                         ORDER BY tab.{fthat})
+                                        (fn r => (r.Tab.fthat, checkUrl r.Ltab.lurl)),
+    Filter = fn _ _ => None,
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
+    OnCreate = fn _ _ _ => return (),
+    OnLoad = fn fs ch => ChangeWatcher.onChange ch fs.ReloadState,
+    GenerateLocal = fn _ _ => return [],
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
+    Header = fn _ => <xml><th>{[l]}</th></xml>,
+    Row = fn _ _ ls => <xml><td>{linksWithUrls ls}</td></xml>,
+    Todos = fn _ _ => return 0
+}
+
 type orderedLinkedWithUrl_cfg (t :: Type) = unit
 type orderedLinkedWithUrl_st (t :: Type) = list (t * option url)
 fun orderedLinkedWithUrl [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
