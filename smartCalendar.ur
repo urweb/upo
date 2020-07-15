@@ -1,8 +1,11 @@
 functor Make(M : sig
                  val addon : CalendarAddons.t []
+                 val slotDuration : option string
                  val whoami : transaction (option string)
              end) = struct
     open M
+
+    val halvedDuration = Option.mp FullCalendar.halveDuration slotDuration
 
     type a = {Calendar : FullCalendar.t,
               Entries : list CalendarAddons.event_data}
@@ -17,8 +20,8 @@ functor Make(M : sig
                                                       None => Some tm
                                                     | Some tm' => Some (max tm tm'),
                                     AllDaySlot = False,
-                                    SlotDuration = None,
-                                    SnapDuration = None,
+                                    SlotDuration = halvedDuration,
+                                    SnapDuration = slotDuration,
                                     Content = None,
                                     OnSelect = None,
                                     OnDrop = None};
@@ -30,7 +33,7 @@ functor Make(M : sig
                                                          {Id = ev.Id,
                                                           AllDay = False,
                                                           Start = ev.Start,
-                                                          End = None,
+                                                          End = ev.End,
                                                           Title = ev.Title,
                                                           Rendering = if ev.Background then
                                                                           FullCalendar.Background

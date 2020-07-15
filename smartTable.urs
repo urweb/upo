@@ -416,6 +416,12 @@ val future : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
 val futureOpt : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
                 => t inp ([col = option time] ++ r) future_cfg future_st
 
+type interval_cfg
+type interval_st
+val intervalOpt : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
+                  => string -> string (* FullCalendar durations: before and after *)
+                  -> t inp ([col = option time] ++ r) interval_cfg interval_st
+
 type taggedWithUser_cfg
 type taggedWithUser_st
 val taggedWithUser : inp ::: Type -> user :: Name -> r ::: {Type} -> [[user] ~ r]

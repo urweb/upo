@@ -3,6 +3,7 @@ open Bootstrap4
 type event_data = {
      Id : option string,
      Start : time,
+     End : option time,
      Title : string,
      Background : bool,
      TextColor : option string,
@@ -85,6 +86,7 @@ functor EventSource(M : sig
                         val textColor : option string
                         val backgroundColor : option string
                         val addons : t ([key = keyT, tm = option time] ++ others)
+                        val duration : option string
                     end) = struct
     open M
 
@@ -97,6 +99,9 @@ functor EventSource(M : sig
                          return (List.mapi (fn i r =>
                                                {Id = Some (title ^ "_" ^ show i),
                                                 Start = Option.unsafeGet r.tm,
+                                                End = (d <- duration;
+                                                       tm <- r.tm;
+                                                       return (addSeconds tm (FullCalendar.durationToSeconds d))),
                                                 Title = prefix ^ show r.key,
                                                 Background = background,
                                                 TextColor = textColor,

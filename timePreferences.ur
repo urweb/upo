@@ -27,7 +27,7 @@ functor Make(M : sig
     val halvedDuration = Option.mp FullCalendar.halveDuration slotDuration
 
     val eventLengthInSeconds = case slotDuration of
-                                   None => 60 * 90
+                                   None => 60 * 60
                                  | Some d => FullCalendar.durationToSeconds d
 
     datatype level = Unavailable | Available | Preferred

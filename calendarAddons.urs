@@ -7,6 +7,7 @@ val compose : r ::: {Type} -> t r -> t r -> t r
 type event_data = {
      Id : option string,
      Start : time,
+     End : option time,
      Title : string,
      Background : bool,
      TextColor : option string,
@@ -39,6 +40,7 @@ functor EventSource(M : sig
                         val textColor : option string
                         val backgroundColor : option string
                         val addons : t ([key = keyT, tm = option time] ++ others)
+                        val duration : option string
                     end) : sig
     val t : t M.r
 end

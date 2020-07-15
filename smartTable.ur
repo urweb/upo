@@ -1722,6 +1722,27 @@ val futureOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Todos = fn _ _ => return 0
 }
 
+type interval_cfg = time * time
+type interval_st = unit
+fun intervalOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] (bef : string) (aft : string) = {
+    Configure = tm <- now; return (addSeconds tm (-(FullCalendar.durationToSeconds bef)),
+                                   addSeconds tm (FullCalendar.durationToSeconds aft)),
+    Generate = fn _ _ => return (),
+    Filter = fn (bef, aft) _ => Some (WHERE tab.{col} > {[Some bef]}
+                                        AND tab.{col} < {[Some aft]}),
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
+    OnCreate = fn _ _ _ => return (),
+    OnLoad = fn _ _ => return (),
+    GenerateLocal = fn _ _ => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
+    Header = fn _ => <xml></xml>,
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
+}
+
 type taggedWithUser_cfg = option string
 type taggedWithUser_st = unit
 fun taggedWithUser [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
