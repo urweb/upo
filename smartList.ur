@@ -10,6 +10,7 @@ type t (inp :: Type) (r :: {Type}) (cfg :: Type) (st :: Type) = {
      SortBy : sql_order_by [Tab = r] [] -> sql_order_by [Tab = r] [],
 
      (* Run on client: *)
+     OnLoad : {ReloadState : transaction unit} -> cfg -> transaction unit,
      Header : cfg -> st -> xbody,
      Body : cfg -> st -> xbody
 }
@@ -20,6 +21,7 @@ val empty [inp] [r] = {
     Filter = fn () _ => None,
     FilterLinks = fn () _ => None,
     SortBy = fn sb => sb,
+    OnLoad = fn _ () => return (),
     Header = fn () () => <xml></xml>,
     Body = fn () () => <xml></xml>
 }
@@ -41,6 +43,7 @@ fun compose [inp] [r] [cfga] [cfgb] [sta] [stb] (a : t inp r cfga sta) (b : t in
                                            | (x, None) => x
                                            | (Some x, Some y) => Some (WHERE {x} OR {y}),
     SortBy = fn sb => b.SortBy (a.SortBy sb),
+    OnLoad = fn fs (cfga, cfgb) => a.OnLoad fs cfga; b.OnLoad fs cfgb,
     Header = fn (cfga, cfgb) (x, y) => <xml>{a.Header cfga x}{b.Header cfgb y}</xml>,
     Body = fn (cfga, cfgb) (x, y) => <xml>{a.Body cfga x}{b.Body cfgb y}</xml>
 }
@@ -53,6 +56,7 @@ fun inputIs [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_inj
     Filter = fn () inp => Some (WHERE tab.{col} = {[inp]}),
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn () _ => <xml></xml>,
     Body = fn () _ => <xml></xml>
 }
@@ -65,6 +69,7 @@ fun inputIsOpt [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_
     Filter = fn () inp => Some (WHERE tab.{col} = {[Some inp]}),
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn () _ => <xml></xml>,
     Body = fn () _ => <xml></xml>
 }
@@ -84,6 +89,7 @@ fun inputConnected [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}] [ckey :: N
                                               AND ctr.{inpCol} = {[inp]}) IS NULL)),
     FilterLinks = fn () _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn () _ => <xml></xml>,
     Body = fn () _ => <xml></xml>
 }
@@ -97,6 +103,7 @@ fun columnInHeader [inp] [col :: Name] [colT ::: Type] [r ::: {Type}] [[col] ~ r
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn () v => txt v,
     Body = fn () _ => <xml></xml>
 }
@@ -110,6 +117,7 @@ fun columnInBody [inp] [col :: Name] [colT ::: Type] [r ::: {Type}] [[col] ~ r]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn () _ => <xml></xml>,
     Body = fn () v => <xml><p><i>{[l]}:</i> {[v]}</p></xml>
 }
@@ -122,6 +130,7 @@ val htmlInBody [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn () _ => <xml></xml>,
     Body = fn () v => v
 }
@@ -136,6 +145,7 @@ fun iconButtonInHeader [inp] [cols ::: {Type}] [r ::: {Type}] [cols ~ r]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn (u, tm) cols =>
                 case render u tm cols of
                     None => <xml></xml>
@@ -164,6 +174,7 @@ fun linked [inp] [this :: Name] [fthis :: Name] [thisT ::: Type]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn () _ => <xml></xml>,
     Body = fn () ls => case ls of
                            [] => <xml></xml>
@@ -188,6 +199,7 @@ fun orderedLinked [inp] [this :: Name] [fthis :: Name] [thisT ::: Type]
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn () _ => <xml></xml>,
     Body = fn () ls => case ls of
                            [] => <xml></xml>
@@ -259,6 +271,7 @@ functor LinkedWithFollow(M : sig
         Filter = fn _ _ => None,
         FilterLinks = fn _ _ => None,
         SortBy = fn x => x,
+        OnLoad = fn _ _ => return (),
         Header = fn _ _ => <xml></xml>,
         Body = fn uo ls => case ls of
                                [] => <xml></xml>
@@ -297,6 +310,7 @@ val nonnull [inp] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE NOT (tab.{col} IS NULL)),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
 }
@@ -309,6 +323,7 @@ val isnull [inp] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col} IS NULL),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
 }
@@ -321,6 +336,7 @@ val isTrue [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col}),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
 }
@@ -333,6 +349,7 @@ val past [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col} < CURRENT_TIMESTAMP),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
 }
@@ -342,6 +359,7 @@ val pastOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col} < {sql_nullable (SQL CURRENT_TIMESTAMP)}),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
 }
@@ -354,6 +372,7 @@ val future [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col} > CURRENT_TIMESTAMP),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
 }
@@ -363,6 +382,22 @@ val futureOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => Some (WHERE tab.{col} > {sql_nullable (SQL CURRENT_TIMESTAMP)}),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
+    Header = fn _ _ => <xml></xml>,
+    Body = fn _ _ => <xml></xml>
+}
+
+type interval_cfg = time * time
+type interval_st = unit
+fun interval [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] (bef : string) (aft : string) = {
+    Configure = tm <- now; return (addSeconds tm (-(FullCalendar.durationToSeconds bef)),
+                                   addSeconds tm (FullCalendar.durationToSeconds aft)),
+    Generate = fn _ _ => return (),
+    Filter = fn (bef, aft) _ => Some (WHERE tab.{col} > {[bef]}
+                                        AND tab.{col} < {[aft]}),
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
 }
@@ -378,6 +413,7 @@ fun taggedWithUser [inp] [user :: Name] [r ::: {Type}] [[user] ~ r]
                           | Some u => Some (WHERE tab.{user} = {[u]}),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
 }
@@ -390,6 +426,7 @@ fun taggedWithUserOpt [inp] [user :: Name] [r ::: {Type}] [[user] ~ r]
                           | Some u => Some (WHERE tab.{user} = {[Some u]}),
     FilterLinks = fn _ _ => None,
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
 }
@@ -410,6 +447,7 @@ fun linkedToUser [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}] [[key] ~ r]
                                                         WHERE link.{user} = {[u]}
                                                           AND link.{ckey} = tab.{key}) = {[Some True]}),
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
 }
@@ -435,6 +473,7 @@ fun doubleLinkedToUser [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}] [[key]
                                                           AND link2.{ikey2} = link1.{ikey}
                                                           AND link2.{user} = {[u]}) = {[Some True]}),
     SortBy = fn x => x,
+    OnLoad = fn _ _ => return (),
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
 }
@@ -447,6 +486,7 @@ val sortby [inp] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = sql_order_by_Cons (SQL tab.{col}) sql_asc,
+    OnLoad = fn _ _ => return (),
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
 }
@@ -456,6 +496,28 @@ val sortbyDesc [inp] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
     Filter = fn _ _ => None,
     FilterLinks = fn _ _ => None,
     SortBy = sql_order_by_Cons (SQL tab.{col}) sql_desc,
+    OnLoad = fn _ _ => return (),
+    Header = fn _ _ => <xml></xml>,
+    Body = fn _ _ => <xml></xml>
+}
+
+type periodicRefresh_cfg = unit
+type periodicRefresh_st = unit
+fun periodicRefresh [inp ::: Type] [r ::: {Type}] (dur : string) = {
+    Configure = return (),
+    Generate = fn _ _ => return (),
+    Filter = fn _ _ => None,
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    OnLoad = fn fs _ =>
+                let
+                    fun loop () =
+                        sleep (1000 * FullCalendar.durationToSeconds dur);
+                        fs.ReloadState;
+                        loop ()
+                in
+                    spawn (loop ())
+                end,
     Header = fn _ _ => <xml></xml>,
     Body = fn _ _ => <xml></xml>
 }
@@ -501,10 +563,17 @@ functor Make(M : sig
         else
             rows
 
-    fun onload self = ChangeWatcher.onChange self.Changes
-                                             ((cfg, rs) <- rpc relist;
-                                              set self.Config cfg;
-                                              set self.Rows rs)
+    fun onload self =
+        let
+            val onChange =
+                (cfg, rs) <- rpc relist;
+                set self.Config cfg;
+                set self.Rows rs
+        in
+            cfg <- get self.Config;
+            t.OnLoad {ReloadState = onChange} cfg;
+            ChangeWatcher.onChange self.Changes onChange
+        end
 
     fun render _ self = <xml>
       <dyn signal={cfg <- signal self.Config;
