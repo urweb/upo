@@ -1901,6 +1901,33 @@ val sortbyDesc [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] 
     Todos = fn _ _ => return 0
 }
 
+type periodicRefresh_cfg = unit
+type periodicRefresh_st = unit
+fun periodicRefresh [inp ::: Type] [r ::: {Type}] (dur : string) = {
+    Configure = return (),
+    Generate = fn _ _ => return (),
+    Filter = fn _ _ => None,
+    FilterLinks = fn _ _ => None,
+    SortBy = fn x => x,
+    ModifyBeforeCreate = fn _ _ r => r,
+    OnCreate = fn _ _ _ => return (),
+    OnLoad = fn fs _ =>
+                let
+                    fun loop () =
+                        sleep (1000 * FullCalendar.durationToSeconds dur);
+                        fs.ReloadState;
+                        loop ()
+                in
+                    spawn (loop ())
+                end,
+    GenerateLocal = fn () _ => return (),
+    WidgetForCreate = fn _ _ => <xml></xml>,
+    OnCreateLocal = fn _ _ => return (),
+    Header = fn _ => <xml></xml>,
+    Row = fn _ _ _ => <xml></xml>,
+    Todos = fn _ _ => return 0
+}
+
 type isTrue_cfg = unit
 type isTrue_st = unit
 val isTrue [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {

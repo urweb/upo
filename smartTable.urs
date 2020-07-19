@@ -467,6 +467,12 @@ val sortby : inp ::: Type -> col :: Name -> ct ::: Type -> r ::: {Type} -> [[col
 val sortbyDesc : inp ::: Type -> col :: Name -> ct ::: Type -> r ::: {Type} -> [[col] ~ r]
                  => t inp ([col = ct] ++ r) sortby_cfg sortby_st
 
+type periodicRefresh_cfg
+type periodicRefresh_st
+val periodicRefresh : inp ::: Type -> r ::: {Type}
+                      -> string (* frequency, as FullCalendar duration *)
+                      -> t inp r periodicRefresh_cfg periodicRefresh_st
+
 type isTrue_cfg
 type isTrue_st
 val isTrue : inp ::: Type -> col :: Name -> r ::: {Type} -> [[col] ~ r]
