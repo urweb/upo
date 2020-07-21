@@ -31,7 +31,8 @@ function uw_fullcalendar_replace(id, settings) {
             selectable: settings["_OnSelect"] != null,
             selectMirror: settings["_OnSelect"] != null,
 //          minTime: "06:00:00",
-            allDaySlot: settings["_AllDaySlot"]
+            allDaySlot: settings["_AllDaySlot"],
+            nowIndicator: true
         };
 
         if (settings["_SlotDuration"])
