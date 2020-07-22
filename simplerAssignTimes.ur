@@ -45,7 +45,8 @@ functor Make(M : sig
          SubUnpreferred : int
     }
 
-    type a = source {Times : list (time * list (thisT * prefs * source (option time))),
+    type a = source {Times : list (time * (list (thisT * prefs * source (option time))
+                                   * source (list (thisT * prefs)) (* cache of the ones set to _this_ time *))),
                      Events : list (thisT * source (option time)),
                      Calendar : FullCalendar.t,
                      Context : source (option Ui.context),
@@ -98,16 +99,17 @@ functor Make(M : sig
             dml (DELETE FROM times
                  WHERE T.{key} = {[tm]})
 
+    fun eventFor tm = {Id = None,
+                       AllDay = False,
+                       Start = tm,
+                       End = Some (addSeconds tm eventLengthInSeconds),
+                       Title = "",
+                       Rendering = FullCalendar.Normal,
+                       TextColor = None,
+                       BackgroundColor = None}
+
     fun addEvent cal tm =
-        Monad.ignore (FullCalendar.addEvent cal
-                                            {Id = None,
-                                             AllDay = False,
-                                             Start = tm,
-                                             End = Some (addSeconds tm eventLengthInSeconds),
-                                             Title = "",
-                                             Rendering = FullCalendar.Normal,
-                                             TextColor = None,
-                                             BackgroundColor = None})
+        Monad.ignore (FullCalendar.addEvent cal (eventFor tm))
 
     val create =
         let
@@ -131,7 +133,7 @@ functor Make(M : sig
             anyInTabs <- oneRowE1 (SELECT COUNT( * ) > 0
                                    FROM t);
             (evs, tms) <- (if anyInTabs then
-                               tms <- query (SELECT t.{this}, times.{key},
+                              tms <- query (SELECT t.{this}, times.{key},
                                                {sql_exp_weaken (SchedulingAddons.preferred [#SubPreferred] [#SubUnpreferred] schedAddon (SQL t.{this}) (SQL times.{key}))} AS SubPreferred,
                                                {sql_exp_weaken (SchedulingAddons.unpreferred [#SubPreferred] [#SubUnpreferred] schedAddon (SQL t.{this}) (SQL times.{key}))} AS SubUnpreferred
                                              FROM t, times
@@ -139,18 +141,20 @@ functor Make(M : sig
                                            (fn r acc => return (collectTimes r acc)) [];
                               evs <- List.mapQueryM (SELECT t.{this}, t.{ttime}
                                                      FROM t)
-                                                    (fn r => tm <- source r.T.ttime; return (r.T.this, tm));
+                                                    (fn r => tm <- source r.T.ttime; return (r.T.this, (r.T.ttime, tm)));
                               tms <- List.mapM (fn (tm, choices) =>
                                                    choices <- List.mapM (fn (k, n) =>
-                                                                            s <- (case List.assoc k evs of
-                                                                                      None => source None
-                                                                                    | Some s => return s);
-                                                                            return (k, n, s)) choices;
-                                                   return (tm, choices)) tms;
-                              return (evs, tms)
+                                                                            (s, m) <- (case List.assoc k evs of
+                                                                                           None => (s <- source None; return (s, False))
+                                                                                         | Some (tm', s) => return (s, tm' = Some tm));
+                                                                            return (k, n, s, m)) choices;
+                                                   cache <- source (List.mapPartial (fn (k, n, _, m) => if m then Some (k, n) else None) choices);
+                                                   choices <- return (List.mp (fn (k, n, s, _) => (k, n, s)) choices);
+                                                   return (tm, (choices, cache))) tms;
+                              return (List.mp (fn (k, (_, s)) => (k, s)) evs, tms)
                           else
-                              tms <- List.mapQuery (SELECT * FROM times)
-                                                   (fn r => (r.Times.key, []));
+                              tms <- List.mapQueryM (SELECT * FROM times)
+                                                    (fn r => s <- source []; return (r.Times.key, ([], s)));
                               return ([], tms));
 
             ctx <- source None;
@@ -187,15 +191,12 @@ functor Make(M : sig
                                                  tm <- FullCalendar.eventStart ev;
                                                  case List.assoc tm tms of
                                                      None => return (delbutton cal ev)
-                                                   | Some [] => return (delbutton cal ev)
-                                                   | Some choices => return <xml>
-                                                     <dyn signal={used <- List.existsM (fn (_, _, tmS) =>
-                                                                                           tm' <- signal tmS;
-                                                                                           return (tm' = Some tm)) choices;
-                                                                  return (if used then
-                                                                              <xml></xml>
-                                                                          else
-                                                                              delbutton cal ev)}/>
+                                                   | Some ([], _) => return (delbutton cal ev)
+                                                   | Some (choices, cache) => return <xml>
+                                                     <dyn signal={cache <- signal cache;
+                                                                  return (case cache of
+                                                                              _ :: _ => <xml></xml>
+                                                                            | [] => delbutton cal ev)}/>
                                                      {Ui.modalIcon ctx
                                                                    (CLASS "float-right glyphicon glyphicon-pencil-alt")
                                                                    (ch <- get chs;
@@ -206,7 +207,7 @@ functor Make(M : sig
                                                                                              s <- source (tm' = Some tm);
                                                                                              return (k, np, tmS, s)) choices;
                                                                     showUnpreferred <- source False;
-                                                                    return (Ui.modal (List.app (fn (k, _, tmS, s) =>
+                                                                    return (Ui.modal (List.app (fn (k, np, tmS, s) =>
                                                                                                    tm' <- get tmS;
                                                                                                    b <- get s;
                                                                                                    if b then
@@ -214,11 +215,23 @@ functor Make(M : sig
                                                                                                            return ()
                                                                                                        else
                                                                                                            rpc (setTime (ChangeWatcher.server ch) k (Some tm));
-                                                                                                           set tmS (Some tm)
+                                                                                                           (case tm' of
+                                                                                                                None => return ()
+                                                                                                              | Some tm' =>
+                                                                                                                case List.assoc tm' tms of
+                                                                                                                    None => return ()
+                                                                                                                  | Some (_, cache) =>
+                                                                                                                    cacheV <- get cache;
+                                                                                                                    set cache (List.filter (fn (k', _) => k' <> k) cacheV));
+                                                                                                           set tmS (Some tm);
+                                                                                                           cacheV <- get cache;
+                                                                                                           set cache ((k, np) :: cacheV)
                                                                                                    else
                                                                                                        if tm' = Some tm then
                                                                                                            rpc (setTime (ChangeWatcher.server ch) k None);
-                                                                                                           set tmS None
+                                                                                                           set tmS None;
+                                                                                                           cacheV <- get cache;
+                                                                                                           set cache (List.filter (fn (k', _) => k' <> k) cacheV)
                                                                                                        else
                                                                                                            return ()) choices)
                                                                                      <xml>What should we schedule here?</xml>
@@ -243,15 +256,12 @@ functor Make(M : sig
                                                                                                          </button>
                                                                                                        </xml>}/></xml>
                                                                                      <xml>Save</xml>))}
-                                                     <dyn signal={count <- List.foldlM (fn (_, np, tmS) acc =>
+                                                     <dyn signal={choices <- return (List.filter (fn (_, np, _) => np.SubPreferred + np.SubUnpreferred > 0) choices);
+                                                                  count <- List.foldlM (fn (_, np, tmS) acc =>
                                                                                            tm' <- signal tmS;
                                                                                            return (case tm' of
                                                                                                        Some _ => acc
-                                                                                                     | None =>
-                                                                                                       if np.SubPreferred + np.SubUnpreferred > 0 then
-                                                                                                           1 + acc
-                                                                                                       else
-                                                                                                           acc)) 0 choices;
+                                                                                                     | None => 1 + acc)) 0 choices;
                                                                   return (if count = 0 then
                                                                               <xml></xml>
                                                                           else
@@ -269,19 +279,14 @@ functor Make(M : sig
                                 tm <- FullCalendar.eventStart ev;
                                 case List.assoc tm tms of
                                     None => return <xml></xml>
-                                  | Some choices =>
+                                  | Some (choices, cache) =>
                                     let
                                         fun renderEvent (k, prefs) = <xml>
                                           {[k]}{stars prefs}
                                         </xml>
                                     in
                                         return <xml>
-                                          <dyn signal={evs <- List.mapPartialM (fn (k, prefs, tmS) =>
-                                                                                   tm' <- signal tmS;
-                                                                                   return (if tm' = Some tm then
-                                                                                               Some (k, prefs)
-                                                                                           else
-                                                                                               None)) choices;
+                                          <dyn signal={evs <- signal cache;
                                                        return (case evs of
                                                                    [] => <xml></xml>
                                                                  | ev1 :: [] => <xml>{renderEvent ev1}</xml>
@@ -311,7 +316,7 @@ functor Make(M : sig
             ch <- ChangeWatcher.listen tTitle;
             source {Times = tms,
                     Events = List.filter (fn (k, _) =>
-                                             List.exists (fn (_, choices) =>
+                                             List.exists (fn (_, (choices, _)) =>
                                                              List.exists (fn (k', _, _) => k' = k) choices) tms) evs,
                     Calendar = cal,
                     Context = ctx,
@@ -321,7 +326,7 @@ functor Make(M : sig
         end
 
     fun initCalendar self =
-        List.app (fn (tm, _) => addEvent self.Calendar tm) self.Times
+        FullCalendar.addEvents self.Calendar (List.mp (fn (tm, _) => eventFor tm) self.Times)
 
     val allEvents =
         uo <- whoami;
@@ -356,7 +361,7 @@ functor Make(M : sig
              onload selfS)
 
     fun render ctx self = <xml>
-      <dyn signal={self <- signal self;
+      <!--dyn signal={self <- signal self;
                    unscheduled <- List.mapPartialM (fn (k, tmS) =>
                                                        tm <- signal tmS;
                                                        return (case tm of
@@ -367,7 +372,7 @@ functor Make(M : sig
                              | k1 :: ks => <xml><div><b>Unscheduled:</b> {[k1]}{List.mapX (fn k => <xml>, {[k]}</xml>) ks}</div></xml>)}/>
 
       <dyn signal={self <- signal self;
-                   return (CalendarAddons.aboveCalendar addon ctx self.Calendar)}/>
+                   return (CalendarAddons.aboveCalendar addon ctx self.Calendar)}/-->
 
       <dyn signal={self <- signal self;
                    return <xml>
