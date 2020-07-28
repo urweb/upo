@@ -41,6 +41,7 @@ functor Make(M : sig
                                  | Some d => FullCalendar.durationToSeconds d
 
     type prefs = {
+         SubUnavailable : int,
          SubPreferred : int,
          SubUnpreferred : int
     }
@@ -62,7 +63,7 @@ functor Make(M : sig
                 else
                     <xml> <i class={classes glyphicon cls}/> {[n]}</xml>
         in
-            <xml>{one glyphicon_smile r.SubPreferred}{one glyphicon_meh r.SubUnpreferred}</xml>
+            <xml>{one glyphicon_smile r.SubPreferred}{one glyphicon_meh r.SubUnpreferred}{one glyphicon_frown r.SubUnavailable}</xml>
         end
 
     fun setTime ch k tmo =
@@ -118,7 +119,8 @@ functor Make(M : sig
                     val k = r.T.this
                     val tm = r.Times.key
                     val pref = {SubPreferred = r.SubPreferred,
-                                SubUnpreferred = r.SubUnpreferred}
+                                SubUnpreferred = r.SubUnpreferred,
+                                SubUnavailable = r.SubUnavailable}
                     fun doCons items = (k, pref) :: items
                 in
                     case acc of
@@ -135,9 +137,10 @@ functor Make(M : sig
             (evs, tms) <- (if anyInTabs then
                               tms <- query (SELECT t.{this}, times.{key},
                                                {sql_exp_weaken (SchedulingAddons.preferred [#SubPreferred] [#SubUnpreferred] schedAddon (SQL t.{this}) (SQL times.{key}))} AS SubPreferred,
-                                               {sql_exp_weaken (SchedulingAddons.unpreferred [#SubPreferred] [#SubUnpreferred] schedAddon (SQL t.{this}) (SQL times.{key}))} AS SubUnpreferred
+                                               {sql_exp_weaken (SchedulingAddons.unpreferred [#SubPreferred] [#SubUnpreferred] schedAddon (SQL t.{this}) (SQL times.{key}))} AS SubUnpreferred,
+                                               {sql_exp_weaken (SchedulingAddons.unavailable [#SubPreferred] [#SubUnpreferred] schedAddon (SQL t.{this}) (SQL times.{key}))} AS SubUnavailable
                                              FROM t, times
-                                            ORDER BY times.{key} DESC, SubPreferred, SubUnpreferred, t.{this} DESC)
+                                            ORDER BY times.{key} DESC, SubPreferred, SubUnpreferred, SubUnavailable DESC, t.{this} DESC)
                                            (fn r acc => return (collectTimes r acc)) [];
                               evs <- List.mapQueryM (SELECT t.{this}, t.{ttime}
                                                      FROM t)
