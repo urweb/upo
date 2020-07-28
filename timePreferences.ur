@@ -145,24 +145,23 @@ functor Make(M : sig
                                     OnDrop = None};
         return {Calendar = cal, Choices = cs, Context = ctx}
 
-    fun addEvent cal tm s =
-        Monad.ignore (FullCalendar.addEvent cal
-                                            {Id = None,
-                                             AllDay = False,
-                                             Start = tm,
-                                             End = Some (addSeconds tm eventLengthInSeconds),
-                                             Title = "Are you available?",
-                                             Rendering = FullCalendar.Normal,
-                                             TextColor = Some (l <- signal s;
-                                                                     return (case l of
-                                                                                 Unavailable => Some "#cc1515"
-                                                                               | _ => None)),
-                                             BackgroundColor = Some (l <- signal s;
-                                                                     return (case l of
-                                                                                 Unavailable => Some "#ff0c0c8c"
-                                                                               | _ => None))})
+    fun eventData tm s =
+        {Id = None,
+         AllDay = False,
+         Start = tm,
+         End = Some (addSeconds tm eventLengthInSeconds),
+         Title = "Are you available?",
+         Rendering = FullCalendar.Normal,
+         TextColor = Some (l <- signal s;
+                           return (case l of
+                                       Unavailable => Some "#cc1515"
+                                     | _ => None)),
+         BackgroundColor = Some (l <- signal s;
+                                 return (case l of
+                                             Unavailable => Some "#ff0c0c8c"
+                                           | _ => None))}
     fun onload self =
-        List.app (fn (tm, s) => addEvent self.Calendar tm s) self.Choices
+        FullCalendar.addEvents self.Calendar (List.mp (fn (tm, s) => eventData tm s) self.Choices)
 
     fun render ctx self = <xml>
       <active code={set self.Context (Some ctx);
