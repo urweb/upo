@@ -31,3 +31,11 @@ val like : key ::: Type -> lkey :: Name -> luser :: Name -> lks ::: {{Unit}}
            => sql_table [lkey = key, luser = string] lks
            -> sql_table [auser = string, atime = time, apreferred = bool] aks
            -> t key
+
+val assigned : key ::: Type -> lkey :: Name -> luser :: Name -> others ::: {Type} -> lks ::: {{Unit}}
+               -> auser :: Name -> atime :: Name -> apreferred :: Name -> aks ::: {{Unit}}
+               -> [[lkey] ~ [luser]] => [[lkey, luser] ~ others]
+               => [[auser] ~ [atime]] => [[auser, atime] ~ [apreferred]]
+               => sql_table ([lkey = key, luser = option string] ++ others) lks
+               -> sql_table [auser = string, atime = time, apreferred = bool] aks
+               -> t key
