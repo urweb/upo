@@ -33,7 +33,8 @@ functor Make(M : sig
     datatype level = Unavailable | Available | Preferred
 
     type input = string
-    type a = {Calendar : FullCalendar.t,
+    type a = {CreatedAt : time,
+              Calendar : FullCalendar.t,
               Choices : list (time * source level),
               Context : source (option Ui.context)}
 
@@ -74,6 +75,7 @@ functor Make(M : sig
             changed
 
     fun create u =
+        tm <- now;
         firstFuture <- oneRowE1 (SELECT MIN(times.{key})
                                  FROM times
                                  WHERE times.{key} > CURRENT_TIMESTAMP);
@@ -143,7 +145,7 @@ functor Make(M : sig
                                                         </xml>}),
                                     OnSelect = None,
                                     OnDrop = None};
-        return {Calendar = cal, Choices = cs, Context = ctx}
+        return {CreatedAt = tm, Calendar = cal, Choices = cs, Context = ctx}
 
     fun eventData tm s =
         {Id = None,
@@ -164,6 +166,7 @@ functor Make(M : sig
         FullCalendar.addEvents self.Calendar (List.mp (fn (tm, s) => eventData tm s) self.Choices)
 
     fun render ctx self = <xml>
+      <h5>Times are shown in your local time zone, e.g. in that time zone, you loaded this page at about {[self.CreatedAt]}.</h5>
       <active code={set self.Context (Some ctx);
                     return (CalendarAddons.aboveCalendar addon ctx self.Calendar)}/>
 
