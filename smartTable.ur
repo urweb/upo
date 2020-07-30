@@ -2358,7 +2358,7 @@ functor Upload(M : sig
                                    <hr/>
                                    <dyn signal={h <- signal h;
                                                 return (case h of
-                                                            Initial => <xml><h4 class="text-info">Waiting for file selection....</h4></xml>
+                                                            Initial => <xml><h4 class="text-info">File not uploaded yet.  Please hold on....</h4></xml>
                                                           | Uploading => <xml><h4 class="text-info">Uploading....</h4></xml>
                                                           | Failed => <xml><h4 class="text-warning">Upload failed!</h4></xml>
                                                           | Succeeded _ => <xml><h4 class="text-success">Upload succeeded!</h4></xml>)}/>
