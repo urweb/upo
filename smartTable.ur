@@ -2273,7 +2273,7 @@ functor Upload(M : sig
                end) = struct
     open M
 
-    type cfg = option string * ChangeWatcher.client_part
+    type cfg = ChangeWatcher.client_part
     type internal = option thisT * option {user : string, when : time, FileName : string}
 
     val changed = ChangeWatcher.changed title
@@ -2315,8 +2315,8 @@ functor Upload(M : sig
     datatype upload_state = Initial | Uploading | Failed | Succeeded of AjaxUpload.handle
 
     val t = {
-        Configure = uo <- whoami; ch <- ChangeWatcher.listen title; return (uo, ch),
-        Generate = fn (uo, _) r =>
+        Configure = ChangeWatcher.listen title,
+        Generate = fn _ r =>
                       f <- oneOrNoRows1 (SELECT upload.{user}, upload.{when}, upload.FileName
                                          FROM upload
                                          WHERE upload.{fthis} = {[r.this]}
@@ -2328,12 +2328,12 @@ functor Upload(M : sig
         SortBy = fn x => x,
         ModifyBeforeCreate = fn _ _ r => r,
         OnCreate = fn _ _ _ => return (),
-        OnLoad = fn fs (_, ch) => ChangeWatcher.onChange ch fs.ReloadState,
+        OnLoad = fn fs ch => ChangeWatcher.onChange ch fs.ReloadState,
         GenerateLocal = fn _ _ => return (None, None),
         WidgetForCreate = fn _ _ => <xml></xml>,
         OnCreateLocal = fn _ _ => return (),
         Header = fn _ => <xml><th>{[label]}</th></xml>,
-        Row = fn (uo, _) ctx (k, r) => <xml><td>
+        Row = fn _ ctx (k, r) => <xml><td>
           {case (k, r) of
                (Some k, Some r) => <xml>
                  <a class="badge badge-pill" link={download k}><tt>{[r.FileName]}</tt> by {[r.user]} at {[r.when]}</a>
@@ -2364,6 +2364,77 @@ functor Upload(M : sig
                                                           | Succeeded _ => <xml><h4 class="text-success">Upload succeeded!</h4></xml>)}/>
                                  </xml>
                                  <xml>Save</xml>))}
+        </td></xml>,
+        Todos = fn _ _ => return 0
+    }
+end
+
+functor UploadReadonly(M : sig
+                           type inp
+                           con this :: Name
+                           type thisT
+                           con r :: {Type}
+                           constraint [this] ~ r
+                           val inj_this : sql_injectable thisT
+
+                           con fthis :: Name
+                           con user :: Name
+                           con when :: Name
+                           constraint [fthis] ~ [user]
+                           constraint [fthis, user] ~ [when]
+                           constraint [fthis, user, when] ~ [FileName, FileType, FileData]
+                           table upload : {fthis : thisT, user : string, when : time, FileName : string, FileType : string, FileData : blob}
+                           val title : string
+
+                           val label : string
+                           val whoami : transaction (option string)
+                       end) = struct
+    open M
+
+    type cfg = ChangeWatcher.client_part
+    type internal = option thisT * option {user : string, when : time, FileName : string}
+
+    fun download k =
+        uo <- whoami;
+        case uo of
+            None => error <xml>Access denied</xml>
+          | Some _ =>
+            r <- oneRow1 (SELECT upload.FileName, upload.FileType, upload.FileData
+                          FROM upload
+                          WHERE upload.{fthis} = {[k]}
+                          ORDER BY upload.{when} DESC
+                          LIMIT 1);
+            setHeader (blessResponseHeader "Content-Disposition")
+                      ("attachment; filename=" ^ r.FileName);
+            returnBlob r.FileData (blessMime r.FileType)
+
+    datatype upload_state = Initial | Uploading | Failed | Succeeded of AjaxUpload.handle
+
+    val t = {
+        Configure = ChangeWatcher.listen title,
+        Generate = fn _ r =>
+                      f <- oneOrNoRows1 (SELECT upload.{user}, upload.{when}, upload.FileName
+                                         FROM upload
+                                         WHERE upload.{fthis} = {[r.this]}
+                                         ORDER BY upload.{when} DESC
+                                         LIMIT 1);
+                      return (Some r.this, f),
+        Filter = fn _ _ => None,
+        FilterLinks = fn _ _ => None,
+        SortBy = fn x => x,
+        ModifyBeforeCreate = fn _ _ r => r,
+        OnCreate = fn _ _ _ => return (),
+        OnLoad = fn fs ch => ChangeWatcher.onChange ch fs.ReloadState,
+        GenerateLocal = fn _ _ => return (None, None),
+        WidgetForCreate = fn _ _ => <xml></xml>,
+        OnCreateLocal = fn _ _ => return (),
+        Header = fn _ => <xml><th>{[label]}</th></xml>,
+        Row = fn _ ctx (k, r) => <xml><td>
+          {case (k, r) of
+               (Some k, Some r) => <xml>
+                 <a class="badge badge-pill" link={download k}><tt>{[r.FileName]}</tt> by {[r.user]} at {[r.when]}</a>
+               </xml>
+               | _ => <xml></xml>}
         </td></xml>,
         Todos = fn _ _ => return 0
     }
