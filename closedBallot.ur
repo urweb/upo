@@ -348,11 +348,13 @@ functor Make(M : sig
     </xml>
 
     fun notification _ _ = <xml></xml>
+    fun buttons _ _ = <xml></xml>
 
     fun ui r = {Create = create r,
                 Onload = onload,
                 Render = render,
-                Notification = notification}
+                Notification = notification,
+                Buttons = buttons}
 
     fun removeVotesFor r =
         dml (DELETE FROM vote

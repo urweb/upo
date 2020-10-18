@@ -700,10 +700,12 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
             end
 
         fun notification _ _ = <xml></xml>
+        fun buttons _ _ = <xml></xml>
     in
         {Create = create,
          Onload = onload,
          Render = render,
-         Notification = notification}
+         Notification = notification,
+         Buttons = buttons}
     end
 end

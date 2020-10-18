@@ -600,10 +600,13 @@ functor Make(M : sig
                                  | _ => <xml></xml>)}/>
         </xml>
 
+    fun buttons _ _ = <xml></xml>
+
     val ui = {Create = create,
               Onload = onload,
               Render = render,
-              Notification = notification}
+              Notification = notification,
+              Buttons = buttons}
 end
 
 functor Make1(M : sig
@@ -680,8 +683,11 @@ functor Make1(M : sig
                                  | _ => <xml></xml>)}/>
         </xml>
 
+    fun buttons _ _ = <xml></xml>
+
     fun ui inp = {Create = create inp,
                   Onload = onload,
                   Render = render,
-                  Notification = notification}
+                  Notification = notification,
+                  Buttons = buttons}
 end

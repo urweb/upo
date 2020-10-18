@@ -2630,10 +2630,13 @@ functor Make(M : sig
                                <xml><span class="badge badge-pill badge-warning">{[n]}</span></xml>)}/>
     </xml>
 
+    fun buttons _ _ = <xml></xml>
+
     fun ui btns = {Create = create btns,
                    Onload = onload,
                    Render = render,
-                   Notification = notification}
+                   Notification = notification,
+                   Buttons = buttons}
 end
 
 functor Make1(M : sig
@@ -2847,8 +2850,11 @@ functor Make1(M : sig
                                <xml><span class="badge badge-pill badge-warning">{[n]}</span></xml>)}/>
     </xml>
 
+   fun buttons _ _ = <xml></xml>
+
    fun ui inp = {Create = create inp,
                  Onload = onload,
                  Render = render,
-                 Notification = notification}
+                 Notification = notification,
+                 Buttons = buttons}
 end

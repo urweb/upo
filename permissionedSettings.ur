@@ -174,7 +174,7 @@ functor Make(M : sig
                  val whoami : transaction (option string)
              end) = struct
     open M
-    
+
     type a = p1
 
     val create =
@@ -202,9 +202,11 @@ functor Make(M : sig
     </xml>
 
     fun notification _ _ = <xml></xml>
+    fun buttons _ _ = <xml></xml>
 
     val ui = {Create = create,
               Onload = onload,
               Render = render,
-              Notification = notification}
+              Notification = notification,
+              Buttons = buttons}
 end

@@ -831,12 +831,14 @@ functor Make(M : sig
                 end
 
             fun notification _ _ = <xml></xml>
+            fun buttons _ _ = <xml></xml>
 
             fun ui filt = {
                 Create = create,
                 Onload = onload,
                 Render = render filt,
-                Notification = notification
+                Notification = notification,
+                Buttons = buttons
             }
 
         end
@@ -987,12 +989,14 @@ functor Make(M : sig
                 end
 
             fun notification _ _ = <xml></xml>
+            fun buttons _ _ = <xml></xml>
 
             fun ui x = {
                 Create = create x,
                 Onload = onload,
                 Render = fn _ => render,
-                Notification = notification
+                Notification = notification,
+                Buttons = buttons
             }
 
         end
@@ -1089,12 +1093,14 @@ functor Make(M : sig
             fun onload _ = return ()
 
             fun notification _ _ = <xml></xml>
+            fun buttons _ _ = <xml></xml>
 
             fun ui x = {
                 Create = create x,
                 Onload = onload,
                 Render = fn _ => render,
-                Notification = notification
+                Notification = notification,
+                Buttons = buttons
             }
         end
     end

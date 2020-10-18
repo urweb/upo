@@ -185,9 +185,12 @@ functor Make(M : sig
                                <xml><i class="glyphicon glyphicon-lg glyphicon-exclamation-circle"/></xml>)}/>
     </xml>
 
+    fun buttons _ _ = <xml></xml>
+
     fun ui uo = {Create = create uo,
                  Onload = onload,
                  Render = render,
-                 Notification = notification}
+                 Notification = notification,
+                 Buttons = buttons}
 end
 

@@ -216,11 +216,13 @@ functor Make(M : sig
         </xml>
 
         fun notification _ _ = <xml></xml>
+        fun buttons _ _ = <xml></xml>
 
         val ui = {Create = create,
                   Onload = onload,
                   Render = render,
-                  Notification = notification}
+                  Notification = notification,
+                  Buttons = buttons}
     end
 
 end

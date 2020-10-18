@@ -297,11 +297,13 @@ functor Import1(M : sig
     </xml>
 
     fun notification _ _ = <xml></xml>
+    fun buttons _ _ = <xml></xml>
 
     val ui = {Create = create,
               Onload = onload,
               Render = render,
-              Notification = notification}
+              Notification = notification,
+              Buttons = buttons}
 
 end
 
@@ -422,11 +424,13 @@ functor ImportWithHeader1(M : sig
     </xml>
 
     fun notification _ _ = <xml></xml>
+    fun buttons _ _ = <xml></xml>
 
     val ui = {Create = create,
               Onload = onload,
               Render = render,
-              Notification = notification}
+              Notification = notification,
+              Buttons = buttons}
 end
 
 fun escape' s =
@@ -524,10 +528,12 @@ functor Generate1(M : sig
     </xml>
 
     fun notification _ _ = <xml></xml>
+    fun buttons _ _ = <xml></xml>
 
     val ui = {Create = create,
               Onload = onload,
               Render = render,
-              Notification = notification}
+              Notification = notification,
+              Buttons = buttons}
 
 end

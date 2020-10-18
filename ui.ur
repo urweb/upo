@@ -10,7 +10,8 @@ type t a = {
      Create : transaction a,
      Onload : a -> transaction unit,
      Render : context -> a -> xbody,
-     Notification : context -> a -> xbody
+     Notification : context -> a -> xbody,
+     Buttons : context -> a -> xbody
 }
 
 signature S0 = sig
@@ -33,7 +34,10 @@ fun seq [ts] (fl : folder ts) (ts : $(map t ts)) = {
                                               r.Render ctx) fl ts,
     Notification = fn ctx =>
                       @mapX2 [t] [ident] [body] (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] r =>
-                                                    r.Notification ctx) fl ts
+                                                    r.Notification ctx) fl ts,
+    Buttons = fn ctx =>
+                 @mapX2 [t] [ident] [body] (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] r =>
+                                               r.Buttons ctx) fl ts
 }
 
 datatype moded a1 a2 = First of a1 | Second of a2
@@ -52,7 +56,10 @@ fun moded [a1] [a2] (which : bool) (t1 : t a1) (t2 : t a2) = {
                             | Second x => t2.Render ctx x,
     Notification = fn ctx st => case st of
                                     First x => t1.Notification ctx x
-                                  | Second x => t2.Notification ctx x
+                                  | Second x => t2.Notification ctx x,
+    Buttons = fn ctx st => case st of
+                               First x => t1.Buttons ctx x
+                             | Second x => t2.Buttons ctx x
 }
 
 type computed a b = a * b
@@ -60,7 +67,8 @@ fun computed [a] [b] (f : a -> t b) (x : transaction a) : t (computed a b) = {
     Create = v <- x; st <- (f v).Create; return (v, st),
     Onload = fn (v, st) => (f v).Onload st,
     Render = fn ctx (v, st) => (f v).Render ctx st,
-    Notification = fn ctx (v, st) => (f v).Notification ctx st
+    Notification = fn ctx (v, st) => (f v).Notification ctx st,
+    Buttons = fn ctx (v, st) => (f v).Buttons ctx st
 }
 
 type const = unit
@@ -68,13 +76,15 @@ fun const bod = {
     Create = return (),
     Onload = fn () => return (),
     Render = fn _ () => bod,
-    Notification = fn _ _ => <xml></xml>
+    Notification = fn _ _ => <xml></xml>,
+    Buttons = fn _ _ => <xml></xml>
 }
 fun constM bod = {
     Create = return (),
     Onload = fn () => return (),
     Render = fn ctx () => bod ctx,
-    Notification = fn _ _ => <xml></xml>
+    Notification = fn _ _ => <xml></xml>,
+    Buttons = fn _ _ => <xml></xml>
 }
 
 signature THEME = sig

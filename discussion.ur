@@ -682,11 +682,13 @@ functor Make(M : sig
         end
 
     fun notification _ _ = <xml></xml>
+    fun buttons _ _ = <xml></xml>
 
     fun ui k = {Create = create k,
                 Onload = onload,
                 Render = render,
-                Notification = notification}
+                Notification = notification,
+                Buttons = buttons}
 
     functor Todo(N : sig
                      con tag :: Name

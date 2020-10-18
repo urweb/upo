@@ -422,11 +422,13 @@ functor Make(M : sig
     </xml>
 
     fun notification _ _ = <xml></xml>
+    fun buttons _ _ = <xml></xml>
 
     fun ui sms = {Create = create sms,
                   Onload = onload,
                   Render = render,
-                  Notification = notification}
+                  Notification = notification,
+                  Buttons = buttons}
 
     fun grades sms =
         ranges <- queryL1 (SELECT *

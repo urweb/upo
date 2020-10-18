@@ -7,9 +7,12 @@ type t (a :: Type) = {
      Create : transaction a,
      Onload : a -> transaction unit,
      Render : context -> a -> xbody,
-     Notification : context -> a -> xbody
+     Notification : context -> a -> xbody,
      (* E.g., might display a badge indicating that this UI has a certain amount
       * of work to do *)
+     Buttons : context -> a -> xbody
+     (* Buttons (and maybe other widgets) associated with taking the primary
+      * actions associated with this unit *)
 }
 
 (* Some signatures for packaging units with their abstract state types *)

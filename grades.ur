@@ -72,11 +72,13 @@ functor OneStudent(M : sig
     fun render w = <xml><ul>{render' w}</ul></xml>
 
     fun notification _ _ = <xml></xml>
+    fun buttons _ _ = <xml></xml>
 
     fun ui stid = {Create = tr <- oneStudent t stid; toWidget tr,
                    Onload = fn _ => return (),
                    Render = fn _ => render,
-                   Notification = notification}
+                   Notification = notification,
+                   Buttons = buttons}
 end
 
 functor AllStudents(M : sig
@@ -172,11 +174,13 @@ functor AllStudents(M : sig
           </li></xml>
 
     fun notification _ _ = <xml></xml>
+    fun buttons _ _ = <xml></xml>
 
     val ui = {Create = tr <- allStudents t; toWidget tr,
               Onload = fn _ => return (),
               Render = fn _ => render,
-              Notification = notification}
+              Notification = notification,
+              Buttons = buttons}
 end
 
 fun minOf t =
