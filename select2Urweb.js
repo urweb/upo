@@ -6,7 +6,13 @@ function arrayToUrweb(arr) {
 }
 
 function uw_select2_replace(id, onChange) {
-    $('#' + id).select2({width: '100%'}).change(function() {
+    var settings = {width: '100%'};
+
+    var dropdown = $('#' + id).closest('.dropdown');
+    if (dropdown.length > 0)
+        settings.dropdownParent = dropdown[0];
+    
+    $('#' + id).select2(settings).change(function() {
         execF(execF(onChange, arrayToUrweb($('#' + id).select2('data'))), null);
     });
 }
