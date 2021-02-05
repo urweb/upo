@@ -4,6 +4,11 @@ CKEDITOR.stylesSet.add( 'upo_styles', [
     { name: 'Typewriter', element: 'tt' }
 ]);
 
+// Stop aggravating behavior of pop-ups (like to set a hyperlink) within a modal.
+$(document).on('focusin', function(e) {
+    e.stopImmediatePropagation();
+});
+
 function toolbar_set(toolbars) {
     var toolbarsOut = [];
 
@@ -44,7 +49,7 @@ function sizeOut(v) {
 }
 
 function uw_ckeditor_replace(r) {
-    var config = {entities : false, stylesSet : 'upo_styles'};
+    var config = {entities : false, stylesSet : 'upo_styles', baseFloatZIndex : 1E5};
 
     var width = sizeOut(r._Width);
     if (width != null)
