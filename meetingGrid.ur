@@ -33,7 +33,7 @@ functor Make(M : sig
                  val homeKeyEq : $(map eq homeKey)
                  val homeKeyOrd : $(map ord homeKey)
                  val officeFl : folder homeOffice
-                 val officeShow : show $homeOffice
+                 val officeRender : $homeKey -> $homeOffice -> xbody
                  val homeSoftConstFl : folder homeSoftConst
                  val homeSoftConstInj : $(map sql_injectable homeSoftConst)
                  val homeSoftConst : $homeSoftConst
@@ -274,8 +274,8 @@ functor Make(M : sig
                      val themEq : eq $themKey
 
                      val usOfficeFl : folder usOffice
-                     val usOfficeShow : show $usOffice
-                     val themOfficeShow : show $themOffice
+                     val usOfficeRender : $usKey -> $usOffice -> xbody
+                     val themOfficeRender : $themKey -> $themOffice -> xbody
 
                      val usSoftConstFl : folder usSoftConst
                      val usSoftConstInj : $(map sql_injectable usSoftConst)
@@ -609,7 +609,7 @@ functor Make(M : sig
                   (* One row per us *)
                   {List.mapX (fn (us, off, tms, requested) => <xml>
                     <tr dynStyle={b <- filt (us ++ off); return (if b then STYLE "" else STYLE "display: none")}>
-                      <td style={colwidth}><strong>{[us]}{[off]}</strong>
+                      <td style={colwidth}><strong>{usOfficeRender us off}</strong>
                         <dyn signal={reqs <- List.filterM (fn th => b <- List.existsM (fn (_, _, ths) =>
                                                                                           thsV <- signal ths;
                                                                                           return (List.exists (fn (th', _) => th' = th) thsV)) tms;
@@ -940,7 +940,7 @@ functor Make(M : sig
                                          ths <- signal ths;
                                          return (case ths of
                                                      [] => <xml>&mdash;</xml>
-                                                   | (th, off) :: ths => <xml>{[th]}{[off]}{List.mapX (fn (th, off) => <xml>, {[th]}{[off]}</xml>) ths}</xml>)}/>
+                                                   | (th, off) :: ths => <xml>{themOfficeRender th off}{List.mapX (fn (th, off) => <xml>, {themOfficeRender th off}</xml>) ths}</xml>)}/>
                                                                                                                                           </td>
                     </tr>
                   </xml>) t.Meetings}
@@ -1154,6 +1154,9 @@ functor Make(M : sig
                       val usSoftConstFl = homeSoftConstFl
                       val themSoftConstInj = awayConstInj
                       val themSoftConstFl = awayConstFl
+
+                      val usOfficeRender = officeRender
+                      fun themOfficeRender k _ = txt k
                   end)
 
         structure FullGrid = struct
@@ -1208,8 +1211,10 @@ functor Make(M : sig
                               val themSoftConstInj = homeSoftConstInj
                               val themSoftConstFl = homeSoftConstFl
 
-                              val usOfficeShow = mkShow (fn _ => "")
                               val usOfficeFl = awayFilterFl
+
+                              val themOfficeRender = officeRender
+                              fun usOfficeRender k _ = txt k
                           end)
 
     val scheduleSome =

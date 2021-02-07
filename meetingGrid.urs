@@ -26,7 +26,7 @@ functor Make(M : sig
                  val homeKeyEq : $(map eq homeKey)
                  val homeKeyOrd : $(map ord homeKey)
                  val officeFl : folder homeOffice
-                 val officeShow : show $homeOffice
+                 val officeRender : $homeKey -> $homeOffice -> xbody
                  val homeSoftConstFl : folder homeSoftConst
                  val homeSoftConstInj : $(map sql_injectable homeSoftConst)
                  val homeSoftConst : $homeSoftConst
