@@ -11,8 +11,11 @@ function uw_select2_replace(id, onChange) {
     var dropdown = $('#' + id).closest('.dropdown');
     if (dropdown.length > 0)
         settings.dropdownParent = dropdown[0];
-    
-    $('#' + id).select2(settings).change(function() {
+
+    var doChange = function() {
         execF(execF(onChange, arrayToUrweb($('#' + id).select2('data'))), null);
-    });
+    };
+    
+    $('#' + id).select2(settings).change(doChange);
+    doChange();
 }
