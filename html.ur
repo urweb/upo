@@ -359,7 +359,7 @@ fun unhtml s =
             if String.length post > 0 && String.sub post 0 = #"/" then
                 case String.split post #">" of
                     None => s
-                  | Some (_, post) => pre ^ unhtml post
+                  | Some (tag, post) => (if tag = "/p" then pre ^ "\r\n\r\n" else pre) ^ unhtml post
             else
                 let
                     fun passHtmlStuff post =
