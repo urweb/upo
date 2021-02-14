@@ -154,7 +154,7 @@ fun format [tags] (fl : folder tags) (tags : $(map tag tags)) [ctx] [[Body] ~ ct
                                                     (case loop post of
                                                          Good (after, post) =>
                                                          Good (<xml>{[pre]}{meta.Construct [ctx] !
-                                                                                           ats inner}{after}</xml>, post)
+                                                                                           ats inner}{if meta.Nam = "p" then txt "\n" else <xml></xml>}{after}</xml>, post)
                                                        | x => x)
                                                   | x => x
                                             end
