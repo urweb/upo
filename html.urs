@@ -50,6 +50,7 @@ val tt : tag []
 val ol : tag []
 val ul : tag []
 val li : tag []
+val div : tag []
 
 val unhtml : string -> string
 (* Remove all HTML formatting. *)

@@ -243,7 +243,7 @@ fun ed s = Ckeditor.editor {Width = Ckeditor.DefaultSize,
                             ToolbarSet = Ckeditor.Custom (undoEtc :: find :: basic :: lists :: styles :: links :: []),
                             InitialText = s}
 
-val tags = (Html.b, Html.i, Html.a, Html.strong, Html.em, Html.p, Html.br, Html.code, Html.tt, Html.ol, Html.ul, Html.li)
+val tags = (Html.b, Html.i, Html.a, Html.strong, Html.em, Html.p, Html.div, Html.br, Html.code, Html.tt, Html.ol, Html.ul, Html.li)
 
 fun html s =
     case Html.format tags s of
