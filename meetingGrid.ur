@@ -596,7 +596,7 @@ functor Make(M : sig
                     val colwidth = oneProperty noStyle (value (property "width") (atom colwidth))
                 in
             <xml>
-              <table class="bs-table table-fixedheader">
+              <div class="table-fixedheader"><table class="bs-table table-fixedheader">
                 <thead>
                   <tr>
                     <th style={colwidth}>&nbsp;</th>
@@ -751,7 +751,7 @@ functor Make(M : sig
                     </tr>
                   </xml>) t.Meetings}
                 </tbody>
-              </table>
+              </table></div>
             </xml>
                 end
 
