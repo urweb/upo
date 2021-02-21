@@ -387,49 +387,50 @@ fun items [keys ::: {Type}] [tags ::: {(Type * Type * Type)}] [[When, Kind, Show
                                    Some x => (r.When, r.Kind, r.ShowTime, x)
                                  | None => error <xml>Calendar: impossible: query result doesn't correspond to a tag</xml>)
 
-fun dateify tm = Datetime.toTime (Datetime.fromTime tm -- #Hour -- #Minute -- #Second
-                                                    ++ {Hour = 0, Minute = 0, Second = 0})
+fun datetimeify tm = Datetime.fromTime tm -- #Hour -- #Minute -- #Second
+                                       ++ {Hour = 0, Minute = 0, Second = 0}
+fun dateify tm = Datetime.toTime (datetimeify tm)
 
 val oneDay = 24 * 60 * 60
+
+fun dateifyBackToSunday tm =
+    let
+        val dt = datetimeify tm
+    in
+        case Datetime.dayOfWeek dt of
+            Datetime.Sunday => Datetime.toTime dt
+          | _ => dateifyBackToSunday (addSeconds tm (-oneDay))
+    end
+
+fun dateifyForwardToSunday tm =
+    let
+        val dt = datetimeify tm
+    in
+        case Datetime.dayOfWeek dt of
+            Datetime.Sunday => Datetime.toTime dt
+          | _ => dateifyForwardToSunday (addSeconds tm oneDay)
+    end
 
 fun extractWeek [a] (ls : list (time * string * string * list a)) : option {ThisWeek : list (time * string * string * list a), LaterWeeks : list (time * string * string * list a)} =
     case ls of
         [] => None
-      | (tm, tmS, _, _) :: _ =>
+      | _ :: _ =>
         let
-            val offsetStart = addSeconds tm (Datetime.dayOfWeekToInt (Datetime.dayOfWeek (Datetime.fromTime tm)) * (-oneDay))
-            (* The beginning of this week *)
-
             fun getWeek daynum ls =
                 if daynum >= 7 then
                     ([], ls)
                 else
                     let
-                        val dow = Datetime.intToDayOfWeek daynum
                         fun more ls' = getWeek (daynum + 1) ls'
                     in
                         case ls of
-                            [] =>
-                            let
-                                val (ls'', left) = more ls
-                                val tm' = addSeconds offsetStart (daynum * oneDay)
-                            in
-                                ((tm', timef "%b %e" tm', show (dateify tm'), []) :: ls'', left)
-                            end
+                            [] => error <xml>extractWeek: ran out of days early</xml>
                           | ent :: ls' =>
-                            if Datetime.dayOfWeek (Datetime.fromTime ent.1) = dow then
-                                let
-                                    val (ls'', left) = more ls'
-                                in
-                                    (ent :: ls'', left)
-                                end
-                            else
-                                let
-                                    val (ls'', left) = more ls
-                                    val tm' = addSeconds offsetStart (daynum * oneDay)
-                                in
-                                    ((tm', timef "%b %e" tm', show (dateify tm'), []) :: ls'', left)
-                                end
+                            let
+                                val (ls'', left) = more ls'
+                            in
+                                (ent :: ls'', left)
+                            end
                     end
 
             val (ls'', left) = getWeek 0 ls
@@ -474,8 +475,8 @@ type a = $(map thd3 tags) (* configuration *)
 
 fun ui {FromDay = from, ToDay = to} : Ui.t a =
     let
-        val from = dateify from
-        val to = dateify to
+        val from = dateifyBackToSunday from
+        val to = dateifyForwardToSunday to
 
         val create =
             let
