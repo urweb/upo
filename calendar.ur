@@ -242,60 +242,82 @@ functor FromTable(M : sig
            fun create r =
                lv <- auth;
                if lv >= Write then
-                   @Sql.easy_insert
-                    (@map0 [fn _ => sql_injectable time] (fn [u ::_] => _ : sql_injectable time) flT
-                      ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst3] [_] fl) inj ++ injO)
-                    (@Folder.concat ! (@Folder.mp flT) (@Folder.mp (@Folder.concat ! fl flO))) tab r
+                   tms <- return (@foldR2 [fn _ => string] [fn _ => string]
+                                   [fn r => option ($(mapU time r) * list (time * option string * string))]
+                                   (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] k tmS acc =>
+                                       case (read tmS, acc) of
+                                           (Some tm, Some (r, l)) => Some ({nm = tm} ++ r, (tm, if showTime then Some (timef "%l:%M" tm) else None, k) :: l)
+                                         | _ => None)
+                                   (Some ({}, [])) flT kinds (r --- _));
+                   case tms of
+                       None => error <xml>Invalid time!</xml>
+                     | Some (tms, tml) =>
+                       @Sql.easy_insert
+                        (@map0 [fn _ => sql_injectable time] (fn [u ::_] => _ : sql_injectable time) flT
+                          ++ @mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst3] [_] fl) inj ++ injO)
+                        (@Folder.concat ! (@Folder.mp flT) (@Folder.mp (@Folder.concat ! fl flO))) tab (r --- _ ++ tms);
+                       return tml
                else
                    error <xml>Not authorized</xml>
        in
            fn self =>
               tms <- @Monad.foldR2 _ [fn _ => string] [fn _ => id * source string]
-                      [fn r => option ($(mapU time r) * list (time * option string * string))]
+                      [fn r => option $(mapU string r)]
                       (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] k (_, s) acc =>
                           tmS <- get s;
                           return (case (read tmS, acc) of
-                                      (Some tm, Some (r, l)) => Some ({nm = tm} ++ r, (tm, if showTime then Some (timef "%l:%M" tm) else None, k) :: l)
+                                      (Some (_ : time), Some r) => Some ({nm = tmS} ++ r)
                                     | _ => None))
-                      (Some ({}, [])) flT kinds self.Times;
+                      (Some {}) flT kinds self.Times;
               case tms of
                   None => error <xml>Invalid time!</xml>
-                | Some (tms, tml) =>
+                | Some tms =>
                   r <- @Monad.mapR2 _ [Widget.t'] [fn p => id * p.2] [fst3]
                         (fn [nm ::_] [p ::_] (w : Widget.t' p) (_, x) => current (@Widget.value w x))
                         (@Folder.concat ! fl flO) ws self.Widgets;
-                  rpc (create (tms ++ r));
+                  tml <- rpc (create (tms ++ r));
                   return (tml, r --- map fst3 other)
        end,
        Save = let
            fun save k r kind tm =
                lv <- auth;
                if lv >= Write then
-                   @@Sql.easy_update' [map fst3 key] [mapU time times ++ map fst3 other] [_] !
-                     (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst3] [_] fl) inj)
-                     (@map0 [fn _ => sql_injectable time] (fn [u ::_] => _ : sql_injectable time) flT
-                       ++ injO)
-                     (@Folder.mp fl) (@Folder.concat ! (@Folder.mp flT) (@Folder.mp flO)) tab k r
-                     (WHERE {@pickFieldFromString [#T] ! flT kinds kind} = {[tm]})
+                   tms <- return (@foldR2 [fn _ => string] [fn _ => string]
+                                   [fn r => option ($(mapU time r) * list (time * option string * string))]
+                                   (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] k tmS acc =>
+                                       case (read tmS, acc) of
+                                           (Some tm, Some (r, l)) => Some ({nm = tm} ++ r, (tm, if showTime then Some (timef "%l:%M" tm) else None, k) :: l)
+                                         | _ => None)
+                                   (Some ({}, [])) flT kinds (r --- _));
+                   case tms of
+                       None => error <xml>Invalid time!</xml>
+                     | Some (tms, tml) =>
+                       @@Sql.easy_update' [map fst3 key] [mapU time times ++ map fst3 other] [_] !
+                         (@mp [sql_injectable_prim] [sql_injectable] @@sql_prim (@@Folder.mp [fst3] [_] fl) inj)
+                         (@map0 [fn _ => sql_injectable time] (fn [u ::_] => _ : sql_injectable time) flT
+                           ++ injO)
+                         (@Folder.mp fl) (@Folder.concat ! (@Folder.mp flT) (@Folder.mp flO)) tab k (r --- _ ++ tms)
+                         (WHERE {@pickFieldFromString [#T] ! flT kinds kind} = {[tm]});
+                       return tml
                else
                    error <xml>Not authorized</xml>
        in
-           fn k self kind tm =>
+        fn k self kind tm =>
               tms <- @Monad.foldR2 _ [fn _ => string] [fn _ => id * source string]
-                      [fn r => option ($(mapU time r) * list (time * option string * string))]
+                      [fn r => option $(mapU string r)]
                       (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] k (_, s) acc =>
                           tmS <- get s;
                           return (case (read tmS, acc) of
-                                      (Some tm, Some (r, l)) => Some ({nm = tm} ++ r, (tm, if showTime then Some (timef "%l:%M" tm) else None, k) :: l)
+                                      (Some (_ : time), Some r) => Some ({nm = tmS} ++ r)
                                     | _ => None))
-                      (Some ({}, [])) flT kinds self.Times;
+                      (Some {}) flT kinds self.Times;
               case tms of
                   None => error <xml>Invalid time!</xml>
-                | Some (tms, tml) =>
+                | Some tms =>
                   r <- @Monad.mapR2 _ [Widget.t'] [fn p => id * p.2] [fst3]
                         (fn [nm ::_] [p ::_] (w : Widget.t' p) (_, x) => current (@Widget.value w x))
                         (@Folder.concat ! fl flO) ws self.Widgets;
-                  rpc (save k (tms ++ r) kind tm);
+                  tml <- rpc (save k (tms ++ r) kind tm);
                   return (tml, r --- map fst3 other)
        end,
        Delete = let
