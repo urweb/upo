@@ -246,7 +246,7 @@ functor FromTable(M : sig
                                    [fn r => option ($(mapU time r) * list (time * option string * string))]
                                    (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] k tmS acc =>
                                        case (read tmS, acc) of
-                                           (Some tm, Some (r, l)) => Some ({nm = tm} ++ r, (tm, if showTime then Some (timef "%l:%M" tm) else None, k) :: l)
+                                           (Some tm, Some (r, l)) => Some ({nm = tm} ++ r, (tm, if showTime then Some (timef "%l:%M %p" tm) else None, k) :: l)
                                          | _ => None)
                                    (Some ({}, [])) flT kinds (r --- _));
                    case tms of
@@ -286,7 +286,7 @@ functor FromTable(M : sig
                                    [fn r => option ($(mapU time r) * list (time * option string * string))]
                                    (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] k tmS acc =>
                                        case (read tmS, acc) of
-                                           (Some tm, Some (r, l)) => Some ({nm = tm} ++ r, (tm, if showTime then Some (timef "%l:%M" tm) else None, k) :: l)
+                                           (Some tm, Some (r, l)) => Some ({nm = tm} ++ r, (tm, if showTime then Some (timef "%l:%M %p" tm) else None, k) :: l)
                                          | _ => None)
                                    (Some ({}, [])) flT kinds (r --- _));
                    case tms of
@@ -495,7 +495,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                                         if tm < from || tm > to then
                                             loop' items' acc'
                                         else if tm < nextDay then
-                                            loop' items' ((tm, if showTime then Some (timef "%l:%M" tm) else None, k, item) :: acc')
+                                            loop' items' ((tm, if showTime then Some (timef "%l:%M %p" tm) else None, k, item) :: acc')
                                         else
                                             loop nextDay items ((day, timef "%b %e" day, show (dateify day), List.rev acc') :: acc)
                             in
