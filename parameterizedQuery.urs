@@ -15,7 +15,7 @@ functor Html(M : sig
                  con results :: {(Type * Type * Type)}
                  val resultsFl : folder results
                  val resultLabels : $(map (fn _ => string) results)
-                 val query : $(map fst3 params) -> sql_query [] [] [] (map fst3 results)
+                 val query : $(map fst3 params) -> transaction (sql_query [] [] [] (map fst3 results))
                  val resultWidgets : $(map Widget.t' results)
 
                  con buttons :: {Unit}
@@ -32,7 +32,7 @@ functor Csv(M : sig
                 con results :: {Type}
                 val resultsFl : folder results
                 val resultLabels : $(map (fn _ => string) results)
-                val query : $(map fst3 params) -> sql_query [] [] [] results
+                val query : $(map fst3 params) -> transaction (sql_query [] [] [] results)
                 val shows : $(map show results)
 
                 val filename : string

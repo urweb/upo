@@ -15,7 +15,7 @@ functor Html(M : sig
                  con results :: {(Type * Type * Type)}
                  val resultsFl : folder results
                  val resultLabels : $(map (fn _ => string) results)
-                 val query : $(map fst3 params) -> sql_query [] [] [] (map fst3 results)
+                 val query : $(map fst3 params) -> transaction (sql_query [] [] [] (map fst3 results))
                  val resultWidgets : $(map Widget.t' results)
 
                  con buttons :: {Unit}
@@ -44,7 +44,7 @@ functor Html(M : sig
                paramsFl widgets;
         rs <- (case @Row.isEmpty' [fn r => $(map fst3 r)] paramsFl of
                    None => return []
-                 | Some cast => queryL (query (cast ())));
+                 | Some cast => q <- query (cast ()); queryL q);
         rs <- source rs;
         ra <- source False;
         return {Buttons = bs,
@@ -58,7 +58,8 @@ functor Html(M : sig
     fun runQuery vs =
         b <- authorized;
         if b then
-            queryL (query vs)
+            q <- query vs;
+            queryL q
         else
             error <xml>Access denied</xml>
 
@@ -73,7 +74,7 @@ functor Html(M : sig
                                     | Some f => f v) rs
             else
                 error <xml>Access denied</xml>
-            
+
     fun render _ self = <xml>
       <table class="bs-table">
         {@mapX4 [fn _ => string] [Widget.t'] [fn _ => id] [snd3] [tabl]
@@ -180,7 +181,7 @@ functor Csv(M : sig
                 con results :: {Type}
                 val resultsFl : folder results
                 val resultLabels : $(map (fn _ => string) results)
-                val query : $(map fst3 params) -> sql_query [] [] [] results
+                val query : $(map fst3 params) -> transaction (sql_query [] [] [] results)
                 val shows : $(map show results)
 
                 val filename : string
@@ -191,7 +192,8 @@ functor Csv(M : sig
               Widgets : $(map snd3 params)}
 
     fun generate ps () : transaction page =
-        csv <- @@Csv.buildComputed [results] resultsFl #"," shows resultLabels (query ps);
+        q <- query ps;
+        csv <- @@Csv.buildComputed [results] resultsFl #"," shows resultLabels q;
         setHeader (blessResponseHeader "Content-Disposition")
                   ("attachment; filename=" ^ filename);
         returnBlob (textBlob csv) (blessMime "text/csv")
@@ -211,7 +213,8 @@ functor Csv(M : sig
     fun onload _ = return ()
 
     fun runQuery vs =
-        queryL (query vs)
+        q <- query vs;
+        queryL q
 
     fun render _ self = <xml>
       <table class="bs-table">
