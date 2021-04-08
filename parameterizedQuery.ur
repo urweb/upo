@@ -86,15 +86,19 @@ functor Html(M : sig
             paramsFl paramLabels widgets self.Ids self.Widgets}
       </table>
 
-      <button class="btn btn-primary"
-              value="Search"
-              onclick={fn _ =>
-                          vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
-                                (fn [nm ::_] [p ::_] (w : Widget.t' p) (c : p.2) =>
-                                    current (@Widget.value w c))
-                                paramsFl widgets self.Widgets;
-                          rs <- rpc (runQuery vs);
-                          set self.Results rs}/>
+      {if @Row.isEmpty paramsFl then
+           <xml></xml>
+       else <xml>
+         <button class="btn btn-primary"
+                 value="Search"
+                 onclick={fn _ =>
+                             vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                                   (fn [nm ::_] [p ::_] (w : Widget.t' p) (c : p.2) =>
+                                       current (@Widget.value w c))
+                                   paramsFl widgets self.Widgets;
+                             rs <- rpc (runQuery vs);
+                             set self.Results rs}/>
+       </xml>}
 
       <hr/>
 
@@ -127,40 +131,44 @@ functor Html(M : sig
                                           <hr/>
                                         </xml>)}/>
          </xml>}
-             
-      <table class="bs-table">
-        <tr>
-          <dyn signal={bs <- signal self.Buttons;
-                       return (@mapX [fn _ => $(map fst3 params) -> $(map fst3 results) -> string * url] [tr]
-                                (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] _ =>
-                                    <xml><th/></xml>)
-                                buttonsFl bs)}/>
-          {@mapX [fn _ => string] [tr]
-            (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (s : string) =>
-                <xml><th>{[s]}</th></xml>)
-            resultsFl resultLabels}
-        </tr>
 
-        <dyn signal={vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
-                            (fn [nm ::_] [p ::_] (w : Widget.t' p) (c : p.2) =>
-                                @Widget.value w c)
-                            paramsFl widgets self.Widgets;
-                     bs <- signal self.Buttons;
-                     rs <- signal self.Results;
-                     return (List.mapX (fn row => <xml><tr>
-                       {@mapX [fn _ => $(map fst3 params) -> $(map fst3 results) -> string * url] [tr]
-                         (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] f =>
-                             let
-                                 val (label, link) = f vs row
-                             in
-                                 <xml><td class="col-sm-1"><a class="btn btn-info" href={link}>{[label]}</a></td></xml>
-                             end)
-                         buttonsFl bs}
-                       {@mapX2 [Widget.t'] [fst3] [tr]
-                         (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
-                             <xml><td>{@Widget.asValue w v}</td></xml>)
-                         resultsFl resultWidgets row}
-                     </tr></xml>) rs)}/>
+      <table class="bs-table">
+        <thead>
+          <tr>
+            <dyn signal={bs <- signal self.Buttons;
+                         return (@mapX [fn _ => $(map fst3 params) -> $(map fst3 results) -> string * url] [tr]
+                                  (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] _ =>
+                                      <xml><th/></xml>)
+                                  buttonsFl bs)}/>
+              {@mapX [fn _ => string] [tr]
+                (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (s : string) =>
+                    <xml><th>{[s]}</th></xml>)
+                resultsFl resultLabels}
+          </tr>
+        </thead>
+
+        <tbody>
+          <dyn signal={vs <- @Monad.mapR2 _ [Widget.t'] [snd3] [fst3]
+                              (fn [nm ::_] [p ::_] (w : Widget.t' p) (c : p.2) =>
+                                  @Widget.value w c)
+                              paramsFl widgets self.Widgets;
+                       bs <- signal self.Buttons;
+                       rs <- signal self.Results;
+                       return (List.mapX (fn row => <xml><tr>
+                         {@mapX [fn _ => $(map fst3 params) -> $(map fst3 results) -> string * url] [tr]
+                           (fn [nm ::_] [u ::_] [r ::_] [[nm] ~ r] f =>
+                               let
+                                   val (label, link) = f vs row
+                               in
+                                   <xml><td class="col-sm-1"><a class="btn btn-info" href={link}>{[label]}</a></td></xml>
+                               end)
+                           buttonsFl bs}
+                         {@mapX2 [Widget.t'] [fst3] [tr]
+                           (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r] (w : Widget.t' p) (v : p.1) =>
+                               <xml><td>{@Widget.asValue w v}</td></xml>)
+                           resultsFl resultWidgets row}
+                       </tr></xml>) rs)}/>
+        </tbody>
       </table>
     </xml>
 
