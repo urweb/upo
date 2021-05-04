@@ -18,8 +18,12 @@ type t (inp :: Type) (r :: {Type}) (cfg :: Type) (st :: Type) = {
      OnCreateLocal : $r -> st -> transaction unit,
      Header : cfg -> xtr,
      Row : cfg -> Ui.context -> st -> xtr,
-     Todos : cfg -> st -> signal int
+     Todos : cfg -> st -> signal int,
+     HideWidgets : folder r -> $(map (fn _ => bool) r)
 }
+
+fun defaultTweakWidgets [r] (fl : folder r) : $(map (fn _ => bool) r) =
+    @map0 [fn _ => bool] (fn [t::_] => False) fl
 
 type inputIs_cfg = unit
 type inputIs_st = unit
@@ -37,7 +41,8 @@ fun inputIs [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_inj
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml></xml>,
     Row = fn () _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = fn fl => @defaultTweakWidgets fl -- col ++ {col = True}
 }
 
 type inputIsOpt_cfg = unit
@@ -56,7 +61,8 @@ fun inputIsOpt [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (_ : sql_
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml></xml>,
     Row = fn () _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = fn fl => @defaultTweakWidgets fl -- col ++ {col = True}
 }
 
 type inputConnected_cfg = unit
@@ -82,7 +88,8 @@ fun inputConnected [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}] [ckey :: N
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml></xml>,
     Row = fn () _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type inputConnects_cfg = unit
@@ -110,7 +117,8 @@ fun inputConnects [inp] [key :: Name] [keyT ::: Type] [r ::: {Type}]
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml></xml>,
     Row = fn () _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 val empty [inp] [r] = {
@@ -127,7 +135,8 @@ val empty [inp] [r] = {
     OnCreateLocal = fn _ () => return (),
     Header = fn () => <xml></xml>,
     Row = fn () _ () => <xml></xml>,
-    Todos = fn () () => return 0
+    Todos = fn () () => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 fun compose [inp] [r] [cfgb] [cfga] [stb] [sta] (b : t inp r cfgb stb) (a : t inp r cfga sta) = {
@@ -155,7 +164,10 @@ fun compose [inp] [r] [cfgb] [cfga] [stb] [sta] (b : t inp r cfgb stb) (a : t in
     OnCreateLocal = fn r (y, x) => b.OnCreateLocal r y; a.OnCreateLocal r x,
     Header = fn (cfgb, cfga) => <xml>{b.Header cfgb}{a.Header cfga}</xml>,
     Row = fn (cfgb, cfga) ctx (y, x) => <xml>{b.Row cfgb ctx y}{a.Row cfga ctx x}</xml>,
-    Todos = fn (cfgb, cfga) (y, x) => nb <- b.Todos cfgb y; na <- a.Todos cfga x; return (nb + na)
+    Todos = fn (cfgb, cfga) (y, x) => nb <- b.Todos cfgb y; na <- a.Todos cfga x; return (nb + na),
+    HideWidgets = fn fl => @map2 [fn _ => bool] [fn _ => bool] [fn _ => bool]
+                            (fn [t] b1 b2 => b1 || b2)
+                           fl (@a.HideWidgets fl) (@b.HideWidgets fl)
 }
 
 type column_cfg (t :: Type) = unit
@@ -175,7 +187,8 @@ fun column [inp ::: Type] [col :: Name] [colT ::: Type] [r ::: {Type}] [[col] ~ 
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[lbl]}</th></xml>,
     Row = fn () _ v => <xml><td>{[v]}</td></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type html_cfg = unit
@@ -194,7 +207,8 @@ fun html [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (lbl : string) 
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[lbl]}</th></xml>,
     Row = fn () _ v => <xml><td>{v}</td></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type checkmarks_cfg = unit
@@ -216,7 +230,8 @@ fun checkmarks [inp ::: Type] [col :: Name] [r ::: {Type}] [[col] ~ r] (lbl : st
                                      <xml><i class="glyphicon glyphicon-check"/></xml>
                                  else
                                      <xml></xml>}</td></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type iconButton_cfg (cols :: {Type}) = option string * time
@@ -247,7 +262,8 @@ fun iconButton [inp ::: Type] [cols ::: {Type}] [r ::: {Type}] [cols ~ r]
                      <a href={ur}
                      class={classes cl (CLASS "btn btn-primary btn-lg glyphicon")}/>
                    </td></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 fun links [a] (_ : show a) (ls : list a) : xbody = <xml>
@@ -280,7 +296,8 @@ fun linked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[l]}</th></xml>,
     Row = fn () _ ls => <xml><td>{links ls}</td></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 fun weightedLinks [a] (_ : show a) (ls : list (a * int)) : xbody = <xml>
@@ -321,7 +338,8 @@ fun doubleLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[l]}</th></xml>,
     Row = fn () _ ls => <xml><td>{weightedLinks ls}</td></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type tripleLinked_cfg (t :: Type) = unit
@@ -361,7 +379,8 @@ fun tripleLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[l]}</th></xml>,
     Row = fn () _ ls => <xml><td>{weightedLinks ls}</td></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type orderedLinked_cfg (t :: Type) = unit
@@ -390,7 +409,8 @@ fun orderedLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[l]}</th></xml>,
     Row = fn () _ ls => <xml><td>{links ls}</td></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 fun linksWithUrls [a] (_ : show a) (ls : list (a * option url)) : xbody = <xml>
@@ -430,7 +450,8 @@ fun linkedWithUrl [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml><th>{[l]}</th></xml>,
     Row = fn _ _ ls => <xml><td>{linksWithUrls ls}</td></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type orderedLinkedWithUrl_cfg (t :: Type) = unit
@@ -463,7 +484,8 @@ fun orderedLinkedWithUrl [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::
     OnCreateLocal = fn _ _ => return (),
     Header = fn () => <xml><th>{[l]}</th></xml>,
     Row = fn () _ ls => <xml><td>{linksWithUrls ls}</td></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 functor LinkedWithEdit(M : sig
@@ -650,7 +672,8 @@ functor LinkedWithEdit(M : sig
                                                                <xml>Save</xml>))}
                      </td></xml>
                  end,
-        Todos = fn _ _ => return 0
+        Todos = fn _ _ => return 0,
+        HideWidgets = @defaultTweakWidgets
     }
 end
 
@@ -857,7 +880,8 @@ functor LinkedWithEditForOwner(M : sig
                                                                    <xml>Save</xml>))}
                      </td></xml>
                  end,
-        Todos = fn _ _ => return 0
+        Todos = fn _ _ => return 0,
+        HideWidgets = @defaultTweakWidgets
     }
 end
 
@@ -1044,7 +1068,8 @@ functor LinkedWithEditAndDefault(M : sig
                                                                <xml>Save</xml>))}
                      </td></xml>
                  end,
-        Todos = fn _ _ => return 0
+        Todos = fn _ _ => return 0,
+        HideWidgets = @defaultTweakWidgets
     }
 end
 
@@ -1146,7 +1171,8 @@ functor LinkedWithFollow(M : sig
                  in
                      <xml><td>{List.mapX one ls}</td></xml>
                  end,
-        Todos = fn _ _ => return 0
+        Todos = fn _ _ => return 0,
+        HideWidgets = @defaultTweakWidgets
     }
 end
 
@@ -1230,7 +1256,8 @@ functor Like(M : sig
                                         CLASS "glyphicon-2x far glyphicon-frown")}/>
           </button>
         </td></xml>,
-        Todos = fn _ _ => return 0
+        Todos = fn _ _ => return 0,
+        HideWidgets = @defaultTweakWidgets
     }
 end
 
@@ -1362,7 +1389,8 @@ functor Bid(M : sig
                                         return <xml></xml>}/>
                         </xml>}/>
         </td></xml>,
-        Todos = fn _ _ => return 0
+        Todos = fn _ _ => return 0,
+        HideWidgets = @defaultTweakWidgets
     }
 end
 
@@ -1466,7 +1494,8 @@ functor AssignFromBids(M : sig
                                      </xml>)
                        end}/>
         </td></xml>,
-        Todos = fn _ (_, cs, s) => sv <- signal s; return (case sv of Some _ => 0 | None => case cs of [] => 0 | _ => 1)
+        Todos = fn _ (_, cs, s) => sv <- signal s; return (case sv of Some _ => 0 | None => case cs of [] => 0 | _ => 1),
+        HideWidgets = @defaultTweakWidgets
     }
 end
 
@@ -1610,7 +1639,8 @@ functor AssignFromBids2(M : sig
                                      </xml>)
                        end}/>
         </td></xml>,
-        Todos = fn _ (_, cs, s) => sv <- signal s; return (case sv of Some _ => 0 | None => case cs of [] => 0 | _ => 1)
+        Todos = fn _ (_, cs, s) => sv <- signal s; return (case sv of Some _ => 0 | None => case cs of [] => 0 | _ => 1),
+        HideWidgets = @defaultTweakWidgets
     }
 end
 
@@ -1630,7 +1660,8 @@ val nonnull [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type isnull_cfg = unit
@@ -1649,7 +1680,8 @@ val isnull [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r]
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type past_cfg = unit
@@ -1668,7 +1700,8 @@ val past [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 val pastOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Configure = return (),
@@ -1684,7 +1717,8 @@ val pastOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type future_cfg = unit
@@ -1703,7 +1737,8 @@ val future [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 val futureOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     Configure = return (),
@@ -1719,7 +1754,8 @@ val futureOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type interval_cfg = time * time
@@ -1740,7 +1776,8 @@ fun intervalOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] (bef : string) (a
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type taggedWithUser_cfg = option string
@@ -1762,7 +1799,8 @@ fun taggedWithUser [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = fn fl => @defaultTweakWidgets fl -- user ++ {user = True}
 }
 
 type taggedWithUserOpt_cfg = option string
@@ -1784,7 +1822,8 @@ fun taggedWithUserOpt [inp ::: Type] [user :: Name] [r ::: {Type}] [[user] ~ r]
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = fn fl => @defaultTweakWidgets fl -- user ++ {user = True}
 }
 
 type linkedToUser_cfg = option string * ChangeWatcher.client_part
@@ -1811,7 +1850,8 @@ fun linkedToUser [inp ::: Type] [key :: Name] [keyT ::: Type] [r ::: {Type}] [[k
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type doubleLinkedToUser_cfg = option string
@@ -1843,7 +1883,8 @@ fun doubleLinkedToUser [inp ::: Type] [key :: Name] [keyT ::: Type] [r ::: {Type
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type owner_cfg = option string
@@ -1863,7 +1904,8 @@ fun owner [inp ::: Type] [owner :: Name] [r ::: {Type}] [[owner] ~ r]
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml><th>{[lbl]}</th></xml>,
     Row = fn _ _ v => <xml><td>{[v]}</td></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type sortby_cfg = unit
@@ -1882,7 +1924,8 @@ val sortby [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r]
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 val sortbyDesc [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] ~ r] = {
     Configure = return (),
@@ -1898,7 +1941,8 @@ val sortbyDesc [inp ::: Type] [col :: Name] [ct ::: Type] [r ::: {Type}] [[col] 
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type periodicRefresh_cfg = unit
@@ -1925,7 +1969,8 @@ fun periodicRefresh [inp ::: Type] [r ::: {Type}] (dur : string) = {
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type isTrue_cfg = unit
@@ -1944,7 +1989,8 @@ val isTrue [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type isTrueOpt_cfg = unit
@@ -1963,7 +2009,8 @@ val isTrueOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 type isNotTrueOpt_cfg = unit
@@ -1982,7 +2029,8 @@ val isNotTrueOpt [inp] [col :: Name] [r ::: {Type}] [[col] ~ r] = {
     OnCreateLocal = fn _ _ => return (),
     Header = fn _ => <xml></xml>,
     Row = fn _ _ _ => <xml></xml>,
-    Todos = fn _ _ => return 0
+    Todos = fn _ _ => return 0,
+    HideWidgets = @defaultTweakWidgets
 }
 
 functor Moderate(M : sig
@@ -2066,7 +2114,8 @@ functor Moderate(M : sig
                                            else
                                                <xml>Hide</xml>)))}
         </td></xml>,
-        Todos = fn _ _ => return 0
+        Todos = fn _ _ => return 0,
+        HideWidgets = @defaultTweakWidgets
     }
 end
 
@@ -2153,7 +2202,8 @@ functor ExternalAction(M : sig
                                            else
                                                <xml>Perform</xml>)))}
         </td></xml>,
-        Todos = fn _ _ => return 0
+        Todos = fn _ _ => return 0,
+        HideWidgets = @defaultTweakWidgets
     }
 end
 
@@ -2247,7 +2297,8 @@ functor Upvote(M : sig
                  </button>
                </xml>}
         </td></xml>,
-        Todos = fn _ _ => return 0
+        Todos = fn _ _ => return 0,
+        HideWidgets = @defaultTweakWidgets
     }
 end
 
@@ -2365,7 +2416,8 @@ functor Upload(M : sig
                                  </xml>
                                  <xml>Save</xml>))}
         </td></xml>,
-        Todos = fn _ _ => return 0
+        Todos = fn _ _ => return 0,
+        HideWidgets = @defaultTweakWidgets
     }
 end
 
@@ -2436,7 +2488,8 @@ functor UploadReadonly(M : sig
                </xml>
                | _ => <xml></xml>}
         </td></xml>,
-        Todos = fn _ _ => return 0
+        Todos = fn _ _ => return 0,
+        HideWidgets = @defaultTweakWidgets
     }
 end
 
@@ -2573,10 +2626,10 @@ functor Make(M : sig
                                     rpc notify)
                                    <xml>Add</xml>
                                    <xml>
-                                     {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
+                                     {@mapX4 [fn _ => string] [Widget.t'] [snd3] [fn _ => bool] [body]
                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
-                                           (lab : string) (w : Widget.t' p) x =>
-                                           if @Widget.optional w then
+                                           (lab : string) (w : Widget.t' p) x b =>
+                                           if b || @Widget.optional w then
                                                <xml></xml>
                                            else <xml>
                                              <div class="form-group">
@@ -2584,7 +2637,7 @@ functor Make(M : sig
                                                {@Widget.asWidget w x None}
                                              </div>
                                            </xml>)
-                                       fl labels widgets ws}
+                                       fl labels widgets ws (@t.HideWidgets (@Folder.mp fl))}
                                      {t.WidgetForCreate cfg stl}
                                    </xml>
                                    <xml>Add</xml>))}
@@ -2777,10 +2830,10 @@ functor Make1(M : sig
                                     rpc notify)
                                    <xml>Add</xml>
                                    <xml>
-                                     {@mapX3 [fn _ => string] [Widget.t'] [snd3] [body]
+                                     {@mapX4 [fn _ => string] [Widget.t'] [snd3] [fn _ => bool] [body]
                                        (fn [nm ::_] [p ::_] [r ::_] [[nm] ~ r]
-                                                    (lab : string) (w : Widget.t' p) x =>
-                                           if @Widget.optional w then
+                                                    (lab : string) (w : Widget.t' p) x b =>
+                                           if b || @Widget.optional w then
                                                <xml></xml>
                                            else <xml>
                                              <div class="form-group">
@@ -2788,7 +2841,7 @@ functor Make1(M : sig
                                                {@Widget.asWidget w x None}
                                              </div>
                                            </xml>)
-                                       fl labels widgets ws}
+                                       fl labels widgets ws (@t.HideWidgets (@Folder.mp fl))}
                                      {t.WidgetForCreate cfg stl}
                                    </xml>
                                    <xml>Add</xml>))}
