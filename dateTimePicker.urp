@@ -1,0 +1,7 @@
+ffi dateTimePickerFfi
+jsFunc DateTimePickerFfi.replace=uw_dateTimePicker_replace
+clientOnly DateTimePickerFfi.replace
+benignEffectful DateTimePickerFfi.replace
+jsFile dateTimePickerUrweb.js
+
+dateTimePicker

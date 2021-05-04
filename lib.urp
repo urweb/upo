@@ -2,6 +2,7 @@ html5
 library $/bootstrap/bootstrap4
 library $/ajaxUpload
 library ckeditor
+library dateTimePicker
 library select2
 library fullCalendar
 allow responseHeader Content-Disposition

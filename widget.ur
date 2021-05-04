@@ -142,21 +142,15 @@ val opt_intbox = { Configure = return (),
                    AsValue = txt,
                    Optional = True }
 
-val timebox = { Configure = t <- now; return (show t),
-                Create = fn t => s <- source ""; return (t, s),
-                Initialize = fn t n => s <- source (show n); return (t, s),
-                Reset = fn (_, s) => set s "",
-                Set = fn (_, s) v => set s (show v),
+val timebox = { Configure = return (),
+                Create = fn () => DateTimePicker.create None,
+                Initialize = fn () n => DateTimePicker.create (Some n),
+                Reset = DateTimePicker.reset,
+                Set = DateTimePicker.set,
                 Reconfigure = fn _ _ => return (),
-                AsWidget = fn (t, s) ido =>
-                              case ido of
-                                  None => <xml><ctextbox placeholder={t} class={Bootstrap4.form_control} source={s}/></xml>
-                                | Some id => <xml><ctextbox placeholder={t} class={Bootstrap4.form_control} source={s} id={id}/></xml>,
-                AsWidgetSimple = fn (t, s) ido =>
-                              case ido of
-                                  None => <xml><ctextbox placeholder={t} class={Bootstrap4.form_control} source={s}/></xml>
-                                | Some id => <xml><ctextbox placeholder={t} class={Bootstrap4.form_control} source={s} id={id}/></xml>,
-                Value = fn (_, s) => v <- signal s; return (Option.get minTime (read v)),
+                AsWidget = fn v _ => DateTimePicker.render v,
+                AsWidgetSimple = fn v _ => DateTimePicker.render v,
+                Value = DateTimePicker.content,
                 AsValue = fn t => if t = minTime then <xml><b>INVALID</b></xml> else txt t,
                 Optional = False }
 
