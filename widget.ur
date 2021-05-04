@@ -155,20 +155,15 @@ val timebox = { Configure = return (),
                 Optional = False }
 
 val opt_timebox = { Configure = return (),
-                    Create = fn () => source "",
-                    Initialize = fn () n => source (show n),
-                    Reset = fn s => set s "",
-                    Set = fn s v => set s (case v of None => "" | Some v => show v),
+                    Create = fn () => DateTimePicker.create None,
+                    Initialize = fn () => DateTimePicker.create,
+                    Reset = DateTimePicker.reset,
+                    Set = fn s tmo => case tmo of None => DateTimePicker.reset s
+                                                | Some v => DateTimePicker.set s v,
                     Reconfigure = fn _ _ => return (),
-                    AsWidget = fn s ido =>
-                                  case ido of
-                                      None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
-                                    | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
-                    AsWidgetSimple = fn s ido =>
-                                  case ido of
-                                      None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
-                                    | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
-                    Value = fn s => v <- signal s; return (read v),
+                    AsWidget = fn v _ => DateTimePicker.render v,
+                    AsWidgetSimple = fn v _ => DateTimePicker.render v,
+                    Value = fn s => v <- DateTimePicker.content s; return (Some v),
                     AsValue = fn t => case t of
                                           None => <xml></xml>
                                         | Some t => if t = minTime then <xml><b>INVALID</b></xml> else txt t,
