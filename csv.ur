@@ -313,6 +313,7 @@ functor ImportWithHeader1(M : sig
                               constraint fs ~ fsC
                               con cs :: {{Unit}}
                               val tab : sql_table (fs ++ fsC) cs
+                              val title : string
 
                               val injs : $(map sql_injectable (fs ++ fsC))
                               val reads : $(map read fs)
@@ -339,7 +340,7 @@ functor ImportWithHeader1(M : sig
            | Uploading
            | UploadFailed
            | Uploaded
-         
+
     type a = {UploadStatus : source uploadStatus,
               PasteHere : source string,
               Subwidget : source refreshed}
@@ -369,8 +370,8 @@ functor ImportWithHeader1(M : sig
           | AjaxUpload.Found r =>
             case textOfBlob r.Content of
                 None => error <xml>Uploaded file is not text.</xml>
-              | Some s => import s
-                   
+              | Some s => import s; ChangeWatcher.changed title
+
     val subwidget = refreshed.Create
 
     fun refresh a =

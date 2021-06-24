@@ -79,6 +79,7 @@ functor ImportWithHeader1(M : sig
                               constraint fs ~ fsC
                               con cs :: {{Unit}}
                               val tab : sql_table (fs ++ fsC) cs
+                              val title : string
 
                               val injs : $(map sql_injectable (fs ++ fsC))
                               val reads : $(map read fs)
