@@ -36,12 +36,12 @@ val textbox = { Configure = return (),
                 Reconfigure = fn _ () => return (),
                 AsWidget = fn s ido =>
                               case ido of
-                                  None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
-                                | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                  None => <xml><ctextbox class={Bootstrap.form_control} source={s}/></xml>
+                                | Some id => <xml><ctextbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                 AsWidgetSimple = fn s ido =>
                               case ido of
-                                  None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
-                                | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                  None => <xml><ctextbox class={Bootstrap.form_control} source={s}/></xml>
+                                | Some id => <xml><ctextbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                 Value = signal,
                 AsValue = txt,
                 Optional = False }
@@ -54,12 +54,12 @@ val opt_textbox = { Configure = return (),
                     Reconfigure = fn _ () => return (),
                     AsWidget = fn s ido =>
                                   case ido of
-                                      None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
-                                    | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                      None => <xml><ctextbox class={Bootstrap.form_control} source={s}/></xml>
+                                    | Some id => <xml><ctextbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                     AsWidgetSimple = fn s ido =>
                                   case ido of
-                                      None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
-                                    | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                      None => <xml><ctextbox class={Bootstrap.form_control} source={s}/></xml>
+                                    | Some id => <xml><ctextbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                     Value = fn s =>
                                v <- signal s;
                                return (case v of
@@ -78,12 +78,12 @@ val checkbox = { Configure = return (),
                  Reconfigure = fn _ () => return (),
                  AsWidget = fn s ido =>
                                case ido of
-                                   None => <xml><ccheckbox class={Bootstrap4.form_control} source={s}/></xml>
-                                 | Some id => <xml><ccheckbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                   None => <xml><ccheckbox class={Bootstrap.form_control} source={s}/></xml>
+                                 | Some id => <xml><ccheckbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                  AsWidgetSimple = fn s ido =>
                                case ido of
-                                   None => <xml><ccheckbox class={Bootstrap4.form_control} source={s}/></xml>
-                                 | Some id => <xml><ccheckbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                   None => <xml><ccheckbox class={Bootstrap.form_control} source={s}/></xml>
+                                 | Some id => <xml><ccheckbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                  Value = signal,
                  AsValue = txt,
                  Optional = False }
@@ -96,12 +96,12 @@ val opt_checkbox = { Configure = return (),
                      Reconfigure = fn _ () => return (),
                      AsWidget = fn s ido =>
                                    case ido of
-                                       None => <xml><ccheckbox class={Bootstrap4.form_control} source={s}/></xml>
-                                     | Some id => <xml><ccheckbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                       None => <xml><ccheckbox class={Bootstrap.form_control} source={s}/></xml>
+                                     | Some id => <xml><ccheckbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                      AsWidgetSimple = fn s ido =>
                                    case ido of
-                                       None => <xml><ccheckbox class={Bootstrap4.form_control} source={s}/></xml>
-                                     | Some id => <xml><ccheckbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                       None => <xml><ccheckbox class={Bootstrap.form_control} source={s}/></xml>
+                                     | Some id => <xml><ccheckbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                      Value = fn st => b <- signal st; return (Some b),
                      AsValue = txt,
                      Optional = True }
@@ -114,12 +114,12 @@ val intbox = { Configure = return (),
                Reconfigure = fn _ () => return (),
                AsWidget = fn s ido =>
                              case ido of
-                                 None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
-                               | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                 None => <xml><ctextbox class={Bootstrap.form_control} source={s}/></xml>
+                               | Some id => <xml><ctextbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                AsWidgetSimple = fn s ido =>
                              case ido of
-                                 None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
-                               | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                 None => <xml><ctextbox class={Bootstrap.form_control} source={s}/></xml>
+                               | Some id => <xml><ctextbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                Value = fn s => v <- signal s; return (Option.get 0 (read v)),
                AsValue = txt,
                Optional = False }
@@ -132,12 +132,12 @@ val opt_intbox = { Configure = return (),
                    Reconfigure = fn _ () => return (),
                    AsWidget = fn s ido =>
                                  case ido of
-                                     None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
-                                   | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                     None => <xml><ctextbox class={Bootstrap.form_control} source={s}/></xml>
+                                   | Some id => <xml><ctextbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                    AsWidgetSimple = fn s ido =>
                                  case ido of
-                                     None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
-                                   | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                     None => <xml><ctextbox class={Bootstrap.form_control} source={s}/></xml>
+                                   | Some id => <xml><ctextbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                    Value = fn s => v <- signal s; return (read v),
                    AsValue = txt,
                    Optional = True }
@@ -177,12 +177,12 @@ val urlbox = { Configure = return (),
                Reconfigure = fn _ () => return (),
                AsWidget = fn s ido =>
                              case ido of
-                                 None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
-                               | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                 None => <xml><ctextbox class={Bootstrap.form_control} source={s}/></xml>
+                               | Some id => <xml><ctextbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                AsWidgetSimple = fn s ido =>
                              case ido of
-                                 None => <xml><ctextbox class={Bootstrap4.form_control} source={s}/></xml>
-                               | Some id => <xml><ctextbox class={Bootstrap4.form_control} source={s} id={id}/></xml>,
+                                 None => <xml><ctextbox class={Bootstrap.form_control} source={s}/></xml>
+                               | Some id => <xml><ctextbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
                Value = signal,
                AsValue = fn s =>
                            case checkUrl s of
@@ -280,8 +280,8 @@ fun choicebox [a ::: Type] (_ : show a) (_ : read a) (choice : a) (choices : lis
                         </xml>
                     in
                         case id of
-                            None => <xml><cselect class={Bootstrap4.form_control} source={me.Source}>{inner}</cselect></xml>
-                          | Some id => <xml><cselect class={Bootstrap4.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
+                            None => <xml><cselect class={Bootstrap.form_control} source={me.Source}>{inner}</cselect></xml>
+                          | Some id => <xml><cselect class={Bootstrap.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
                     end,
       AsWidgetSimple = fn me id =>
                     let
@@ -290,8 +290,8 @@ fun choicebox [a ::: Type] (_ : show a) (_ : read a) (choice : a) (choices : lis
                         </xml>
                     in
                         case id of
-                            None => <xml><cselect class={Bootstrap4.form_control} source={me.Source}>{inner}</cselect></xml>
-                          | Some id => <xml><cselect class={Bootstrap4.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
+                            None => <xml><cselect class={Bootstrap.form_control} source={me.Source}>{inner}</cselect></xml>
+                          | Some id => <xml><cselect class={Bootstrap.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
                     end,
       Value = fn me =>
                  s <- signal me.Source;
@@ -330,13 +330,13 @@ fun foreignbox [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : sql_quer
                         <xml>
                           <dyn signal={choices <- signal me.Choices;
                                        return (case id of
-                                                   None => <xml><cselect class={Bootstrap4.form_control} source={me.Source}>{inner choices}</cselect></xml>
-                                                 | Some id => <xml><cselect class={Bootstrap4.form_control} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
+                                                   None => <xml><cselect class={Bootstrap.form_control} source={me.Source}>{inner choices}</cselect></xml>
+                                                 | Some id => <xml><cselect class={Bootstrap.form_control} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
                         </xml>
                     end,
       AsWidgetSimple = fn me id => case id of
-                                       None => <xml><ctextbox class={Bootstrap4.form_control} source={me.Source}/></xml>
-                                     | Some id => <xml><ctextbox class={Bootstrap4.form_control} id={id} source={me.Source}/></xml>,
+                                       None => <xml><ctextbox class={Bootstrap.form_control} source={me.Source}/></xml>
+                                     | Some id => <xml><ctextbox class={Bootstrap.form_control} id={id} source={me.Source}/></xml>,
       Value = fn me =>
                  v <- signal me.Source;
                  return (case v of
@@ -370,13 +370,13 @@ fun foreignbox_default [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : 
                         <xml>
                           <dyn signal={choices <- signal me.Choices;
                                        return (case id of
-                                                   None => <xml><cselect class={Bootstrap4.form_control} source={me.Source}>{inner choices}</cselect></xml>
-                                                 | Some id => <xml><cselect class={Bootstrap4.form_control} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
+                                                   None => <xml><cselect class={Bootstrap.form_control} source={me.Source}>{inner choices}</cselect></xml>
+                                                 | Some id => <xml><cselect class={Bootstrap.form_control} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
                         </xml>
                     end,
       AsWidgetSimple = fn me id => case id of
-                                       None => <xml><ctextbox class={Bootstrap4.form_control} source={me.Source}/></xml>
-                                     | Some id => <xml><ctextbox class={Bootstrap4.form_control} id={id} source={me.Source}/></xml>,
+                                       None => <xml><ctextbox class={Bootstrap.form_control} source={me.Source}/></xml>
+                                     | Some id => <xml><ctextbox class={Bootstrap.form_control} id={id} source={me.Source}/></xml>,
       Value = fn me =>
                  v <- signal me.Source;
                  return (case v of
@@ -455,13 +455,13 @@ functor Fuzzybox(M : sig
                                              | _ =>
                                                choices <- signal me.Choices;
                                                return (case id of
-                                                           None => <xml><cselect class={Bootstrap4.form_control} source={me.Source}>{inner choices}</cselect></xml>
-                                                         | Some id => <xml><cselect class={Bootstrap4.form_control} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
+                                                           None => <xml><cselect class={Bootstrap.form_control} source={me.Source}>{inner choices}</cselect></xml>
+                                                         | Some id => <xml><cselect class={Bootstrap.form_control} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
                             </xml>
                         end,
           AsWidgetSimple = fn me id => case id of
-                                           None => <xml><ctextbox class={Bootstrap4.form_control} source={me.Source}/></xml>
-                                         | Some id => <xml><ctextbox class={Bootstrap4.form_control} id={id} source={me.Source}/></xml>,
+                                           None => <xml><ctextbox class={Bootstrap.form_control} source={me.Source}/></xml>
+                                         | Some id => <xml><ctextbox class={Bootstrap.form_control} id={id} source={me.Source}/></xml>,
           Value = fn me => signal me.Source,
           AsValue = txt,
           Optional = False }

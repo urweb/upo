@@ -1,4 +1,4 @@
-open Bootstrap4
+open Bootstrap
 
 (* One of these is all about generating content for the two main parts of a Bootstrap card. *)
 type t (inp :: Type) (r :: {Type}) (cfg :: Type) (st :: Type) = {

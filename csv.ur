@@ -186,7 +186,7 @@ fun importTableWithHeader [fs] [fsC] [cs] [fs ~ fsC]
                            return hso)
                     sep 1 input None)
 
-open Bootstrap4
+open Bootstrap
 
 functor Import1(M : sig
                     con fs :: {Type}

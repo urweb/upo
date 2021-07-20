@@ -1,4 +1,4 @@
-open Bootstrap4
+open Bootstrap
 
 (* One of these is all about generating content table headers and rows *)
 type t (inp :: Type) (r :: {Type}) (cfg :: Type) (st :: Type) = {

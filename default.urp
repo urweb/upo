@@ -1,10 +1,10 @@
 library .
-allow url https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css
+allow url https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css
 allow url https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css
 allow url https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css
 script https://code.jquery.com/jquery-3.4.1.slim.min.js
 script https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.1/umd/popper.min.js
-script https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js
+script https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js
 script https://cdn.ckeditor.com/4.13.1/standard/ckeditor.js
 script https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js
 script https://cdn.jsdelivr.net/npm/jquery-datetimepicker@2.5.21/build/jquery.datetimepicker.full.min.js

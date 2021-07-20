@@ -5,7 +5,7 @@ style meeting_selected
 style meeting_conflict
 style meeting_movable
 
-open Bootstrap4
+open Bootstrap
 open Tooltip
 
 functor Make(M : sig

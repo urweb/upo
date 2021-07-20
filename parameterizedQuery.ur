@@ -1,4 +1,4 @@
-open Bootstrap4
+open Bootstrap
 
 signature S = sig
     con params :: {(Type * Type * Type)}

@@ -1,5 +1,5 @@
 html5
-library $/bootstrap/bootstrap4
+library $/bootstrap/bootstrap5
 library $/ajaxUpload
 library ckeditor
 library dateTimePicker

@@ -1,4 +1,4 @@
-open Bootstrap4
+open Bootstrap
 
 type tag (t :: Type) =
      {Label : string,

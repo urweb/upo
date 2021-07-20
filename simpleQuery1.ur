@@ -1,4 +1,4 @@
-open Bootstrap4
+open Bootstrap
 
 functor Make(M : sig
                  con fs :: {Type}

@@ -1,4 +1,4 @@
-open Bootstrap4
+open Bootstrap
 
 type t1 (full :: {Type}) (p :: (Type * {Type} * {Type} * {{Unit}} * Type * Type * Type)) =
      {Title : string,

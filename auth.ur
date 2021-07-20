@@ -1,6 +1,6 @@
 (* Generic authentication backed by a database table *)
 
-open Bootstrap4
+open Bootstrap
 
 style alert_fixed
 
