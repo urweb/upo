@@ -125,7 +125,7 @@ functor Make(M : THEME) = struct
         </div>
 
         {M.wrap <xml>
-          <header>
+          <header class="sticky-top bg-white flex-md-nowrap p-0">
             <nav class={M.navclasses}>
               {if M.titleInNavbar then <xml><a class="navbar-brand" href={url}>{[titl]}</a></xml> else <xml></xml>}
               <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target={"#" ^ show nid} aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
@@ -363,9 +363,7 @@ fun modalAnchor ctx cls bod onclick = <xml>
      href="#"
      onclick={fn _ =>
                  ms <- onclick;
-                 set ctx.ModalSpot ms}>
-    {bod}
-  </a>
+                 set ctx.ModalSpot ms}>{bod}</a>
 </xml>
 
 fun activateModal ctx bod =
