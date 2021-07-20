@@ -117,7 +117,7 @@ functor Make(M : THEME) = struct
     fun themed_body url titl onl mid nid ms tbar tabs bod = <xml>
       <body onload={onl}>
         <div class="modal fade" id={mid}>
-          <div class="modal-dialog modal-lg">
+          <div class="modal-dialog">
             <div class="modal-content">
               <dyn signal={signal ms}/>
             </div>
