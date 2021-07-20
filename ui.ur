@@ -116,15 +116,19 @@ functor Make(M : THEME) = struct
 
     fun themed_body url titl onl mid nid ms tbar tabs bod = <xml>
       <body onload={onl}>
-        <div class="modal" id={mid}>
-          <dyn signal={signal ms}/>
+        <div class="modal fade" id={mid}>
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <dyn signal={signal ms}/>
+            </div>
+          </div>
         </div>
 
         {M.wrap <xml>
           <header>
             <nav class={M.navclasses}>
               {if M.titleInNavbar then <xml><a class="navbar-brand" href={url}>{[titl]}</a></xml> else <xml></xml>}
-              <button class="navbar-toggler" data-toggle="collapse" data-target={"#" ^ show nid} aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+              <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target={"#" ^ show nid} aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"/>
               </button>
               <div id={nid} class="collapse navbar-collapse">
@@ -175,8 +179,12 @@ functor Make(M : THEME) = struct
           </head>
 
           <body onload={t.Onload state}>
-            <div class="modal" id={mid}>
-              <dyn signal={signal ms}/>
+            <div class="modal fade" id={mid}>
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <dyn signal={signal ms}/>
+                </div>
+              </div>
             </div>
 
             {t.Render {ModalId = mid, ModalSpot = ms, Tab = None} state}
@@ -197,8 +205,12 @@ functor Make(M : THEME) = struct
           </head>
 
           <body onload={t.Onload state}>
-            <div class="modal" id={mid}>
-              <dyn signal={signal ms}/>
+            <div class="modal fade" id={mid}>
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <dyn signal={signal ms}/>
+                </div>
+              </div>
             </div>
 
             {t.Render {ModalId = mid, ModalSpot = ms, Tab = None} state}
@@ -307,8 +319,12 @@ functor Make(M : THEME) = struct
           </head>
 
           <body onload={List.app (fn (x, t) => (f x).Onload t) ts}>
-            <div class="modal" id={mid}>
-              <dyn signal={signal ms}/>
+            <div class="modal fade" id={mid}>
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <dyn signal={signal ms}/>
+                </div>
+              </div>
             </div>
 
             {List.mapX (fn (x, t) => <xml>
@@ -322,8 +338,8 @@ end
 
 fun modalButton ctx cls bod onclick = <xml>
   <button class={cls}
-          data-toggle="modal"
-          data-target={"#" ^ show ctx.ModalId}
+          data-bs-toggle="modal"
+          data-bs-target={"#" ^ show ctx.ModalId}
           onclick={fn _ =>
                       ms <- onclick;
                       set ctx.ModalSpot ms}>
@@ -333,8 +349,8 @@ fun modalButton ctx cls bod onclick = <xml>
 
 fun modalIcon ctx cls onclick = <xml>
   <i class={cls} style="cursor: pointer"
-     data-toggle="modal"
-     data-target={"#" ^ show ctx.ModalId}
+     data-bs-toggle="modal"
+     data-bs-target={"#" ^ show ctx.ModalId}
      onclick={fn _ =>
                  ms <- onclick;
                  set ctx.ModalSpot ms}/>
@@ -342,8 +358,8 @@ fun modalIcon ctx cls onclick = <xml>
 
 fun modalAnchor ctx cls bod onclick = <xml>
   <a class={cls}
-     data-toggle="modal"
-     data-target={"#" ^ show ctx.ModalId}
+     data-bs-toggle="modal"
+     data-bs-target={"#" ^ show ctx.ModalId}
      href="#"
      onclick={fn _ =>
                  ms <- onclick;
@@ -360,44 +376,36 @@ fun deactivateModal ctx =
     UpoFfi.deactivateModal ctx.ModalId
 
 fun modal bcode titl bod blab = <xml>
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h4 class="modal-title">{titl}</h4>
-      </div>
+  <div class="modal-header">
+    <h4 class="modal-title">{titl}</h4>
+  </div>
 
-      <div class="modal-body">
-        {bod}
-      </div>
+  <div class="modal-body">
+    {bod}
+  </div>
 
-      <div class="modal-footer">
-        <button class="btn btn-primary"
-                data-dismiss="modal"
-                onclick={fn _ => bcode}>
-          {blab}
-        </button>
-        <button class="btn btn-default"
-                data-dismiss="modal"
-                value="Cancel"/>
-      </div>
-    </div>
+  <div class="modal-footer">
+    <button class="btn btn-primary"
+            data-bs-dismiss="modal"
+            onclick={fn _ => bcode}>
+      {blab}
+    </button>
+    <button class="btn btn-default"
+            data-bs-dismiss="modal"
+            value="Cancel"/>
   </div>
 </xml>
 
 fun simpleModal bod blab = <xml>
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-body">
-        {bod}
-      </div>
+  <div class="modal-body">
+    {bod}
+  </div>
 
-      <div class="modal-footer">
-        <button class="btn btn-primary"
-                data-dismiss="modal">
-          {blab}
-        </button>
-      </div>
-    </div>
+  <div class="modal-footer">
+    <button class="btn btn-primary"
+            data-bs-dismiss="modal">
+      {blab}
+    </button>
   </div>
 </xml>
 
