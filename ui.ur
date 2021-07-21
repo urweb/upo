@@ -117,7 +117,7 @@ functor Make(M : THEME) = struct
     fun themed_body url titl onl mid nid ms tbar tabs bod = <xml>
       <body onload={onl}>
         <div class="modal fade" id={mid}>
-          <div class="modal-dialog">
+          <div class="modal-dialog modal-lg">
             <div class="modal-content">
               <dyn signal={signal ms}/>
             </div>
@@ -180,7 +180,7 @@ functor Make(M : THEME) = struct
 
           <body onload={t.Onload state}>
             <div class="modal fade" id={mid}>
-              <div class="modal-dialog">
+              <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                   <dyn signal={signal ms}/>
                 </div>
@@ -206,7 +206,7 @@ functor Make(M : THEME) = struct
 
           <body onload={t.Onload state}>
             <div class="modal fade" id={mid}>
-              <div class="modal-dialog">
+              <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                   <dyn signal={signal ms}/>
                 </div>
@@ -320,7 +320,7 @@ functor Make(M : THEME) = struct
 
           <body onload={List.app (fn (x, t) => (f x).Onload t) ts}>
             <div class="modal fade" id={mid}>
-              <div class="modal-dialog">
+              <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                   <dyn signal={signal ms}/>
                 </div>
