@@ -13,9 +13,11 @@ fun createSingle options =
 fun render self = <xml>
   <active code={id <- fresh;
                 return <xml>
-                  <cselect id={id} multiple={self.Multi}>
-                    {self.Options}
-                  </cselect>
+                  <span onclick={fn _ => stopPropagation}>
+                    <cselect id={id} multiple={self.Multi}>
+                      {self.Options}
+                    </cselect>
+                  </span>
                   <active code={Select2Ffi.replace id (set self.Selected);
                                 return <xml></xml>}/>
                 </xml>}/>
