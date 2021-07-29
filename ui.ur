@@ -127,7 +127,7 @@ functor Make(M : THEME) = struct
         {M.wrap <xml>
           <header class="sticky-top bg-white flex-md-nowrap p-0">
             <nav class={M.navclasses}>
-              {if M.titleInNavbar then <xml><a class="navbar-brand" href={url}>{[titl]}</a></xml> else <xml></xml>}
+              {if M.titleInNavbar then <xml><a class="navbar-brand ps-4" href={url}>{[titl]}</a></xml> else <xml></xml>}
               <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target={"#" ^ show nid} aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"/>
               </button>
