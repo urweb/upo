@@ -157,19 +157,27 @@ functor Make(M : sig
                 else
                     inDb <- oneRowE1 (SELECT COUNT( * ) > 0
                                       FROM users
-                                      WHERE users.{name} = {[data.name]});
+                                      WHERE users.{name} = {[data.name]}
+                                        AND {@Sql.easy_where [#Users] ! !
+                                          injs fls (data -- name)});
                     if inDb then
                         return (Some data.name)
                     else
                         case defaults of
                             None => return None
                           | Some defaults =>
-                            @@Sql.easy_insert [[name = _] ++ key ++ mapU bool groups ++ others] [_]
-                              ({name = _} ++ injs ++ injo ++ @map0 [fn _ => sql_injectable bool] (fn [u ::_] => _) flg)
-                              (@Folder.cons [name] [_] ! (@Folder.concat ! (@Folder.mp flg)
-                                                           (@Folder.concat ! fls flo)))
-                              users (data ++ defaults);
-                            return (Some data.name)
+                            dupName <- oneRowE1 (SELECT COUNT( * ) > 0
+                                                 FROM users
+                                                 WHERE users.{name} = {[data.name]});
+                            if dupName then
+                                error <xml>Duplicate user name</xml>
+                            else
+                                @@Sql.easy_insert [[name = _] ++ key ++ mapU bool groups ++ others] [_]
+                                  ({name = _} ++ injs ++ injo ++ @map0 [fn _ => sql_injectable bool] (fn [u ::_] => _) flg)
+                                  (@Folder.cons [name] [_] ! (@Folder.concat ! (@Folder.mp flg)
+                                                               (@Folder.concat ! fls flo)))
+                                  users (data ++ defaults);
+                                return (Some data.name)
 
     val whoami = whoami' False
     val whoamiWithMasquerade = whoami' True
