@@ -118,7 +118,9 @@ functor Make(M : sig
                 if anyToSet then
                     inDb <- oneOrNoRows1 (SELECT users.{{key}}
                                           FROM users
-                                          WHERE users.{name} = {[data.name]});
+                                          WHERE users.{name} = {[data.name]}
+                                            AND {@Sql.easy_where [#Users] ! !
+                                              injs fls (data -- name)});
                     case inDb of
                         None =>
                         alreadyPresent <- oneRowE1 (SELECT COUNT( * ) > 0
@@ -126,25 +128,32 @@ functor Make(M : sig
                                                     WHERE {@Sql.easy_where [#Users] ! !
                                                       injs fls (data -- name)});
                         if alreadyPresent then
-                            @@Sql.easy_update'' [key] [[name = _]] [_] [_] ! ! injs {name = _} fls _
-                              users (data -- name) (data --- key);
-                            return (Some data.name)
+                            dupName <- oneRowE1 (SELECT COUNT( * ) > 0
+                                                 FROM users
+                                                 WHERE users.{name} = {[data.name]});
+                            if dupName then
+                                error <xml>Duplicate user name</xml>
+                            else
+                                @@Sql.easy_update'' [key] [[name = _]] [_] [_] ! ! injs {name = _} fls _
+                                  users (data -- name) (data --- key);
+                                return (Some data.name)
                         else
                             (case defaults of
                                  None => return None
                                | Some defaults =>
-                                 @@Sql.easy_insert [[name = _] ++ key ++ mapU bool groups ++ others] [_]
-                                   ({name = _} ++ injs ++ injo ++ @map0 [fn _ => sql_injectable bool] (fn [u ::_] => _) flg)
-                                   (@Folder.cons [name] [_] ! (@Folder.concat ! (@Folder.mp flg)
-                                                                (@Folder.concat ! flo fls)))
-                                   users (data ++ defaults);
-                                 return (Some data.name))
-                      | Some r =>
-                        (if r = data -- name then
-                             return ()
-                         else
-                             @Sql.easy_update'' ! ! {name = _} injs _ fls users {name = data.name} (data -- name));
-                        return (Some data.name)
+                                 dupName <- oneRowE1 (SELECT COUNT( * ) > 0
+                                                      FROM users
+                                                      WHERE users.{name} = {[data.name]});
+                                 if dupName then
+                                     error <xml>Duplicate user name</xml>
+                                 else
+                                     @@Sql.easy_insert [[name = _] ++ key ++ mapU bool groups ++ others] [_]
+                                       ({name = _} ++ injs ++ injo ++ @map0 [fn _ => sql_injectable bool] (fn [u ::_] => _) flg)
+                                       (@Folder.cons [name] [_] ! (@Folder.concat ! (@Folder.mp flg)
+                                                                    (@Folder.concat ! flo fls)))
+                                       users (data ++ defaults);
+                                     return (Some data.name))
+                      | Some r => return (Some data.name)
                 else
                     inDb <- oneRowE1 (SELECT COUNT( * ) > 0
                                       FROM users

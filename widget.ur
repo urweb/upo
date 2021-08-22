@@ -78,12 +78,12 @@ val checkbox = { Configure = return (),
                  Reconfigure = fn _ () => return (),
                  AsWidget = fn s ido =>
                                case ido of
-                                   None => <xml><ccheckbox class={Bootstrap.form_control} source={s}/></xml>
-                                 | Some id => <xml><ccheckbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
+                                   None => <xml><ccheckbox source={s}/></xml>
+                                 | Some id => <xml><ccheckbox source={s} id={id}/></xml>,
                  AsWidgetSimple = fn s ido =>
                                case ido of
-                                   None => <xml><ccheckbox class={Bootstrap.form_control} source={s}/></xml>
-                                 | Some id => <xml><ccheckbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
+                                   None => <xml><ccheckbox source={s}/></xml>
+                                 | Some id => <xml><ccheckbox source={s} id={id}/></xml>,
                  Value = signal,
                  AsValue = txt,
                  Optional = False }
@@ -96,12 +96,12 @@ val opt_checkbox = { Configure = return (),
                      Reconfigure = fn _ () => return (),
                      AsWidget = fn s ido =>
                                    case ido of
-                                       None => <xml><ccheckbox class={Bootstrap.form_control} source={s}/></xml>
-                                     | Some id => <xml><ccheckbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
+                                       None => <xml><ccheckbox source={s}/></xml>
+                                     | Some id => <xml><ccheckbox source={s} id={id}/></xml>,
                      AsWidgetSimple = fn s ido =>
                                    case ido of
-                                       None => <xml><ccheckbox class={Bootstrap.form_control} source={s}/></xml>
-                                     | Some id => <xml><ccheckbox class={Bootstrap.form_control} source={s} id={id}/></xml>,
+                                       None => <xml><ccheckbox source={s}/></xml>
+                                     | Some id => <xml><ccheckbox source={s} id={id}/></xml>,
                      Value = fn st => b <- signal st; return (Some b),
                      AsValue = txt,
                      Optional = True }
