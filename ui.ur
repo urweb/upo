@@ -407,6 +407,23 @@ fun simpleModal bod blab = <xml>
   </div>
 </xml>
 
+fun simpleModalWithTitle titl bod blab = <xml>
+  <div class="modal-header">
+    <h4 class="modal-title">{titl}</h4>
+  </div>
+
+  <div class="modal-body">
+    {bod}
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn btn-primary"
+            data-bs-dismiss="modal">
+      {blab}
+    </button>
+  </div>
+</xml>
+
 
 val p bod = const <xml><p>{bod}</p></xml>
 val h1 bod = const <xml><h1>{bod}</h1></xml>
