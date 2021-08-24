@@ -107,22 +107,22 @@ functor Make(M : sig
                                                                            return <xml>
                                                                              <i dynClass={s <- signal s;
                                                                                           return (case s of
-                                                                                                      Unavailable => CLASS "float-right glyphicon-lg fas glyphicon-frown"
-                                                                                                    | _ => CLASS "float-right glyphicon-lg far glyphicon-frown")}
+                                                                                                      Unavailable => CLASS "float-end glyphicon-lg fas glyphicon-frown"
+                                                                                                    | _ => CLASS "float-end glyphicon-lg far glyphicon-frown")}
                                                                                 id={idu} style="cursor: pointer"
                                                                                 data-toggle="tooltip" data-placement="bottom" title="Unavailable"
                                                                                 onclick={fn _ => rpc (unavail start); set s Unavailable}/>
                                                                              <i dynClass={s <- signal s;
                                                                                           return (case s of
-                                                                                                      Available => CLASS "float-right glyphicon-lg fas glyphicon-meh"
-                                                                                                    | _ => CLASS "float-right glyphicon-lg far glyphicon-meh")}
+                                                                                                      Available => CLASS "float-end glyphicon-lg fas glyphicon-meh"
+                                                                                                    | _ => CLASS "float-end glyphicon-lg far glyphicon-meh")}
                                                                                 id={ida} style="cursor: pointer"
                                                                                 data-toggle="tooltip" data-placement="bottom" title="Available"
                                                                                 onclick={fn _ => rpc (avail start); set s Available}/>
                                                                              <i dynClass={s <- signal s;
                                                                                           return (case s of
-                                                                                                      Preferred => CLASS "float-right glyphicon-lg fas glyphicon-smile"
-                                                                                                    | _ => CLASS "float-right glyphicon-lg far glyphicon-smile")}
+                                                                                                      Preferred => CLASS "float-end glyphicon-lg fas glyphicon-smile"
+                                                                                                    | _ => CLASS "float-end glyphicon-lg far glyphicon-smile")}
                                                                                 id={idp} style="cursor: pointer"
                                                                                 data-toggle="tooltip" data-placement="bottom" title="Preferred"
                                                                                 onclick={fn _ => rpc (prefed start); set s Preferred}/>

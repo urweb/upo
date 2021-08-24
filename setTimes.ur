@@ -157,7 +157,7 @@ functor Make(M : sig
                                                                            rendering <- FullCalendar.eventRendering ev;
                                                                            return (case rendering of
                                                                                        FullCalendar.Background => <xml></xml>
-                                                                                     | _ => Ui.modalIcon ctx (CLASS "glyphicon glyphicon-pencil-alt float-right")
+                                                                                     | _ => Ui.modalIcon ctx (CLASS "glyphicon glyphicon-pencil-alt float-end")
                                                                                                          (choices <- List.mapM (fn (k, (prefs, tms)) =>
                                                                                                                                    tmo <- get tms;
                                                                                                                                    s <- source (tmo = Some tm);

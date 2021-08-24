@@ -247,7 +247,7 @@ functor Make(M : sig
                                  [] => True
                                | _ => False);
             delbutton <- return (fn cal ev => <xml>
-              <i class="glyphicon glyphicon-trash float-right" style="cursor: pointer"
+              <i class="glyphicon glyphicon-trash float-end" style="cursor: pointer"
                  onclick={fn _ =>
                              start <- FullCalendar.eventStart ev;
                              rpc (del start);
@@ -285,7 +285,7 @@ functor Make(M : sig
                                                                           else
                                                                               delbutton cal ev)}/>
                                                      {Ui.modalIcon ctx
-                                                                   (CLASS "float-right glyphicon glyphicon-pencil-alt")
+                                                                   (CLASS "float-end glyphicon glyphicon-pencil-alt")
                                                                    (ch <- get chs;
                                                                     ch <- return (case ch of None => error <xml>ChangeWatcher not set yet</xml>
                                                                                            | Some ch => ch);
@@ -328,7 +328,7 @@ functor Make(M : sig
                                                                   return (if count = 0 then
                                                                               <xml></xml>
                                                                           else
-                                                                              <xml><span class="badge badge-pill badge-warning float-right">{[count]}</span></xml>)}/>
+                                                                              <xml><span class="badge badge-pill badge-warning float-end">{[count]}</span></xml>)}/>
                                                    </xml>}/>
 
                                                {(CalendarAddons.withinEvent addon ctx cal ev).Header}
