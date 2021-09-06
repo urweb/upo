@@ -8,7 +8,7 @@ function arrayToUrweb(arr) {
 function uw_select2_replace(id, onChange) {
     var settings = {width: '100%'};
 
-    var dropdown = $('#' + id).closest('.dropdown-menu');
+    var dropdown = $('#' + id).closest('.dropdown-menu, .modal');
     if (dropdown.length > 0)
         settings.dropdownParent = dropdown[0];
 
