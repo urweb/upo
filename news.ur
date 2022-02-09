@@ -294,9 +294,9 @@ functor Make(M : sig
                                </div>
                              </xml>)}/>
     </xml>
-                         
-    fun render ctx a =
-        if (case a.Access of Forbidden => True | Read => True | _ => False) then
+
+    fun render ctx a = <xml>
+        {if (case a.Access of Forbidden => True | Read => True | _ => False) then
             <xml></xml>
         else <xml>
           <dyn signal={np <- signal a.NewPost;
@@ -328,9 +328,10 @@ functor Make(M : sig
                                              onclick={fn _ => set a.NewPost None}/>
                                    </div>
                                  </xml>)}/>
+        </xml>}
 
-           {render' ctx a a.Head}
-        </xml>
+        {render' ctx a a.Head}
+      </xml>
 
     fun notification _ _ = <xml></xml>
     fun buttons _ _ = <xml></xml>
