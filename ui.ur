@@ -252,12 +252,12 @@ functor Make(M : THEME) = struct
                              (case labl of
                                   None => bod
                                 | Some labl => <xml>
-                                  <li dynClass={ct <- signal curTab;
-                                                      return (if ct = n then
-                                                                  classes nav_item bs_active
-                                                              else
-                                                                  nav_item)}
-                                      onclick={fn _ => set curTab n}><a class="nav-link">{[labl]} {r.Notification ctx st}</a></li>
+                                  <li class="nav-item"
+                                      onclick={fn _ => set curTab n}><a dynClass={ct <- signal curTab;
+                                                                                  return (if ct = n then
+                                                                                              classes nav_link bs_active
+                                                                                          else
+                                                                                              nav_link)}>{[labl]} {r.Notification ctx st}</a></li>
                                       {bod}
                                 </xml>,
                               n-1))
@@ -292,10 +292,10 @@ functor Make(M : THEME) = struct
                        <xml/>
                        (@mapUX_rev [string * bool * url] [body]
                          (fn [nm ::_] [r ::_] [[nm] ~ r] (labl, ct, url) => <xml>
-                           <li class={if ct then
-                                          classes nav_item bs_active
-                                      else
-                                          nav_item}><a class="nav-link" href={url}>{[labl]}</a></li>
+                           <li class="nav-item"><a class={if ct then
+                                                              classes nav_link bs_active
+                                                          else
+                                                              nav_link} href={url}>{[labl]}</a></li>
                          </xml>)
                        fl ts)
                        bod)

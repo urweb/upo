@@ -452,7 +452,7 @@ fun foreign [full ::: {Type}]
                                                  {old.tname.RenderWidgets k cfg2 ws}
                                                  <div class="form-group">
                                                    <label class="control-label">{[lab]}</label>
-                                                   <cselect class="form-control" source={s}>
+                                                   <cselect class="form-select" source={s}>
                                                      {if fize.Nullable then
                                                           <xml><coption/></xml>
                                                       else
@@ -631,7 +631,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                     notEditing <- source None;
                                                                                     set sl (List.sort (fn x y => x.1 > y.1) ((sv, vs, notEditing) :: slv))}>Select:</button>
                                                       </span>
-                                                      <cselect class="form-control" source={s} onchange={set changed True}>
+                                                      <cselect class="form-select" source={s} onchange={set changed True}>
                                                         <coption/>
                                                         {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
                                                       </cselect> 
@@ -828,7 +828,7 @@ fun manyToMany [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :: Name]
                                                                                     notEditing <- source None;
                                                                                     set sl (List.sort (fn x y => x.1 > y.1) ((sv, vs, notEditing) :: slv))}>Select:</button>
                                                       </span>
-                                                      <cselect class="form-control" source={s} onchange={set changed True}>
+                                                      <cselect class="form-select" source={s} onchange={set changed True}>
                                                         <coption/>
                                                         {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
                                                       </cselect> 
@@ -1165,7 +1165,7 @@ functor ManyToManyWithFile(M : sig
                                                                                             notEditing <- source None;
                                                                                             set sl (List.sort (fn x y => x.1 > y.1) ((sv, vs, notEditing) :: slv))}>Select:</button>
                                                           </span>
-                                                          <cselect class="form-control" source={s} onchange={set changed True}>
+                                                          <cselect class="form-select" source={s} onchange={set changed True}>
                                                             <coption/>
                                                             {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
                                                           </cselect> 
@@ -1432,7 +1432,7 @@ functor ManyToManyWithFile(M : sig
                                                                                             notEditing <- source None;
                                                                                             set sl (List.sort (fn x y => x.1 > y.1) ((sv, vs, notEditing) :: slv))}>Select:</button>
                                                           </span>
-                                                          <cselect class="form-control" source={s} onchange={set changed True}>
+                                                          <cselect class="form-select" source={s} onchange={set changed True}>
                                                             <coption/>
                                                             {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
                                                           </cselect> 
@@ -1666,7 +1666,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                     notEditing <- source None;
                                                                                     set sl (List.sort (fn x y => x.1 > y.1) ((sv, vs, notEditing) :: slv))}>Select:</button>
                                                       </span>
-                                                      <cselect class="form-control" source={s} onchange={set changed True}>
+                                                      <cselect class="form-select" source={s} onchange={set changed True}>
                                                         <coption/>
                                                         {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
                                                       </cselect> 
@@ -1894,7 +1894,7 @@ fun manyToManyOrdered [full ::: {Type}] [tname1 :: Name] [key1 ::: Type] [col1 :
                                                                                     notEditing <- source None;
                                                                                     set sl (List.sort (fn x y => x.1 > y.1) ((sv, vs, notEditing) :: slv))}>Select:</button>
                                                       </span>
-                                                      <cselect class="form-control" source={s} onchange={set changed True}>
+                                                      <cselect class="form-select" source={s} onchange={set changed True}>
                                                         <coption/>
                                                         {List.mapX (fn s => <xml><coption>{[s]}</coption></xml>) cfg1}
                                                       </cselect> 

@@ -1466,7 +1466,7 @@ functor AssignFromBids(M : sig
                                                          rpc (assign (ChangeWatcher.server ch) v ssv);
                                                          set s ssv)
                                                 <xml>Who do you want to assign?</xml>
-                                                <xml><cselect source={ss} class="form-control">
+                                                <xml><cselect source={ss} class="form-select">
                                                   <coption/>
                                                   {List.mapX (fn (u, p) => <xml><coption value={show u}>{[u]}{if p then <xml> [preferred]</xml> else <xml></xml>}</coption></xml>) cs}
                                                 </cselect></xml>
@@ -1611,7 +1611,7 @@ functor AssignFromBids2(M : sig
                                                          rpc (assign v ssv);
                                                          set s ssv)
                                                 <xml>Which value do you want to assign?</xml>
-                                                <xml><cselect source={ss} class="form-control">
+                                                <xml><cselect source={ss} class="form-select">
                                                   <coption/>
                                                   {List.mapX (fn (t, n) => <xml><coption value={show t}>{[t]}{[stars n]}</coption></xml>) cs}
                                                 </cselect></xml>

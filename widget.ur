@@ -280,8 +280,8 @@ fun choicebox [a ::: Type] (_ : show a) (_ : read a) (choice : a) (choices : lis
                         </xml>
                     in
                         case id of
-                            None => <xml><cselect class={Bootstrap.form_control} source={me.Source}>{inner}</cselect></xml>
-                          | Some id => <xml><cselect class={Bootstrap.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
+                            None => <xml><cselect class={Bootstrap.form_select} source={me.Source}>{inner}</cselect></xml>
+                          | Some id => <xml><cselect class={Bootstrap.form_select} id={id} source={me.Source}>{inner}</cselect></xml>
                     end,
       AsWidgetSimple = fn me id =>
                     let
@@ -290,8 +290,8 @@ fun choicebox [a ::: Type] (_ : show a) (_ : read a) (choice : a) (choices : lis
                         </xml>
                     in
                         case id of
-                            None => <xml><cselect class={Bootstrap.form_control} source={me.Source}>{inner}</cselect></xml>
-                          | Some id => <xml><cselect class={Bootstrap.form_control} id={id} source={me.Source}>{inner}</cselect></xml>
+                            None => <xml><cselect class={Bootstrap.form_select} source={me.Source}>{inner}</cselect></xml>
+                          | Some id => <xml><cselect class={Bootstrap.form_select} id={id} source={me.Source}>{inner}</cselect></xml>
                     end,
       Value = fn me =>
                  s <- signal me.Source;
@@ -330,8 +330,8 @@ fun foreignbox [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : sql_quer
                         <xml>
                           <dyn signal={choices <- signal me.Choices;
                                        return (case id of
-                                                   None => <xml><cselect class={Bootstrap.form_control} source={me.Source}>{inner choices}</cselect></xml>
-                                                 | Some id => <xml><cselect class={Bootstrap.form_control} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
+                                                   None => <xml><cselect class={Bootstrap.form_select} source={me.Source}>{inner choices}</cselect></xml>
+                                                 | Some id => <xml><cselect class={Bootstrap.form_select} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
                         </xml>
                     end,
       AsWidgetSimple = fn me id => case id of
@@ -370,8 +370,8 @@ fun foreignbox_default [a ::: Type] [f ::: Name] (_ : show a) (_ : read a) (q : 
                         <xml>
                           <dyn signal={choices <- signal me.Choices;
                                        return (case id of
-                                                   None => <xml><cselect class={Bootstrap.form_control} source={me.Source}>{inner choices}</cselect></xml>
-                                                 | Some id => <xml><cselect class={Bootstrap.form_control} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
+                                                   None => <xml><cselect class={Bootstrap.form_select} source={me.Source}>{inner choices}</cselect></xml>
+                                                 | Some id => <xml><cselect class={Bootstrap.form_select} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
                         </xml>
                     end,
       AsWidgetSimple = fn me id => case id of
@@ -455,8 +455,8 @@ functor Fuzzybox(M : sig
                                              | _ =>
                                                choices <- signal me.Choices;
                                                return (case id of
-                                                           None => <xml><cselect class={Bootstrap.form_control} source={me.Source}>{inner choices}</cselect></xml>
-                                                         | Some id => <xml><cselect class={Bootstrap.form_control} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
+                                                           None => <xml><cselect class={Bootstrap.form_select} source={me.Source}>{inner choices}</cselect></xml>
+                                                         | Some id => <xml><cselect class={Bootstrap.form_select} id={id} source={me.Source}>{inner choices}</cselect></xml>)}/>
                             </xml>
                         end,
           AsWidgetSimple = fn me id => case id of

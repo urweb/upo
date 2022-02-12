@@ -107,7 +107,7 @@ functor Make(M : sig
 
                        <tr>
                          <td>
-                           <cselect class="form-control" source={t.ToAdd}>
+                           <cselect class="form-select" source={t.ToAdd}>
                              {List.mapX (fn ch =>
                                             if List.mem ch chs then
                                                 <xml/>
