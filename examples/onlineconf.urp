@@ -2,7 +2,7 @@ database dbname=onlineconf
 sql onlineconf.sql
 library ../default
 library $/world
-library $/mail
+library $/email
 rewrite all Onlineconf/*
 safeGetDefault
 prefix http://localhost:8080/
