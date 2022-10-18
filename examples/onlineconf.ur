@@ -1,6 +1,6 @@
 (* Create onlineconfSecret.ur with Zoom parameters, plus start time! *)
 
-open Bootstrap4
+open Bootstrap
 structure Theme = Ui.Make(Default)
 structure Z = Zoom.Make(Zoom.TwoLegged(OnlineconfSecret))
 structure S = Slack.Make(Slack.TwoLegged(OnlineconfSecret))
@@ -113,6 +113,7 @@ structure Auth = Google.ThreeLegged(struct
                                         val https = False
                                         val scopes = Google.Scope.empty
                                         val onCompletion = claimed
+                                        val hosted_domain = None
                                     end)
 structure G = Google.Make(Auth)
 
@@ -276,6 +277,7 @@ structure UsersEnterAvailability = TimePreferences.Make(struct
 
                                                             val whoami = whoami
                                                             val addon = CalendarAddons.empty
+                                                            val slotDuration = None
                                                         end)
 
 structure Schedule = AssignTimes.Make(struct
@@ -377,7 +379,8 @@ structure HotcrpImport : Ui.S0 = struct
     val ui = {Create = create,
               Onload = onload,
               Render = render,
-              Notification = notification}
+              Notification = notification,
+              Buttons = notification}
 end
 
 structure PaperList = SmartTable.Make(struct
@@ -508,6 +511,7 @@ structure Calendar = SmartCalendar.Make(struct
                                                                                          val textColor = None
                                                                                          val backgroundColor = None
                                                                                          val addons = CalendarAddons.empty
+                                                                                         val duration = None
                                                                                      end)
 
                                             structure C = CalendarAddons.EventSource(struct
@@ -518,10 +522,12 @@ structure Calendar = SmartCalendar.Make(struct
                                                                                          val textColor = Some "blue"
                                                                                          val backgroundColor = Some "gray"
                                                                                          val addons = CalendarAddons.empty
+                                                                                         val duration = None
                                                                                      end)
 
                                             val addon = T.t |> CalendarAddons.compose C.t
                                             val whoami = whoami
+                                            val slotDuration = None
                                         end)
 
 task periodic 1 = fn () =>
