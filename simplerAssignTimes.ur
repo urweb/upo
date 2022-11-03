@@ -268,7 +268,7 @@ functor Make(M : sig
                                                                   return (if count = 0 then
                                                                               <xml></xml>
                                                                           else
-                                                                              <xml><span class="badge badge-pill badge-warning float-end">{[count]}</span></xml>)}/>
+                                                                              <xml><span class="badge badge-pill bg-warning text-dark float-end">{[count]}</span></xml>)}/>
                                                    </xml>}/>
 
                                                {(CalendarAddons.withinEvent addon ctx cal ev).Header}
@@ -400,7 +400,7 @@ functor Make(M : sig
                    return (if unscheduled = 0 then
                                <xml></xml>
                            else
-                               <xml><span class="badge badge-pill badge-warning">{[unscheduled]}</span></xml>)}/>
+                               <xml><span class="badge badge-pill bg-warning text-dark">{[unscheduled]}</span></xml>)}/>
     </xml>
 
     fun buttons _ _ = <xml></xml>
