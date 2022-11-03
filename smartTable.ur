@@ -267,7 +267,7 @@ fun iconButton [inp ::: Type] [cols ::: {Type}] [r ::: {Type}] [cols ~ r]
 }
 
 fun links [a] (_ : show a) (ls : list a) : xbody = <xml>
-  {List.mapX (fn x => <xml> <span class="badge badge-pill badge-info">{[x]}</span></xml>) ls}
+  {List.mapX (fn x => <xml> <span class="badge badge-pill bg-info text-dark">{[x]}</span></xml>) ls}
 </xml>
 
 type linked_cfg (t :: Type) = unit
@@ -301,7 +301,7 @@ fun linked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
 }
 
 fun weightedLinks [a] (_ : show a) (ls : list (a * int)) : xbody = <xml>
-  {List.mapX (fn (x, n) => <xml> <span class="badge badge-pill badge-info">{[x]}{[case n of
+  {List.mapX (fn (x, n) => <xml> <span class="badge badge-pill bg-info text-dark">{[x]}{[case n of
                                                                                       1 => ""
                                                                                     | _ => " x" ^ show n]}</span></xml>) ls}
 </xml>
@@ -416,8 +416,8 @@ fun orderedLinked [inp ::: Type] [this :: Name] [fthis :: Name] [thisT ::: Type]
 fun linksWithUrls [a] (_ : show a) (ls : list (a * option url)) : xbody = <xml>
   {List.mapX (fn (x, uo) =>
                  case uo of
-                     None => <xml> <span class="badge badge-pill badge-info">{[x]}</span></xml>
-                   | Some u => <xml> <a class="badge badge-pill badge-info" href={u}>{[x]}</a></xml>) ls}
+                     None => <xml> <span class="badge badge-pill bg-info text-dark">{[x]}</span></xml>
+                   | Some u => <xml> <a class="badge badge-pill bg-info text-dark" href={u}>{[x]}</a></xml>) ls}
 </xml>
 
 type linkedWithUrl_cfg (t :: Type) = ChangeWatcher.client_part
@@ -619,7 +619,7 @@ functor LinkedWithEdit(M : sig
         Header = fn _ => <xml><th>{[savedLabel]}</th></xml>,
         Row = fn authed ctx (k, ls) => let
                      fun one v = <xml>
-                       <span class="badge badge-pill badge-info p-2">
+                       <span class="badge badge-pill bg-info text-dark p-2">
                          {[v]}
                          {case authed of
                               None => <xml></xml>
@@ -823,7 +823,7 @@ functor LinkedWithEditForOwner(M : sig
         Header = fn _ => <xml><th>{[savedLabel]}</th></xml>,
         Row = fn cfg ctx (k, ls, owner) => let
                      fun one v = <xml>
-                       <span class="badge badge-pill badge-info p-2">
+                       <span class="badge badge-pill bg-info text-dark p-2">
                          {[v]}
                          {if not owner then
                               <xml></xml>
@@ -1015,7 +1015,7 @@ functor LinkedWithEditAndDefault(M : sig
         Header = fn _ => <xml><th>{[savedLabel]}</th></xml>,
         Row = fn authed ctx (k, ls) => let
                      fun one v = <xml>
-                       <span class="badge badge-pill badge-info p-2">
+                       <span class="badge badge-pill bg-info text-dark p-2">
                          {[v]}
                          {case authed of
                               None => <xml></xml>
@@ -1147,7 +1147,7 @@ functor LinkedWithFollow(M : sig
         Header = fn _ => <xml><th>{[label]}</th></xml>,
         Row = fn uo _ ls => let
                      fun one (v, followed) = <xml>
-                       <span class="badge badge-pill badge-info">{[v]}</span>
+                       <span class="badge badge-pill bg-info text-dark">{[v]}</span>
                        {case uo of
                             None => <xml></xml>
                           | Some _ => <xml>
@@ -1481,13 +1481,13 @@ functor AssignFromBids(M : sig
                                                  val len = List.length cs
                                              in
                                                  Ui.modalAnchor ctx
-                                                                (CLASS "badge badge-warning")
-                                                                <xml>{[len]} response{[case len of 1 => "" | _ => "s"]}</xml>
-                                                                reassign
+								(CLASS "badge bg-warning text-dark")
+								<xml>{[len]} response{[case len of 1 => "" | _ => "s"]}</xml>
+								reassign
                                              end}
                                           </h5></xml>)
                                      | Some u => <xml>
-                                       <span class="badge badge-pill badge-info">{[u]}</span>
+                                       <span class="badge badge-pill bg-info text-dark">{[u]}</span>
                                        {Ui.modalIcon ctx
                                                      (CLASS "glyphicon glyphicon-pencil-alt")
                                                      reassign}
@@ -1626,13 +1626,13 @@ functor AssignFromBids2(M : sig
                                                  val len = List.length cs
                                              in
                                                  Ui.modalAnchor ctx
-                                                                (CLASS "badge badge-warning")
+                                                                (CLASS "badge bg-warning text-dark")
                                                                 <xml>{[len]} response{[case len of 1 => "" | _ => "s"]}</xml>
                                                                 reassign
                                              end}
                                           </h5></xml>)
                                      | Some u => <xml>
-                                       <span class="badge badge-pill badge-info">{[u]}</span>
+                                       <span class="badge badge-pill bg-info text-dark">{[u]}</span>
                                        {Ui.modalIcon ctx
                                                      (CLASS "glyphicon glyphicon-pencil-alt")
                                                      reassign}
@@ -2680,7 +2680,7 @@ functor Make(M : sig
                    return (if n = 0 then
                                <xml></xml>
                            else
-                               <xml><span class="badge badge-pill badge-warning">{[n]}</span></xml>)}/>
+                               <xml><span class="badge badge-pill bg-warning text-dark">{[n]}</span></xml>)}/>
     </xml>
 
     fun buttons _ _ = <xml></xml>
@@ -2900,7 +2900,7 @@ functor Make1(M : sig
                    return (if n = 0 then
                                <xml></xml>
                            else
-                               <xml><span class="badge badge-pill badge-warning">{[n]}</span></xml>)}/>
+                               <xml><span class="badge badge-pill bg-warning text-dark">{[n]}</span></xml>)}/>
     </xml>
 
    fun buttons _ _ = <xml></xml>
