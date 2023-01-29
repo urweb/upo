@@ -705,7 +705,7 @@ fun ui {FromDay = from, ToDay = to} : Ui.t a =
                         {render' r.LaterWeeks}
                       </xml>
             in
-              <xml><table class={calendar}>
+              <xml><table class="calendar table-bordered">
                 <thead><tr>
                   <th>Sunday</th>
                   <th>Monday</th>
