@@ -6,7 +6,10 @@ val withAll : K --> r ::: {K} -> folder r
               -> (variant (map (fn _ => unit) r) -> transaction unit) -> transaction unit
 
 val withAllX : K --> r ::: {K} -> ctx ::: {Unit} -> inp ::: {Type} -> folder r
-              -> (variant (map (fn _ => unit) r) -> xml ctx inp []) -> xml ctx inp []
+               -> (variant (map (fn _ => unit) r) -> xml ctx inp []) -> xml ctx inp []
+
+val withAllFold : K --> r ::: {K} -> folder r -> t ::: Type
+                  -> (variant (map (fn _ => unit) r) -> t -> t) -> t -> t
 
 val erase : r ::: {Type} -> folder r
             -> variant r -> variant (map (fn _ => unit) r)
