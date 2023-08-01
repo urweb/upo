@@ -2,6 +2,7 @@ html5
 library $/bootstrap/bootstrap5
 library $/ajaxUpload
 library ckeditor
+library chartist
 library dateTimePicker
 library select2
 library fullCalendar
@@ -92,3 +93,4 @@ assignTimes
 simplerAssignTimes
 setTimes
 profile
+simpleGraph
