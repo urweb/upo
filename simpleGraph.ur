@@ -30,7 +30,7 @@ functor Make(M : sig
         let
             val x = List.mp (fn (x, _) => show x) a
 
-            val y = List.foldl (fn (_, y) acc =>
+            val y = List.foldr (fn (_, y) acc =>
                                    @map3 [numeric] [ident] [fn _ => list float] [fn _ => list float]
                                     (fn [t] (f : numeric t) (v : t) (acc : list float) => f v :: acc)
                                     fl numerics y acc)
