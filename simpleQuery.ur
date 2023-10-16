@@ -17,7 +17,7 @@ functor Make(M : sig
     fun onload _ = return ()
 
     fun render _ a = <xml>
-      <table class="bs-table">
+      <table class="bs-table table-striped">
         <thead><tr>
           {@mapX [fn _ => string] [tr]
             (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] lab => <xml><th>{[lab]}</th></xml>)
