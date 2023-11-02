@@ -1,0 +1,10 @@
+ffi chartjsFfi
+jsFunc ChartjsFfi.setGraph=uw_set_chartjs
+clientOnly ChartjsFfi.setGraph
+benignEffectful ChartjsFfi.setGraph
+jsFunc ChartjsFfi.updateGraph=uw_update_chartjs
+clientOnly ChartjsFfi.updateGraph
+benignEffectful ChartjsFfi.updateGraph
+jsFile chartjsUrweb.js
+
+chartjs

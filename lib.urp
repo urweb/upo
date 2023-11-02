@@ -3,6 +3,7 @@ library $/bootstrap/bootstrap5
 library $/ajaxUpload
 library ckeditor
 library chartist
+library chartjs
 library dateTimePicker
 library select2
 library fullCalendar

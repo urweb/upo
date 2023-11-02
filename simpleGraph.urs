@@ -14,4 +14,5 @@ functor Make(M : sig
                  val fl : folder y
                  val label : show xType
                  val numerics : $(map numeric y)
+                 val labels : $(map (fn _ => string) ([xName = xType] ++ y))
              end) : Ui.S0
