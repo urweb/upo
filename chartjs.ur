@@ -1,4 +1,6 @@
 
+style chartjs_chart
+
 type dataset = {
     Label : string,
     Values : list float
@@ -30,7 +32,7 @@ fun graphToFFI (g : graph) : ChartjsFfi.graph = case g of
 fun graph gr = <xml>
   <active code={id <- fresh;
                 return <xml>
-                  <span id={id}/>
+                  <div class="chartjs-chart"><span id={id}/></div>
                   <dyn signal={gr <- signal gr;
                                return <xml><active code={_ <- ChartjsFfi.setGraph id (graphToFFI gr);
                                                          return <xml/>}/></xml>}/>
