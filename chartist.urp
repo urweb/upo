@@ -1,7 +1,0 @@
-ffi chartistFfi
-jsFunc ChartistFfi.replace=uw_chartist_replace
-clientOnly CharistFfi.replace
-benignEffectful ChartistFfi.replace
-jsFile chartistUrweb.js
-
-chartist

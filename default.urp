@@ -8,7 +8,7 @@ script https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min
 script https://cdn.ckeditor.com/4.13.1/standard/ckeditor.js
 script https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js
 script https://cdn.jsdelivr.net/npm/jquery-datetimepicker@2.5.21/build/jquery.datetimepicker.full.min.js
-script https://cdnjs.cloudflare.com/ajax/libs/chartist/0.11.4/chartist.min.js
+script https://cdn.jsdelivr.net/npm/chart.js
 file /style.css style.css
 library navbar
 

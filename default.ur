@@ -13,7 +13,6 @@ val css =
      FullcalendarDaygrid = bless "https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/4.2.0/daygrid/main.min.css",
      FullcalendarTimegrid = bless "https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/4.2.0/timegrid/main.min.css",
      DateTimePicker = bless "https://cdn.jsdelivr.net/npm/jquery-datetimepicker@2.5.21/jquery.datetimepicker.css",
-     Chartist = bless "https://cdnjs.cloudflare.com/ajax/libs/chartist/0.11.4/chartist.min.css",
      Upo = bless "/style.css"}
 
 val navclasses = CLASS "navbar navbar-expand-md navbar-dark fixed-top bg-dark"
