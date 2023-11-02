@@ -6,6 +6,18 @@ fun numeric_option [t] (f : numeric t) (x : option t) =
         None => 0.0
       | Some n => f n
 
+datatype graphType = Bar | StackedBar | Line | Pie | Doughnut | PolarArea | Radar
+
+fun toChartJs (graphType : graphType) : (list string * list Chartjs.dataset) -> Chartjs.graph =
+    case graphType of
+        Bar => Chartjs.Bar
+      | StackedBar => Chartjs.StackedBar
+      | Line => Chartjs.Line
+      | Pie => Chartjs.Pie
+      | Doughnut => Chartjs.Doughnut
+      | PolarArea => Chartjs.PolarArea
+      | Radar => Chartjs.Radar
+
 functor Make(M : sig
                  con xName :: Name
                  type xType
@@ -16,6 +28,7 @@ functor Make(M : sig
                  val label : show xType
                  val numerics : $(map numeric y)
                  val labels : $(map (fn _ => string) ([xName = xType] ++ y))
+                 val graphType : graphType
              end) = struct
     open M
 
@@ -41,7 +54,7 @@ functor Make(M : sig
                 @foldR [fn _ => Chartjs.dataset] [fn _ => list Chartjs.dataset]
                     (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] lf acc => lf :: acc)
                     [] fl dataseries
-            val gr = Chartjs.Bar (dataLabels, dataseries)
+            val gr = toChartJs graphType (dataLabels, dataseries)
         in src <- source gr; return (src, gr) end
 
     fun onload (src, gr) = set src gr
