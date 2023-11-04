@@ -6,5 +6,6 @@ jsFunc ChartjsFfi.updateGraph=uw_update_chartjs
 clientOnly ChartjsFfi.updateGraph
 benignEffectful ChartjsFfi.updateGraph
 jsFile chartjsUrweb.js
+rewrite style Chartjs/* [-]
 
 chartjs
