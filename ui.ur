@@ -336,35 +336,27 @@ functor Make(M : THEME) = struct
         </xml>
 end
 
-fun modalButton ctx cls bod onclick = <xml>
-  <button class={cls}
-          data-bs-toggle="modal"
-          data-bs-target={"#" ^ show ctx.ModalId}
-          onclick={fn _ =>
-                      ms <- onclick;
-                      set ctx.ModalSpot ms}>
-    {bod}
-  </button>
-</xml>
+fun modalButton ctx cls bod onclick = <xml><button class={cls}
+                                                   data-bs-toggle="modal"
+                                                   data-bs-target={"#" ^ show ctx.ModalId}
+                                                   onclick={fn _ =>
+                                                               ms <- onclick;
+                                                               set ctx.ModalSpot ms}>{bod}</button></xml>
 
-fun modalIcon ctx cls onclick = <xml>
-  <i class={cls} style="cursor: pointer"
-     data-bs-toggle="modal"
-     data-bs-target={"#" ^ show ctx.ModalId}
-     onclick={fn _ =>
-                 ms <- onclick;
-                 set ctx.ModalSpot ms}/>
-</xml>
+fun modalIcon ctx cls onclick = <xml><i class={cls} style="cursor: pointer"
+                                        data-bs-toggle="modal"
+                                        data-bs-target={"#" ^ show ctx.ModalId}
+                                        onclick={fn _ =>
+                                                    ms <- onclick;
+                                                    set ctx.ModalSpot ms}/></xml>
 
-fun modalAnchor ctx cls bod onclick = <xml>
-  <a class={cls}
-     data-bs-toggle="modal"
-     data-bs-target={"#" ^ show ctx.ModalId}
-     href="#"
-     onclick={fn _ =>
-                 ms <- onclick;
-                 set ctx.ModalSpot ms}>{bod}</a>
-</xml>
+fun modalAnchor ctx cls bod onclick = <xml><a class={cls}
+                                              data-bs-toggle="modal"
+                                              data-bs-target={"#" ^ show ctx.ModalId}
+                                              href="#"
+                                              onclick={fn _ =>
+                                                          ms <- onclick;
+                                                          set ctx.ModalSpot ms}>{bod}</a></xml>
 
 fun activateModal ctx bod =
     set ctx.ModalSpot bod;
