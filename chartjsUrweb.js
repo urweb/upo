@@ -53,10 +53,19 @@ function bubble_dataset_in(l) {
 }
 
 function uw_set_chartjs(id, gr) {
-    var notCanvas = document.getElementById(id);
+    var parentDiv = document.getElementById(id);
     var canvas = document.createElement('canvas');
-    notCanvas.parentNode.replaceChild(canvas, notCanvas);
-    canvas.setAttribute("id", id);
+    parentDiv.appendChild(canvas);
+    switch (gr.n) {
+    case 'Pie':
+    case 'Doughnut':
+    case 'PolarArea':
+    case 'Radar':
+        parentDiv.style["aspect-ratio"] = "1 / 1";
+        break;
+    default:
+        parentDiv.style["aspect-ratio"] = "2 / 1";
+    }
 
     switch (gr.n) {
     case 'Bar':

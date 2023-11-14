@@ -184,7 +184,7 @@ functor Make(M : sig
         ChangeWatcher.changedBy ch title
 
     fun renderActionButtons ctx a r =
-      <xml><td>
+      <xml><td style="display: flex">
         {if a.Perm.Delete then
              Ui.modalButton ctx (CLASS "btn btn-light")
                             <xml><span class="glyphicon glyphicon-trash"/></xml>
