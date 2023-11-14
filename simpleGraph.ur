@@ -32,7 +32,7 @@ functor Make(M : sig
              end) = struct
     open M
 
-    type a = source Chartjs.graph * Chartjs.graph
+    type a = Chartjs.graph
 
     val create =
         q <- List.mapQuery query (fn r => (r.xName, r -- xName));
@@ -55,11 +55,11 @@ functor Make(M : sig
                     (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] lf acc => lf :: acc)
                     [] fl dataseries
             val gr = toChartJs graphType (dataLabels, dataseries)
-        in src <- source gr; return (src, gr) end
+        in return gr end
 
-    fun onload (src, gr) = set src gr
+    fun onload _ = return ()
 
-    fun render _ (src, _) = Chartjs.graph src
+    fun render _ src = Chartjs.graph src
 
     fun notification _ _ = <xml></xml>
     fun buttons _ _ = <xml></xml>

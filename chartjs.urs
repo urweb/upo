@@ -17,4 +17,4 @@ datatype graph =
   | Scatter of list {Label : string, Values : list {X : float, Y : float}}
   | Bubble of list {Label : string, Values : list {X : float, Y : float, R : float}}
 
-val graph : source graph -> xbody
+val graph : graph -> xbody
